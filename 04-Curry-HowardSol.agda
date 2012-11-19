@@ -1,6 +1,6 @@
 module 04-Curry-HowardSol where
 
-{- Conseptually -}
+{- Conceptually -}
 
 -- Prop : Set₁
 -- Prop = Set

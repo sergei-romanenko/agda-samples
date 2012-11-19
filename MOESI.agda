@@ -8,7 +8,7 @@ open import Function using (_∘_)
 infixr 4 _,_,_,_,_
 
 data State : Set where
-  _,_,_,_,_ : (i, m, s, e, o : ℕ) → State
+  _,_,_,_,_ : (i m s e o : ℕ) → State
 
 data MOESI : State → Set where
   t1 : ∀ {i} →

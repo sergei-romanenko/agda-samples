@@ -9,7 +9,7 @@ module 01-DemoSol where
 -- C-C C-T (type of the current goal)
 -- C-C C-R (refine the current goal)
 -- C-C C-C (case split the current goal)
--- C-C C-C (auto-filling the current goal
+-- C-C C-A (auto-filling the current goal
 --           -l list possible variants
 --           -c try case-split
 --           -m use constants in scope defined in the module)
