@@ -32,12 +32,15 @@ open import Function using (_∘_)
 comp' : {P Q R : Set} → (P → Q) → (Q → R) → P → R
 comp' pq qr = qr ∘ pq
 
-{- conjunction -}
+{- Conjunction ×
 
-{-
+   A proof of P × Q is a proof of P and a proof of Q.
+-}
+
+module Dummy-× where
+
   data _×_ (P Q : Set) : Set where
     _,_ : P → Q → P × Q
--}
 
 open import Data.Product
 
@@ -56,15 +59,15 @@ open import Data.Product
 
 {- Disjunction ⊎
 
-   A proof of P ⊎ Q is either a proof of P prefixed with left or a
-   proof of Q prefixed with right.
+   A proof of P ⊎ Q is either a proof of P prefixed with inj₁ or
+   a proof of Q prefixed with inj₂.
 -}
 
-{-
-data _⊎_ (P Q : Set) : Set where
-  inj₁ : P → P ⊎ Q
-  inj₂ : Q → P ⊎ Q
--}
+module Dummy-⊎ where
+
+  data _⊎_ (P Q : Set) : Set where
+    inj₁ : P → P ⊎ Q
+    inj₂ : Q → P ⊎ Q
 
 open import Data.Sum
 
@@ -92,31 +95,36 @@ distrib-×-⊎-2 : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
 distrib-×-⊎-2 (inj₁ (p , q)) = p , inj₁ q
 distrib-×-⊎-2 (inj₂ (p , r)) = p , inj₂ r
 
-{- True (⊤ = \top) has a trivial proof.
+{- True (⊤ = \top) has a trivial proof. -}
 
-  data ⊤ : Set where
-    tt : ⊤
+module Dummy-⊤ where
 
--}
+  record ⊤ : Set where
+    constructor tt
 
 open import Data.Unit
 
-{- False (⊥ = \bot) has no proof.
+{- False (⊥ = \bot) has no proof. -}
+
+module Dummy-⊥ where
 
   data ⊥ : Set where
 
   ⊥-elim : {x : Set} → ⊥ → x
   ⊥-elim ()
 
--}
-
 open import Data.Empty
 
-{- Negation (¬)
+{- Negation ¬ -}
+
+module Dummy-¬ where
 
   ¬ : Set → Set
   ¬ P = P → ⊥
--}
+
+  data Dec (P : Set) : Set where
+    yes : ( p :   P) → Dec P
+    no  : (¬p : ¬ P) → Dec P
 
 open import Relation.Nullary
 
@@ -162,18 +170,24 @@ em→peirce e P Q h with e P
   (∀ a → P a) × (∀ a → Q a) → (∀ a → P a × Q a) 
 ∀×-lem-2 (p , q) = λ a → (p a) , (q a)
 
+{- Existence. Given a set A, and a predicate P : A → Set
+   Σ A P means that there is an (x : A) such that (P x).
+   Technically, if (x , p) : Σ A P, then (x : A) and
+   p x : P x.
+-}
+
 {-
-record Σ {a b} (A : Set a) (B : A → Set b) : Set (a ⊔ b) where
-  constructor _,_
-  field
-    proj₁ : A
-    proj₂ : B proj₁
+  record Σ (A : Set) (B : A → Set) : Set where
+    constructor _,_
+    field
+      proj₁ : A
+      proj₂ : B proj₁
 
-∃ : ∀ {a b} {A : Set a} → (A → Set b) → Set (a ⊔ b)
-∃ = Σ _
+  ∃ : ∀ {A : Set} → (A → Set) → Set
+  ∃ = Σ _
 
-_×_ : ∀ {a b} (A : Set a) (B : Set b) → Set (a ⊔ b)
-A × B = Σ A (λ _ → B)
+  _×_ : ∀ (A : Set) (B : Set) → Set
+  A × B = Σ A (λ _ → B)
 -}
 
 ∀∃-lem-1 : {A : Set} {P : A → Set} {Q : Set} → 
