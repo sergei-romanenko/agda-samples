@@ -1,5 +1,7 @@
 module 04-Curry-Howard where
 
+open import Function
+
 {- Conceptually -}
 
 -- Prop : Set₁
@@ -18,8 +20,8 @@ module SKI where
   S : {A B C : Set} → (A → B → C) → (A → B) → A → C
   S p q r = {!!}
 
-  I' : {A B C : Set}→ A → A
-  I' {A} {B} {C} = S {A} {C → A} {A} (K {A} {C → A}) (K {A}{C})
+  I' : {P : Set}→ P → P
+  I' {P}  = S K (K {P}{P})
 
 mp : {P Q : Set} → (P → Q) → P → Q
 mp pq p = {!!}
@@ -27,20 +29,28 @@ mp pq p = {!!}
 comp : {P Q R : Set} → (P → Q) → (Q → R) → P → R
 comp pq qr p = {!!}
 
-open import Function using (_∘_)
-
 comp' : {P Q R : Set} → (P → Q) → (Q → R) → P → R
 comp' pq qr = qr ∘ pq
 
 {- Conjunction ×
 
    A proof of P × Q is a proof of P and a proof of Q.
--}
-
-module Dummy-× where
 
   data _×_ (P Q : Set) : Set where
     _,_ : P → Q → P × Q
+
+   Actually, × is a special case of a more general construct:
+
+  record Σ (A : Set) (B : A → Set) : Set where
+    constructor _,_
+    field
+      proj₁ : A
+      proj₂ : B proj₁
+
+  _×_ : ∀ (A : Set) (B : Set) → Set
+  A × B = Σ A (λ _ → B)
+
+-}
 
 open import Data.Product
 
@@ -61,13 +71,11 @@ open import Data.Product
 
    A proof of P ⊎ Q is either a proof of P prefixed with inj₁ or
    a proof of Q prefixed with inj₂.
--}
-
-module Dummy-⊎ where
 
   data _⊎_ (P Q : Set) : Set where
     inj₁ : P → P ⊎ Q
     inj₂ : Q → P ⊎ Q
+-}
 
 open import Data.Sum
 
@@ -92,29 +100,26 @@ distrib-×-⊎-1 pqr = {!!}
 distrib-×-⊎-2 : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
 distrib-×-⊎-2 pqpr = {!!}
 
-{- True (⊤ = \top) has a trivial proof. -}
-
-module Dummy-⊤ where
+{- True (⊤ = \top) has a trivial proof.
 
   record ⊤ : Set where
     constructor tt
+-}
 
 open import Data.Unit
 
-{- False (⊥ = \bot) has no proof. -}
-
-module Dummy-⊥ where
+{- False (⊥ = \bot) has no proof.
 
   data ⊥ : Set where
 
-  ⊥-elim : {x : Set} → ⊥ → x
+  ⊥-elim : ∀ {w} {Whatever : Set w} → ⊥ → Whatever
   ⊥-elim ()
+
+-}
 
 open import Data.Empty
 
-{- Negation ¬ -}
-
-module Dummy-¬ where
+{- Negation ¬
 
   ¬ : Set → Set
   ¬ P = P → ⊥
@@ -122,6 +127,7 @@ module Dummy-¬ where
   data Dec (P : Set) : Set where
     yes : ( p :   P) → Dec P
     no  : (¬p : ¬ P) → Dec P
+-}
 
 open import Relation.Nullary
 
@@ -168,21 +174,12 @@ em→peirce e P Q h with e P
    Σ A P means that there is an (x : A) such that (P x).
    Technically, if (x , p) : Σ A P, then (x : A) and
    p x : P x.
--}
-
-{-
-  record Σ (A : Set) (B : A → Set) : Set where
-    constructor _,_
-    field
-      proj₁ : A
-      proj₂ : B proj₁
 
   ∃ : ∀ {A : Set} → (A → Set) → Set
   ∃ = Σ _
 
-  _×_ : ∀ (A : Set) (B : Set) → Set
-  A × B = Σ A (λ _ → B)
 -}
+
 
 ∀∃-lem-1 : {A : Set} {P : A → Set} {Q : Set} → 
   (∀ a → P a → Q) → (∃ λ a → P a) → Q
