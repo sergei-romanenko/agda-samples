@@ -64,7 +64,7 @@ open import Data.Product
 --< f , g > x = (f x , g x)
 
 ×-comm' : {P Q : Set} → P × Q → Q × P
-×-comm' pq = < proj₂ , proj₁ > pq
+×-comm' = < proj₂ , proj₁ >
 
 
 {- Disjunction ⊎
@@ -84,21 +84,31 @@ open import Data.Sum
 ⊎-comm : {P Q : Set} → P ⊎ Q → Q ⊎ P
 ⊎-comm pq = {!!}
 
--- [ f , g ] (inj₁ x) = f x
--- [ f , g ] (inj₂ y) = g y
+-- [ f , g ]′ (inj₁ x) = f x
+-- [ f , g ]′ (inj₂ y) = g y
 
 ⊎-comm' : {P Q : Set} → P ⊎ Q → Q ⊎ P
-⊎-comm' pq = [ inj₂ , inj₁ ] pq
+⊎-comm' = [ inj₂ , inj₁ ]′
 
 {- Distributivity of × over ⊎ -}
 
 distrib-×-⊎-1 : {P Q R : Set} → P × (Q ⊎ R) → (P × Q) ⊎ (P × R)
 distrib-×-⊎-1 pqr = {!!}
 
+distrib-×-⊎-1' : {P Q R : Set} → P × (Q ⊎ R) → (P × Q) ⊎ (P × R)
+distrib-×-⊎-1' = λ { (p , qr) →
+  [ (λ q → inj₁ (p , q)) , (λ r → inj₂ (p , r)) ]′ qr}
+
+
 {- The other direction -}
 
 distrib-×-⊎-2 : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
 distrib-×-⊎-2 pqpr = {!!}
+
+distrib-×-⊎-2' : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
+distrib-×-⊎-2' =
+  [ (λ {(p , q) → p , inj₁ q}) , (λ {(p , q) → p , inj₂ q}) ]′
+
 
 {- True (⊤ = \top) has a trivial proof.
 
@@ -134,7 +144,7 @@ open import Relation.Nullary
 {- Some basic facts about negation. -}
 
 contradict : {P : Set} → ¬ (P × ¬ P)
-contradict (np , p) = {!!}
+contradict (p , np) = {!!}
 
 contrapos : {P Q : Set} → (P → Q) → ¬ Q → ¬ P
 contrapos pq nq p = {!!}

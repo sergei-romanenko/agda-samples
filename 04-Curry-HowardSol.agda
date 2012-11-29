@@ -64,7 +64,7 @@ open import Data.Product
 --< f , g > x = (f x , g x)
 
 ×-comm' : {P Q : Set} → P × Q → Q × P
-×-comm' pq = < proj₂ , proj₁ > pq
+×-comm' = < proj₂ , proj₁ >
 
 
 {- Disjunction ⊎
@@ -85,11 +85,11 @@ open import Data.Sum
 ⊎-comm (inj₁ p) = inj₂ p
 ⊎-comm (inj₂ q) = inj₁ q
 
--- [ f , g ] (inj₁ x) = f x
--- [ f , g ] (inj₂ y) = g y
+-- [ f , g ]′ (inj₁ x) = f x
+-- [ f , g ]′ (inj₂ y) = g y
 
 ⊎-comm' : {P Q : Set} → P ⊎ Q → Q ⊎ P
-⊎-comm' pq = [ inj₂ , inj₁ ] pq
+⊎-comm' = [ inj₂ , inj₁ ]′
 
 {- Distributivity of × over ⊎ -}
 
@@ -97,11 +97,21 @@ distrib-×-⊎-1 : {P Q R : Set} → P × (Q ⊎ R) → (P × Q) ⊎ (P × R)
 distrib-×-⊎-1 (p , inj₁ q) = inj₁ (p , q)
 distrib-×-⊎-1 (p , inj₂ r) = inj₂ (p , r)
 
+distrib-×-⊎-1' : {P Q R : Set} → P × (Q ⊎ R) → (P × Q) ⊎ (P × R)
+distrib-×-⊎-1' = λ { (p , qr) →
+  [ (λ q → inj₁ (p , q)) , (λ r → inj₂ (p , r)) ]′ qr}
+
+
 {- The other direction -}
 
 distrib-×-⊎-2 : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
 distrib-×-⊎-2 (inj₁ (p , q)) = p , inj₁ q
 distrib-×-⊎-2 (inj₂ (p , r)) = p , inj₂ r
+
+distrib-×-⊎-2' : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
+distrib-×-⊎-2' =
+  [ (λ {(p , q) → p , inj₁ q}) , (λ {(p , q) → p , inj₂ q}) ]′
+
 
 {- True (⊤ = \top) has a trivial proof.
 
@@ -194,3 +204,49 @@ em→peirce e P Q h with e P
 ∀∃-lem-2 : {A : Set} {P : A → Set} {Q : Set} → 
   ((∃ λ a → P a) → Q) → (∀ a → P a → Q)
 ∀∃-lem-2 pq = λ a p → pq (a , p)
+
+
+infix 1 _↔_
+
+_↔_ : ∀ {ℓ} → Set ℓ → Set ℓ → Set ℓ
+_↔_ P Q = (P → Q) × (Q → P)
+
+frobenius⇒ : ∀ {A : Set} {P : A → Set} {Q : Set} →
+  Σ A (λ x → Q × P x) → Q × Σ A (λ x → P x)
+frobenius⇒ (x , (q , px)) = q , (x , px)
+
+frobenius⇐ : ∀ {A : Set} {P : A → Set} {Q : Set} →
+  Q × Σ A (λ x → P x) → Σ A (λ x → Q × P x)
+frobenius⇐ (q , (x , px)) = x , (q , px)
+
+frobenius : ∀ {A : Set} {P : A → Set} {Q : Set} →
+  (∃ λ x → Q × P x) ↔ Q × (∃ λ x → P x)
+frobenius = frobenius⇒ , frobenius⇐
+
+frobenius-dual⇒ : Set₁
+frobenius-dual⇒ = ∀ {A : Set} {P : A → Set} {Q : Set} →
+                   (∀ x → Q ⊎ P x) → Q ⊎ (∀ x → P x)
+
+frobenius-dual⇐ : Set₁
+frobenius-dual⇐ = ∀ {A : Set} {P : A → Set} {Q : Set} →
+                   Q ⊎ (∀ x → P x) → (∀ x → Q ⊎ P x)
+
+frobenius-dual : Set₁
+frobenius-dual = frobenius-dual⇒ × frobenius-dual⇐
+
+em→frobenius-dual⇒ : em → frobenius-dual⇒
+em→frobenius-dual⇒ em {Q = Q} h =
+  [ (λ q → inj₁ q) ,
+    (λ ¬q → inj₂ (λ x → [ (λ q → ⊥-elim (¬q q)) , id ]′ (h x))) ]′
+  (em Q)
+
+em→frobenius-dual⇐ : em → frobenius-dual⇐
+em→frobenius-dual⇐ em =
+  [ (λ q a → inj₁ q) , (λ p a → inj₂ (p a)) ]′
+
+em→frobenius-dual : em → ∀ {A : Set} {P : A → Set} {Q : Set} →
+                              (∀ x → Q ⊎ P x) ↔ Q ⊎ (∀ x → P x)
+em→frobenius-dual em = em→frobenius-dual⇒ em , em→frobenius-dual⇐ em
+
+frobenius-dual→em : frobenius-dual → em
+frobenius-dual→em (f⇒ , f⇐) R = f⇒ (λ r → f⇐ (inj₁ r) (r ∶ R) ∶ R ⊎ ⊥)
