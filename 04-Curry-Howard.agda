@@ -53,6 +53,7 @@ comp' pq qr = qr ∘ pq
 -}
 
 open import Data.Product
+  renaming (map to map×)
 
 {- × is commutative. -}
 
@@ -78,6 +79,7 @@ open import Data.Product
 -}
 
 open import Data.Sum
+  renaming (map to map⊎)
 
 {- ⊎ is commutative -}
 
@@ -95,20 +97,29 @@ open import Data.Sum
 distrib-×-⊎-1 : {P Q R : Set} → P × (Q ⊎ R) → (P × Q) ⊎ (P × R)
 distrib-×-⊎-1 pqr = {!!}
 
-distrib-×-⊎-1' : {P Q R : Set} → P × (Q ⊎ R) → (P × Q) ⊎ (P × R)
-distrib-×-⊎-1' = λ { (p , qr) →
+distrib-×-⊎-1₁ : {P Q R : Set} → P × (Q ⊎ R) → (P × Q) ⊎ (P × R)
+distrib-×-⊎-1₁ = λ { (p , qr) →
   [ (λ q → inj₁ (p , q)) , (λ r → inj₂ (p , r)) ]′ qr}
 
+-- map f g = [ inj₁ ∘ f , inj₂ ∘ g ]
+-- uncurry f (x , y) = f x y
+
+distrib-×-⊎-1₂ : {P Q R : Set} → P × (Q ⊎ R) → (P × Q) ⊎ (P × R)
+distrib-×-⊎-1₂ =
+  uncurry′ (λ p → map⊎ (_,_ p) (_,_ p))
 
 {- The other direction -}
 
 distrib-×-⊎-2 : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
 distrib-×-⊎-2 pqpr = {!!}
 
-distrib-×-⊎-2' : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
-distrib-×-⊎-2' =
+distrib-×-⊎-2₂ : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
+distrib-×-⊎-2₂ =
   [ (λ {(p , q) → p , inj₁ q}) , (λ {(p , q) → p , inj₂ q}) ]′
 
+distrib-×-⊎-2₃ : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
+distrib-×-⊎-2₃ =
+  [ map× id (λ {_} → inj₁) , map× id (λ {_} → inj₂) ]′
 
 {- True (⊤ = \top) has a trivial proof.
 
