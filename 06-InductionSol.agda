@@ -19,6 +19,12 @@ open ≡-Reasoning
 ℕ-ind P base step zero = base
 ℕ-ind P base step (suc n) = step n (ℕ-ind P base step n)
 
+ℕ-ind₁ : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
+           ∀ n → P n
+ℕ-ind₁ P base step zero = base
+ℕ-ind₁ P base step (suc n) =
+  ℕ-ind₁ (λ m → P (suc m)) (step zero base) (λ m → step (suc m)) n
+
 +s : ∀ n m → n + suc m ≡ suc (n + m)
 +s zero m = refl
 +s (suc n) m = cong suc (+s n m)

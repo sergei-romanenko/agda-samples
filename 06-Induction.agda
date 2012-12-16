@@ -16,7 +16,13 @@ open ≡-Reasoning
 
 ℕ-ind : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
            ∀ n → P n
-ℕ-ind P base step n = {!!}
+ℕ-ind P base step zero = {!!}
+ℕ-ind P base step (suc n) = {!-l!}
+
+ℕ-ind₁ : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
+           ∀ n → P n
+ℕ-ind₁ P base step zero = {!!}
+ℕ-ind₁ P base step (suc n) = {!-l!}
 
 +s : ∀ n m → n + suc m ≡ suc (n + m)
 +s n m = {!!}

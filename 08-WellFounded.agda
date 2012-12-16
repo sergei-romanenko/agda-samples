@@ -56,7 +56,25 @@ data Acc {a} {A : Set a} (_<_ : Rel A a) (x : A) : Set a where
 Well-founded : ∀ {a} {A : Set a} → Rel A a → Set a
 Well-founded _<_ = ∀ x → Acc _<_ x
 
+--
+-- A wf-based induction principle
+--
+
+-- wf-induction
+
+wf-induction : ∀ {ℓ} {A : Set ℓ} (T : Rel A ℓ) → Well-founded T →
+  (P : A → Set ℓ) →
+  (g : ∀ x → (∀ y →  T y x → P y) → P x) →
+  ∀ a → P a
+wf-induction T wfT P g a = helper a (wfT a)
+  where
+    helper : ∀ u → Acc T u → P u
+    helper u (acc rs) = g u (λ v r → helper v (rs v r))
+
+-- ℕ is wf.
+
 <′-ℕ-wf : Well-founded _<′_
+-- <′-ℕ-wf : (x : ℕ) → Acc (λ m n → m <′ n) x
 <′-ℕ-wf x = acc (helper x)
   where
     helper : ∀ (x y : ℕ) (y<′x : y <′ x) → Acc _<′_ y
@@ -71,7 +89,6 @@ module Inverse-image {ℓ} {A B : Set ℓ} {_<_ : Rel B ℓ}
 
   well-founded : Well-founded _<_ → Well-founded (_<_ on f)
   well-founded wf = λ x → accessible (wf (f x))
-
 
 _≺_ : ∀ {a} {A : Set a} (xs ys : List A) → Set
 _≺_ = _<′_ on length  -- λ xs yx → length xs <′ length ys

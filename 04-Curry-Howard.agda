@@ -114,12 +114,12 @@ distrib-×-⊎-2 : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
 distrib-×-⊎-2 pqpr = {!!}
 
 distrib-×-⊎-2₂ : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
-distrib-×-⊎-2₂ =
+distrib-×-⊎-2₂ = 
   [ (λ {(p , q) → p , inj₁ q}) , (λ {(p , q) → p , inj₂ q}) ]′
 
 distrib-×-⊎-2₃ : {P Q R : Set} → (P × Q) ⊎ (P × R) → P × (Q ⊎ R)
 distrib-×-⊎-2₃ =
-  [ map× id (λ {_} → inj₁) , map× id (λ {_} → inj₂) ]′
+  [ < proj₁ , inj₁ ∘ proj₂ > , < proj₁ , inj₂ ∘ proj₂ > ]′
 
 {- True (⊤ = \top) has a trivial proof.
 
