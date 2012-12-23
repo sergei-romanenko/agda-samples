@@ -41,6 +41,17 @@ mutual
   data Odd : ℕ → Set where
     odd-step : ∀ {n} → (even-n : Even n) → Odd (suc n)
 
+data Even₁ : ℕ → Set
+data Odd₁  : ℕ → Set
+
+data Even₁ where
+  ev-base : Even₁ zero
+  ev-step : ∀ {n} → (odd-n : Odd₁ n) → Even₁ (suc n)
+
+data Odd₁ where
+  odd-step : ∀ {n} → (even-n : Even₁ n) → Odd₁ (suc n)
+
+
 even3 : Even 2
 even3 = ev-step (odd-step ev-base)
 
@@ -59,7 +70,8 @@ even⊎odd zero = inj₁ ev-base
 even⊎odd (suc n) with even⊎odd n
 ... | inj₁ ev-n  = inj₂ (odd-step ev-n)
 ... | inj₂ odd-n = inj₁ (ev-step odd-n)
--- even-odd (suc n) = [ inj₂ ∘ odd-step , inj₁ ∘ ev-step ]′ (even-odd n)
+
+-- even⊎odd (suc n) = [ inj₂ ∘ odd-step , inj₁ ∘ ev-step ]′ (even-odd n)
 
 odd→¬even : ∀ {n} → Odd n → ¬ Even n
 odd→¬even (odd-step even-n) (ev-step odd-n) = odd→¬even odd-n even-n
