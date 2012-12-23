@@ -1,14 +1,19 @@
-module 09-Coinduction where
+module CmdLang where
 
 open import Data.Bool
+  renaming (_≟_ to _≟B_)
 open import Data.Nat
+open import Data.Fin
+  renaming (_≤_ to _≤F_; _+_ to _+F_)
 open import Data.Maybe
 open import Data.Product
+open import Data.Vec
 
 open import Function
 
 open import Data.Nat.Properties
 
+open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
   renaming ([_] to [_]ⁱ)
 
@@ -16,24 +21,39 @@ open import Algebra.Structures using (module IsCommutativeSemiringWithoutOne)
 
 open ≡-Reasoning
 
-record AbsStore : Set₁ where
+-- Env
+
+record Memory : Set₁ where
   field
     Var   : Set
-    Store : Set
+    State : Set
 
+    get : State → Var → ℕ
+    update : State → Var → ℕ → State
+
+-- VecEnv
+
+VecMemory : (n : ℕ) → Memory
+VecMemory n = record
+  { Var = Fin n
+  ; State = Vec ℕ n
+  ; get  = λ σ v → lookup v σ
+  ; update = λ σ v x → σ [ v ]≔ x
+  }
+
+--
+-- CmdLang
+--
+
+record CmdLang : Set₁ where
   field
-    get : Store → Var → ℕ
-    update : Store → Var → ℕ → Store
-  
-record AbsCmd : Set₁ where
-  field
-    absStore : AbsStore
-  open AbsStore absStore
+    memory : Memory
+  open Memory memory
   field
     AExp  : Set
     BExp  : Set
-    A⟦_⟧  : AExp → Store → ℕ
-    B⟦_⟧  : BExp → Store → Bool
+    A⟦_⟧  : AExp → State → ℕ
+    B⟦_⟧  : BExp → State → Bool
 
   data Cmd : Set where
     skip   : Cmd
@@ -41,20 +61,60 @@ record AbsCmd : Set₁ where
     seq    : Cmd → Cmd → Cmd
     while  : BExp → Cmd → Cmd
 
-  return : Store → Maybe Store
+  return : State → Maybe State
   return σ = just σ
 
-  bind : Maybe Store → (Store → Maybe Store) → Maybe Store
+  bind : Maybe State → (State → Maybe State) → Maybe State
   bind (just σ) f = f σ
   bind nothing f = nothing
 
   syntax bind e1 (λ σ → e2) = σ ← e1 , e2
 
-record AbsCmdSem (absCmd : AbsCmd) : Set₁ where
-  open AbsCmd absCmd
-  open AbsStore absStore
+--
+-- ArithCmdLang 
+--
 
-  data _/_⇩_ : (c : Cmd) (σ σ′ : Store) → Set where
+ArithCmdLang : (n : ℕ) → CmdLang
+ArithCmdLang n = record
+  { memory = vecMemory
+
+  ; AExp = AExp
+  ; BExp = BExp
+
+  ; A⟦_⟧ = evalAExp
+  ; B⟦_⟧ = evalBExp
+  }
+  where
+    vecMemory = VecMemory n
+    open Memory vecMemory
+
+    data AExp : Set where
+      con  : (k : ℕ) → AExp
+      var  : (v : Fin n) → AExp
+      plus : (e₁ e₂ : AExp) → AExp
+
+    data BExp : Set where
+      eq  : (v : Fin n) (k : ℕ) → BExp
+    
+    evalAExp : AExp → State → ℕ
+    evalAExp (con k) σ = k
+    evalAExp (var v) σ = get σ v
+    evalAExp (plus e₁ e₂) σ = evalAExp e₁ σ + evalAExp e₂ σ
+
+    evalBExp : BExp → State → Bool
+    evalBExp (eq v k) σ with (get σ v) ≟ k
+    ... | yes _ = true
+    ... | no  _ = false
+
+--
+-- CmdLangSem
+--
+
+record CmdLangSem (cmdLang : CmdLang) : Set₁ where
+  open CmdLang cmdLang
+  open Memory memory
+
+  data _/_⇩_ : (c : Cmd) (σ σ′ : State) → Set where
     ⇩-skip :
       ∀ {σ} → skip / σ ⇩ σ
     ⇩-assign :
@@ -69,8 +129,8 @@ record AbsCmdSem (absCmd : AbsCmd) : Set₁ where
 
   -- C_⟦_⟧
 
-  C_⟦_⟧ : (i : ℕ) (c : Cmd) (σ : Store) → Maybe Store
-  CWhile : (i : ℕ) (bv : Bool) (b : BExp) (c : Cmd) (σ : Store) → Maybe Store
+  C_⟦_⟧ : (i : ℕ) (c : Cmd) (σ : State) → Maybe State
+  CWhile : (i : ℕ) (bv : Bool) (b : BExp) (c : Cmd) (σ : State) → Maybe State
 
   C zero ⟦ c ⟧ σ =
     nothing
@@ -100,7 +160,7 @@ record AbsCmdSem (absCmd : AbsCmd) : Set₁ where
 
   -- C-mono
 
-  C-mono : (i j : ℕ) → i ≤′ j → (c : Cmd) (σ σ′ : Store) →
+  C-mono : (i j : ℕ) → i ≤′ j → (c : Cmd) (σ σ′ : State) →
     C i ⟦ c ⟧ σ ≡ just σ′ → C j ⟦ c ⟧ σ ≡ just σ′
   C-mono zero j i≤′j c σ σ′ ()
   C-mono (suc i) zero () c σ σ′ h
@@ -130,7 +190,7 @@ record AbsCmdSem (absCmd : AbsCmd) : Set₁ where
 
   -- C⇒⇩
 
-  C⇒⇩ : (i : ℕ) (c : Cmd) (σ σ′ : Store) →
+  C⇒⇩ : (i : ℕ) (c : Cmd) (σ σ′ : State) →
     C i ⟦ c ⟧ σ ≡ just σ′ → c / σ ⇩ σ′
   C⇒⇩ zero c σ σ′ ()
   C⇒⇩ (suc i) skip .σ′ σ′ refl = ⇩-skip
@@ -153,7 +213,7 @@ record AbsCmdSem (absCmd : AbsCmd) : Set₁ where
 
   -- ⇩⇒C
 
-  ⇩⇒C : (c : Cmd) (σ σ′ : Store) →
+  ⇩⇒C : (c : Cmd) (σ σ′ : State) →
       c / σ ⇩ σ′ → ∃ λ i → C i ⟦ c ⟧ σ ≡ just σ′
   ⇩⇒C skip .σ′ σ′ ⇩-skip =
     suc zero , refl
