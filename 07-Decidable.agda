@@ -2,7 +2,9 @@ module 07-Decidable where
 
 --open import Data.Bool
 open import Data.Nat
+  hiding (_≤?_)
 open import Data.Unit
+  hiding (_≤_; _≤?_)
 open import Data.Empty
 open import Data.Product
 open import Data.Sum
@@ -62,4 +64,45 @@ even?3 = refl
 ¬-dec : ∀ {ℓ} {P : Set ℓ} → Dec P → Dec (¬ P)
 ¬-dec (yes p) = no (λ ¬p → ¬p p)
 ¬-dec (no ¬p) = yes ¬p
+
+_≤?_ : (m n : ℕ) → Dec (m ≤ n)
+-- m ≤? n = ?
+zero ≤? n = yes z≤n
+suc m ≤? zero = no (λ ())
+suc m ≤? suc n with m ≤? n
+... | yes m≤n = yes (s≤s m≤n)
+... | no ¬m≤n = no (λ sm≤sn → ¬m≤n (≤-pred sm≤sn))
+
+_≤⊎_ : (m n : ℕ) →  m ≤ n ⊎ n < m
+--m ≤⊎ n = {!!}
+zero ≤⊎ n = inj₁ z≤n
+suc m ≤⊎ zero = inj₂ (s≤s z≤n)
+suc m ≤⊎ suc n with m ≤⊎ n
+... | inj₁ m≤n = inj₁ (s≤s m≤n)
+... | inj₂ n<m = inj₂ (s≤s n<m)
+
+--
+-- Views
+--
+
+-- Parity
+
+data Parity : ℕ → Set where
+  p0 : (k : ℕ) → Parity (k * 2)
+  p1 : (k : ℕ) → Parity (suc (k * 2))
+
+parity : (n : ℕ) → Parity n
+--parity n = {!!}
+parity zero = p0 zero
+parity (suc n)
+  with parity n
+parity (suc .(k * 2))
+  | p0 k = p1 k
+parity (suc .(suc (k * 2)))
+  | p1 k = p0 (suc k)
+
+half : (n : ℕ) → ℕ
+half n              with parity n
+half .(k * 2)       | p0 k = k
+half .(suc (k * 2)) | p1 k = k
 
