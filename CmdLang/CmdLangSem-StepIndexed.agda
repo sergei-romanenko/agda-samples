@@ -58,7 +58,8 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
   CWhile i true b c σ =
     σ′ ← C i ⟦ c ⟧ σ , C i ⟦ while b c ⟧ σ′
-  CWhile i false b c σ = return σ
+  CWhile i false b c σ =
+    return σ
 
   -- Auxiliaries
 

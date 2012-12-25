@@ -100,8 +100,8 @@ ArithCmdLang n = record
   { AExp = AExp
   ; BExp = BExp
 
-  ; A⟦_⟧ = evalAExp
-  ; B⟦_⟧ = evalBExp
+  ; A⟦_⟧ = A⟦_⟧
+  ; B⟦_⟧ = B⟦_⟧
   }
   where
     memory = VecMemory n
@@ -115,13 +115,15 @@ ArithCmdLang n = record
     data BExp : Set where
       eq  : (v : Fin n) (k : ℕ) → BExp
     
-    evalAExp : AExp → State → ℕ
-    evalAExp (con k) σ = k
-    evalAExp (var v) σ = get σ v
-    evalAExp (plus e₁ e₂) σ = evalAExp e₁ σ + evalAExp e₂ σ
+    A⟦_⟧ : AExp → State → ℕ
 
-    evalBExp : BExp → State → Bool
-    evalBExp (eq v k) σ with (get σ v) ≟ k
+    A⟦ con k ⟧ σ = k
+    A⟦ var v ⟧ σ = get σ v
+    A⟦ plus e₁ e₂ ⟧ σ = A⟦ e₁ ⟧ σ + A⟦ e₂ ⟧ σ
+
+    B⟦_⟧ : BExp → State → Bool
+
+    B⟦ eq v k ⟧ σ with (get σ v) ≟ k
     ... | yes _ = true
     ... | no  _ = false
 
