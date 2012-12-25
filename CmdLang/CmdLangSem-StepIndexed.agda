@@ -88,41 +88,41 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     helper : (c : Cmd) →
              C suc i ⟦ c ⟧ σ ≡ just σ′′ → C suc j ⟦ c ⟧ σ ≡ just σ′′
 
-    helper skip h = h
+    helper skip h′ = h′
 
-    helper (assign v a) h = h
+    helper (assign v a) h′ = h′
 
-    helper (seq c₁ c₂) h
+    helper (seq c₁ c₂) h′
       with C i ⟦ c₁ ⟧ σ | inspect (C i ⟦ c₁ ⟧) σ
-    helper (seq c₁ c₂) h
-      | just σ′ | [ g ]ⁱ rewrite C-mono i j (<′⇨≤′ i<′j) c₁ σ σ′ g
-      = C-mono i j (<′⇨≤′ i<′j) c₂ σ′ σ′′ h
+    helper (seq c₁ c₂) h′
+      | just σ′ | [ g₁ ]ⁱ rewrite C-mono i j (<′⇨≤′ i<′j) c₁ σ σ′ g₁
+      = C-mono i j (<′⇨≤′ i<′j) c₂ σ′ σ′′ h′
     helper (seq c₁ c₂) ()
       | nothing | [ g ]ⁱ
 
-    helper (if b c₁ c₂) h with B⟦ b ⟧ σ
-    helper (if b c₁ c₂) h | true
+    helper (if b c₁ c₂) h′ with B⟦ b ⟧ σ
+    helper (if b c₁ c₂) h′ | true
       with C i ⟦ c₁ ⟧ σ | inspect (C i ⟦ c₁ ⟧) σ
-    helper (if b c₁ c₂) h | true
-      | just σ′ | [ g₁ ]ⁱ rewrite C-mono i j (<′⇨≤′ i<′j) c₁ σ σ′ g₁ = h
+    helper (if b c₁ c₂) h′ | true
+      | just σ′ | [ g₁ ]ⁱ rewrite C-mono i j (<′⇨≤′ i<′j) c₁ σ σ′ g₁ = h′
     helper (if b c₁ c₂) () | true
       | nothing | [ g₁ ]ⁱ
-    helper (if b c₁ c₂) h | false
+    helper (if b c₁ c₂) h′ | false
       with C i ⟦ c₂ ⟧ σ | inspect (C i ⟦ c₂ ⟧) σ
-    helper (if b c₁ c₂) h | false
-      | just σ′ | [ g₂ ]ⁱ rewrite C-mono i j (<′⇨≤′ i<′j) c₂ σ σ′ g₂ = h
+    helper (if b c₁ c₂) h′ | false
+      | just σ′ | [ g₂ ]ⁱ rewrite C-mono i j (<′⇨≤′ i<′j) c₂ σ σ′ g₂ = h′
     helper (if b c₁ c₂) () | false
       | nothing | [ g₂ ]ⁱ
 
-    helper (while b c) h with B⟦ b ⟧ σ
-    helper (while b c) h | true
+    helper (while b c) h′ with B⟦ b ⟧ σ
+    helper (while b c) h′ | true
       with C i ⟦ c ⟧ σ | inspect (C i ⟦ c ⟧) σ
-    helper (while b c) h | true
+    helper (while b c) h′ | true
       | just σ′ | [ g ]ⁱ rewrite C-mono i j (<′⇨≤′ i<′j) c σ σ′ g
-      = C-mono i j (<′⇨≤′ i<′j) (while b c) σ′ σ′′ h
+      = C-mono i j (<′⇨≤′ i<′j) (while b c) σ′ σ′′ h′
     helper (while b c') () | true
       | nothing | [ g ]ⁱ
-    helper (while b c) h | false = h
+    helper (while b c) h′ | false = h′
 
   -- C⇒⇩
 
@@ -206,8 +206,6 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     | i₁ , g₁ | i₂ , g₂
     = (suc (i₁ ⊔ i₂)) , (
       begin
-        C suc (i₁ ⊔ i₂) ⟦ while b c ⟧ σ
-          ≡⟨ refl ⟩
         CWhile (i₁ ⊔ i₂) (B⟦ b ⟧ σ) b c σ
           ≡⟨ cong (λ e → CWhile (i₁ ⊔ i₂) e b c σ) b≡t ⟩
         bind (C i₁ ⊔ i₂ ⟦ c ⟧ σ) C i₁ ⊔ i₂ ⟦ while b c ⟧
@@ -218,6 +216,6 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
         just σ′′
       ∎)
   ⇩⇒C (while b c) .σ′′ σ′′ (⇩-while-false b≡f) =
-    suc zero , (cong (λ e → CWhile 0 e b c σ′′) b≡f)
+    suc zero , (cong (λ e → CWhile zero e b c σ′′) b≡f)
 
 --
