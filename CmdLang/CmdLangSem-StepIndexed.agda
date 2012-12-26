@@ -8,6 +8,7 @@ open import Data.Fin
 open import Data.Maybe
 open import Data.Product
 open import Data.Vec
+  hiding (_>>=_)
 
 open import Function
 
@@ -32,11 +33,20 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   open Memory memory
   open AbsCmdLang absCmdLang
 
+  infixl 1 _>>=_
+
+  return : State → Maybe State
+  return σ = just σ
+
+  _>>=_ : (σ? : Maybe State) → (f : State → Maybe State) → Maybe State
+  just σ  >>= f = f σ
+  nothing >>= f = nothing
+
   -- C_⟦_⟧
 
   C_⟦_⟧ : (i : ℕ) (c : Cmd) (σ : State) → Maybe State
-  CWhile : (i : ℕ) (bv : Bool) (b : BExp) (c : Cmd) (σ : State) → Maybe State
   CIf : (i : ℕ) (bv : Bool) (c₁ c₂ : Cmd) (σ : State) → Maybe State
+  CWhile : (i : ℕ) (bv : Bool) (b : BExp) (c : Cmd) (σ : State) → Maybe State
 
   C zero ⟦ c ⟧ σ =
     nothing
@@ -45,7 +55,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C suc i ⟦ assign v a ⟧ σ =
     return (update σ v (A⟦ a ⟧ σ))
   C suc i ⟦ seq c₁ c₂ ⟧ σ =
-    σ′ ← C i ⟦ c₁ ⟧ σ , C i ⟦ c₂ ⟧ σ′
+    C i ⟦ c₁ ⟧ σ >>= (C i ⟦ c₂ ⟧)
   C suc i ⟦ if b c₁ c₂ ⟧ σ =
     CIf i (B⟦ b ⟧ σ) c₁ c₂ σ
   C suc i ⟦ while b c ⟧ σ =
@@ -57,7 +67,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     C i ⟦ c₂ ⟧ σ
 
   CWhile i true b c σ =
-    σ′ ← C i ⟦ c ⟧ σ , C i ⟦ while b c ⟧ σ′
+    C i ⟦ c ⟧ σ >>= C i ⟦ while b c ⟧
   CWhile i false b c σ =
     return σ
 
@@ -187,8 +197,8 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     | i₁ , g₁ | i₂ , g₂
     = suc (i₁ ⊔ i₂) , (
       begin
-        bind (C i₁ ⊔ i₂ ⟦ c₁ ⟧ σ) (C i₁ ⊔ i₂ ⟦ c₂ ⟧)
-          ≡⟨ cong (λ e → bind e C i₁ ⊔ i₂ ⟦ c₂ ⟧)
+        (C i₁ ⊔ i₂ ⟦ c₁ ⟧ σ >>= C i₁ ⊔ i₂ ⟦ c₂ ⟧)
+          ≡⟨ cong (λ e → e >>= C i₁ ⊔ i₂ ⟦ c₂ ⟧)
                   (C-mono i₁ (i₁ ⊔ i₂) (≤⇒≤′ (m≤m⊔n i₁ i₂)) c₁ σ σ′ g₁) ⟩
         C i₁ ⊔ i₂ ⟦ c₂ ⟧ σ′
           ≡⟨ C-mono i₂ (i₁ ⊔ i₂) (≤⇒≤′ (n≤m⊔n i₁ i₂)) c₂ σ′ σ′′ g₂ ⟩
@@ -208,8 +218,8 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
       begin
         CWhile (i₁ ⊔ i₂) (B⟦ b ⟧ σ) b c σ
           ≡⟨ cong (λ e → CWhile (i₁ ⊔ i₂) e b c σ) b≡t ⟩
-        bind (C i₁ ⊔ i₂ ⟦ c ⟧ σ) C i₁ ⊔ i₂ ⟦ while b c ⟧
-          ≡⟨ cong (λ e → bind e C i₁ ⊔ i₂ ⟦ while b c ⟧)
+        (C i₁ ⊔ i₂ ⟦ c ⟧ σ >>= C i₁ ⊔ i₂ ⟦ while b c ⟧)
+          ≡⟨ cong (λ e → e >>= C i₁ ⊔ i₂ ⟦ while b c ⟧)
                   (C-mono i₁ (i₁ ⊔ i₂) (≤⇒≤′ (m≤m⊔n i₁ i₂)) c σ σ′ g₁) ⟩
         C i₁ ⊔ i₂ ⟦ while b c ⟧ σ′
           ≡⟨ C-mono i₂ (i₁ ⊔ i₂) (≤⇒≤′ (n≤m⊔n i₁ i₂)) (while b c) σ′ σ′′ g₂ ⟩

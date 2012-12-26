@@ -61,15 +61,6 @@ record AbsCmdLang (memory : Memory) : Set₁ where
     if     : (b : BExp) → (c₁ c₂ : Cmd) → Cmd
     while  : (b : BExp) → (c : Cmd) → Cmd
 
-  return : State → Maybe State
-  return σ = just σ
-
-  bind : (σ? : Maybe State) → (f : State → Maybe State) → Maybe State
-  bind (just σ) f = f σ
-  bind nothing f = nothing
-
-  syntax bind e1 (λ σ → e2) = σ ← e1 , e2
-
   -- Big-step evaluation relation
 
   data _/_⇩_ : (c : Cmd) (σ σ′ : State) → Set where
