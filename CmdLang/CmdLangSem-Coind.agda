@@ -17,15 +17,15 @@ open import Data.Nat.Properties
 open import Coinduction
 open import Category.Monad
 open import Category.Monad.Indexed using()
-open import Category.Monad.Partiality
+open import Category.Monad.Partiality as Partiality
 
 open import Relation.Nullary
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to [_]ⁱ)
 
 --open import Algebra.Structures using (module IsCommutativeSemiringWithoutOne)
 
-open ≡-Reasoning
+--open ≡-Reasoning
 
 open import CmdLang
 
@@ -40,7 +40,7 @@ record CmdLangSem-Bad (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set�
   open Memory memory
   open AbsCmdLang absCmdLang
 
-  private module M{f} = RawMonad (Category.Monad.Partiality.monad {f})
+  private module M{f} = RawMonad (Partiality.monad {f})
   open M
 
   -- C⟦_⟧
@@ -80,7 +80,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   open Memory memory
   open AbsCmdLang absCmdLang
 
-  open Workaround
+  open Workaround renaming (_>>=_ to _>>=′_)
 
   return : State → State ⊥P
   return σ = now σ
@@ -96,7 +96,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⟦ assign v a ⟧′ σ =
     return (update σ v (A⟦ a ⟧ σ))
   C⟦ seq c₁ c₂ ⟧′ σ =
-    C⟦ c₁ ⟧′ σ >>= C⟦ c₂ ⟧′
+    C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′
   C⟦ if b c₁ c₂ ⟧′ σ =
     CIf (B⟦ b ⟧ σ) c₁ c₂ σ
   C⟦ while b c ⟧′ σ =
@@ -108,11 +108,74 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     C⟦ c₂ ⟧′ σ
 
   CWhile true b c σ =
-    C⟦ c ⟧′ σ >>= (λ σ′ → later (♯ C⟦ while b c ⟧′ σ′))
+    C⟦ c ⟧′ σ >>=′ (λ σ′ → later (♯ C⟦ while b c ⟧′ σ′))
   CWhile false b c σ =
     return σ
 
   C⟦_⟧ : (c : Cmd) → (σ : State) → State ⊥
-  C⟦ t ⟧ σ = ⟦ C⟦ t ⟧′ σ ⟧P
+  C⟦ c ⟧ σ = ⟦ C⟦ c ⟧′ σ ⟧P
+
+  private
+    open module PE {A : Set} = Partiality.Equality (_≡_ {A = A})
+
+    open module PR {A : Set} =
+      Partiality.Reasoning (P.isEquivalence {A = A})
+      renaming (_∎ to _□)
+
+  --open Equality _≡_
+  --module R = Reasoning _≡_
+
+ -- C⇒⇩
+
+  C⇒⇩ : (c : Cmd) (σ σ′ : State) → C⟦ c ⟧ σ ≈ now σ′ → c / σ ⇩ σ′
+  -- C⇒⇩ i c σ σ′ h = {!c!}
+  C⇒⇩ skip σ σ′ (now eq)
+    rewrite P.sym eq = ⇩-skip
+  C⇒⇩ (assign v a) σ σ′ (now eq)
+    rewrite P.sym eq = ⇩-assign
+  C⇒⇩ (seq c₁ c₂) σ σ′ h with C⟦ c₁ ⟧ σ
+  C⇒⇩ (seq c₁ c₂) σ σ′ h | now σ′′ = {!!}
+  C⇒⇩ (seq c₁ c₂) σ σ′ h | later x = {!!}
+  C⇒⇩ (if b c₁ c₂) σ σ′ h = {!!}
+  C⇒⇩ (while b c) σ σ′ h = {!!}
+
+{-
+  C⇒⇩ i skip .σ′ σ′ refl =
+    ⇩-skip
+  C⇒⇩ i (assign v a) σ .(update σ v (A⟦ a ⟧ σ)) refl =
+    ⇩-assign
+  C⇒⇩ i (seq c₁ c₂) σ σ′ h with C⟦ c₁ ⟧ σ | inspect (C i ⟦ c₁ ⟧) σ
+  ... | r | [ g₁ ]ⁱ = ?
+  C⇒⇩ i (if b c₁ c₂) σ σ′ h = {!h!}
+  C⇒⇩ i (while b c) σ σ′ h = {!h!}
+-}
+
+
+  -- ⇩⇒C
+
+  infix 5 _⟦seq⟧_
+
+  _⟦seq⟧_ : State ⊥ → (State → State ⊥) → State ⊥
+  v₁ ⟦seq⟧ f = v₁ >>= λ σ₁ → f σ₁ >>= now
+    where open module M {f} = RawMonad (Partiality.monad {f})
+
+
+  ⇩⇒C : (c : Cmd) (σ σ′ : State) →
+      c / σ ⇩ σ′ → C⟦ c ⟧ σ ≈ now σ′
+
+  ⇩⇒C skip .σ′ σ′ ⇩-skip = Equality.now refl
+  ⇩⇒C (assign v a) σ .(update σ v (A⟦ a ⟧ σ)) ⇩-assign = Equality.now refl
+  ⇩⇒C (seq c₁ c₂) σ σ′′ (⇩-seq {σ′ = σ′} h₁ h₂) =
+    C⟦ seq c₁ c₂ ⟧ σ
+      ≅⟨ {!!} ⟩
+    (C⟦ c₁ ⟧ σ ⟦seq⟧ C⟦ c₂ ⟧)
+      ≈⟨ {!!} ⟩
+    now σ′′ □
+    where
+      open Partiality.Workaround
+      xxx : C⟦ c₁ ⟧ σ ≈ now σ′
+      xxx = ⇩⇒C c₁ σ σ′ h₁
+  ⇩⇒C (if b c₁ c₂) σ σ′ h = {!!}
+  ⇩⇒C (while b c) σ σ′ h = {!!}
 
 --
