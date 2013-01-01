@@ -108,6 +108,21 @@ map-comp : {A B C : Set} (f : A → B) (g : B → C) (xs : Stream A) →
 map-comp f g (x ∷ xs) = g (f x) ∷ ♯ map-comp f g (♭ xs)
 
 --
+-- ≈-reasoning
+--
+-- ≈ is reflexive, symmetric and transitive
+--
+
+≈-refl : ∀ {A} → (xs : Stream A) → xs ≈ xs
+≈-refl {A} (x ∷ xs) = x ∷ ♯ ≈-refl (♭ xs)
+
+≈-sym : ∀ {A} → {xs ys : Stream A} → xs ≈ ys → ys ≈ xs
+≈-sym (x ∷ xs≈ys) = x ∷ ♯ ≈-sym (♭ xs≈ys)
+
+≈-trans : ∀ {A} → {xs ys zs : Stream A} → xs ≈ ys → ys ≈ zs → xs ≈ zs
+≈-trans (x ∷ xs≈ys) (.x ∷ ys≈zs) = x ∷ ♯ ≈-trans (♭ xs≈ys) (♭ ys≈zs)
+
+--
 -- Problems with productivity
 --
 
@@ -161,20 +176,19 @@ module fib-good where
   ... | x ∷W xs' | y ∷W ys' =
     (f x y) ∷ ♯ (zipWith-hom f xs' ys')
 
---
--- ≈-reasoning
---
--- ≈ is reflexive, symmetric and transitive
---
+{-
+  zipWith-cong : ∀ {A B C} (_∙_ : A → B → C) {xs xs′ ys ys′} →
+    xs ≈ xs′ → ys ≈ ys′ → zipWith _∙_ xs ys ≈ zipWith _∙_ xs′ ys′
+-}
 
-≈-refl : ∀ {A} → (xs : Stream A) → xs ≈ xs
-≈-refl {A} (x ∷ xs) = x ∷ ♯ ≈-refl (♭ xs)
+  fib-correct : fib ≈ 0 ∷ ♯ zipWith _+_ fib (1 ∷ ♯ fib)
+  fib-correct =
+    0 ∷ ♯ ≈-trans (zipWith-hom _+_ fibP (1 ∷P ♯ fibP))
+                  (zipWith-cong _+_ (≈-refl fib) (1 ∷ ♯ ≈-refl fib))
 
-≈-sym : ∀ {A} → {xs ys : Stream A} → xs ≈ ys → ys ≈ xs
-≈-sym (x ∷ xs≈ys) = x ∷ ♯ ≈-sym (♭ xs≈ys)
-
-≈-trans : ∀ {A} → {xs ys zs : Stream A} → xs ≈ ys → ys ≈ zs → xs ≈ zs
-≈-trans (x ∷ xs≈ys) (.x ∷ ys≈zs) = x ∷ ♯ ≈-trans (♭ xs≈ys) (♭ ys≈zs)
+--
+-- ≈-reasoning (a DSL)
+--
 
 module ≈-Reasoning-bad {A : Set}  where
 
@@ -210,15 +224,68 @@ module ≈-Reasoning-bad-test {A : Set}  where
 
 module ≈-Reasoning  where
 
-  infix 4 _≈P_
+  infix 4 _≈P_ _≈W_
   infixr 5 _∷_
-  infix  2 _□
+  infix  3 _□
   infixr 2 _≈⟨_⟩_
 
   data _≈P_ {A : Set} : Stream A → Stream A → Set where
-    _∷_ : ∀ x {xs ys} →
+    _∷_ : ∀ (x : A) {xs ys} →
       (xs≈ys : ∞ (♭ xs ≈P ♭ ys)) → x ∷ xs ≈P x ∷ ys
-    _≈⟨_⟩_ : ∀ xs {ys zs : Stream A} → xs ≈P ys → ys ≈P zs → xs ≈P zs
+    _≈⟨_⟩_ : ∀ (xs : Stream A) {ys zs}
+      (xs≈ys : xs ≈P ys) → (ys≈zs : ys ≈P zs) → xs ≈P zs
     _□ : ∀ (xs : Stream A) → xs ≈P xs
+
+  data _≈W_ {A : Set} : Stream A → Stream A → Set where
+    _∷_ : ∀ x {xs ys} (xs≈ys : ♭ xs ≈P ♭ ys) → x ∷ xs ≈W x ∷ ys
+
+  -- Completeness
+
+  completeP : {A : Set} {xs ys : Stream A} → xs ≈ ys → xs ≈P ys
+  completeP (x ∷ xs≈ys) = x ∷ ♯ (completeP (♭ xs≈ys))
+
+  -- Weak head normal forms
+
+  transW : {A : Set} {xs ys zs : Stream A} →
+              xs ≈W ys → ys ≈W zs → xs ≈W zs
+  transW {A} {x ∷ xs} (.x ∷ xs≈ys) (.x ∷ ys≈zs) =
+    x ∷ (♭ xs ≈⟨ xs≈ys ⟩ ys≈zs)
+
+  reflW : {A : Set} (xs : Stream A) → xs ≈W xs
+  reflW (x ∷ xs) = x ∷ (♭ xs □)
+
+  whnf : {A : Set} {xs ys : Stream A} → xs ≈P ys → xs ≈W ys
+  whnf (x ∷ xs≈ys) = x ∷ ♭ xs≈ys
+  whnf (xs ≈⟨ xs≈ys ⟩ ys≈zs) = transW (whnf xs≈ys) (whnf ys≈zs)
+  whnf ((x ∷ xs) □) = x ∷ (♭ xs □)
+
+  -- Soundness
+
+  soundW : {A : Set} {xs ys : Stream A} → xs ≈W ys → xs ≈ ys
+  soundP : {A : Set} {xs ys : Stream A} → xs ≈P ys → xs ≈ ys
+
+  soundW (x ∷ xs≈ys) = x ∷ ♯ soundP xs≈ys
+  soundP xs≈ys = soundW (whnf xs≈ys)
+
+module ≈-Reasoning-test {A : Set}  where
+
+  open ≈-Reasoning
+
+  ones≈ones′₁ : ones ≈P ones′
+  ones≈ones′₁ =
+    ones
+      ≈⟨ 1 ∷ ♯ (ones □) ⟩
+    1 ∷ ♯ ones
+      ≈⟨ 1 ∷ ♯ ones≈ones′₁ ⟩
+    1 ∷ ♯ ones′
+      ≈⟨ 1 ∷ ♯ (ones′ □) ⟩
+    1 ∷ ♯ map suc zeros
+      ≈⟨ 1 ∷ ♯ (ones′ □) ⟩
+    map suc (0 ∷ ♯ zeros)
+      ≈⟨ 1 ∷ ♯ (ones′ □) ⟩
+    map suc zeros
+      ≈⟨ ones′ □ ⟩
+    ones′ □
+
 
 --
