@@ -115,15 +115,14 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⟦_⟧ : (c : Cmd) → (σ : State) → State ⊥
   C⟦ c ⟧ σ = ⟦ C⟦ c ⟧′ σ ⟧P
 
+  open module M {f} = RawMonad (Partiality.monad {f})
+
   private
     open module PE {A : Set} = Partiality.Equality (_≡_ {A = A})
 
     open module PR {A : Set} =
       Partiality.Reasoning (P.isEquivalence {A = A})
       renaming (_∎ to _□)
-
-  --open Equality _≡_
-  --module R = Reasoning _≡_
 
  -- C⇒⇩
 
@@ -150,31 +149,44 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩ i (while b c) σ σ′ h = {!h!}
 -}
 
-
   -- ⇩⇒C
 
   infix 5 _⟦seq⟧_
 
   _⟦seq⟧_ : State ⊥ → (State → State ⊥) → State ⊥
-  v₁ ⟦seq⟧ f = v₁ >>= λ σ₁ → f σ₁ >>= now
-    where open module M {f} = RawMonad (Partiality.monad {f})
+  v ⟦seq⟧ f = v >>= λ σ → f σ
 
+  ⟦seq⟧-cong : ∀ {k v₁ v₂ f} →
+    Rel k v₁ v₂ → Rel k (v₁ ⟦seq⟧ f) (v₂ ⟦seq⟧ f)
+  ⟦seq⟧-cong {f = f} v₁≈v₂ =
+    v₁≈v₂ ≡->>=-cong (λ σ → f σ □)
+
+  seq-comp : ∀ c₁ c₂ σ → C⟦ seq c₁ c₂ ⟧ σ ≅ C⟦ c₁ ⟧ σ ⟦seq⟧ C⟦ c₂ ⟧
+  seq-comp c₁ c₂ σ =
+    C⟦ seq c₁ c₂ ⟧ σ
+      ≅⟨ _ □ ⟩
+    ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
+      ≅⟨ Correct.>>=-hom (C⟦ c₁ ⟧′ σ) C⟦ c₂ ⟧′ ⟩
+    (C⟦ c₁ ⟧ σ >>= (λ σ′ → C⟦ c₂ ⟧ σ′))
+      ≅⟨ _ □ ⟩
+    C⟦ c₁ ⟧ σ ⟦seq⟧ C⟦ c₂ ⟧
+    □
 
   ⇩⇒C : (c : Cmd) (σ σ′ : State) →
       c / σ ⇩ σ′ → C⟦ c ⟧ σ ≈ now σ′
 
-  ⇩⇒C skip .σ′ σ′ ⇩-skip = Equality.now refl
-  ⇩⇒C (assign v a) σ .(update σ v (A⟦ a ⟧ σ)) ⇩-assign = Equality.now refl
+  ⇩⇒C skip .σ′ σ′ ⇩-skip =
+    now refl
+  ⇩⇒C (assign v a) σ .(update σ v (A⟦ a ⟧ σ)) ⇩-assign =
+    now refl
   ⇩⇒C (seq c₁ c₂) σ σ′′ (⇩-seq {σ′ = σ′} h₁ h₂) =
     C⟦ seq c₁ c₂ ⟧ σ
-      ≅⟨ {!!} ⟩
-    (C⟦ c₁ ⟧ σ ⟦seq⟧ C⟦ c₂ ⟧)
-      ≈⟨ {!!} ⟩
+      ≅⟨ seq-comp c₁ c₂ σ ⟩
+    C⟦ c₁ ⟧ σ ⟦seq⟧ C⟦ c₂ ⟧
+      ≈⟨ ⟦seq⟧-cong (⇩⇒C c₁ σ σ′ h₁) ⟩
+    C⟦ c₂ ⟧ σ′
+      ≈⟨ ⇩⇒C c₂ σ′ σ′′ h₂ ⟩
     now σ′′ □
-    where
-      open Partiality.Workaround
-      xxx : C⟦ c₁ ⟧ σ ≈ now σ′
-      xxx = ⇩⇒C c₁ σ σ′ h₁
   ⇩⇒C (if b c₁ c₂) σ σ′ h = {!!}
   ⇩⇒C (while b c) σ σ′ h = {!!}
 
