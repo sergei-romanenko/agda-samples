@@ -101,7 +101,6 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     C⟦If⟧′ (B⟦ b ⟧ σ) c₁ c₂ σ
   C⟦ while b c ⟧′ σ =
     C⟦While⟧′ (B⟦ b ⟧ σ) b c σ
---    later (♯ C⟦ if b (seq c (while b c)) skip ⟧′ σ)
 
   C⟦If⟧′ true c₁ c₂ σ =
     C⟦ c₁ ⟧′ σ
@@ -109,14 +108,16 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     C⟦ c₂ ⟧′ σ
 
   C⟦While⟧′ true b c σ =
---    C⟦ c ⟧′ σ >>=′ (λ σ′ → later (♯ C⟦ while b c ⟧′ σ′))
---    later (♯ (C⟦ c ⟧′ σ >>=′ C⟦ while b c ⟧′))
-      later (♯ C⟦ seq c (while b c) ⟧′ σ)
+    later (♯ C⟦ seq c (while b c) ⟧′ σ)
   C⟦While⟧′ false b c σ =
     return σ
 
   C⟦_⟧ : (c : Cmd) → (σ : State) → State ⊥
   C⟦ c ⟧ σ = ⟦ C⟦ c ⟧′ σ ⟧P
+
+  --
+  -- Correctness
+  --
 
   open module M {f} = RawMonad (Partiality.monad {f})
 
@@ -131,14 +132,23 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
   C⇒⇩ : (c : Cmd) (σ σ′ : State) → C⟦ c ⟧ σ ≈ now σ′ → c / σ ⇩ σ′
   -- C⇒⇩ i c σ σ′ h = {!c!}
+
   C⇒⇩ skip σ σ′ (now eq)
     rewrite P.sym eq = ⇩-skip
+
   C⇒⇩ (assign v a) σ σ′ (now eq)
     rewrite P.sym eq = ⇩-assign
+
   C⇒⇩ (seq c₁ c₂) σ σ′ h with C⟦ c₁ ⟧ σ
   C⇒⇩ (seq c₁ c₂) σ σ′ h | now σ′′ = {!!}
   C⇒⇩ (seq c₁ c₂) σ σ′ h | later x = {!!}
-  C⇒⇩ (if b c₁ c₂) σ σ′ h = {!!}
+
+  C⇒⇩ (if b c₁ c₂) σ σ′ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+  ... | true | [ b≡t ]ⁱ =
+    ⇩-if-true b≡t (C⇒⇩ c₁ σ σ′ h)
+  ... | false | [ b≡f ]ⁱ =
+    ⇩-if-false b≡f (C⇒⇩ c₂ σ σ′ h)
+
   C⇒⇩ (while b c) σ σ′ h = {!!}
 
 {-
