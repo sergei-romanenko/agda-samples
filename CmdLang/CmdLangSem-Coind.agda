@@ -131,7 +131,6 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
  -- C⇒⇩
 
   C⇒⇩ : (c : Cmd) (σ σ′ : State) → C⟦ c ⟧ σ ≈ now σ′ → c / σ ⇩ σ′
-  -- C⇒⇩ i c σ σ′ h = {!c!}
 
   C⇒⇩ skip σ σ′ (now eq)
     rewrite P.sym eq = ⇩-skip
@@ -170,7 +169,36 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   ... | false | [ b≡f ]ⁱ =
     ⇩-if-false b≡f (C⇒⇩ c₂ σ σ′ h)
 
-  C⇒⇩ (while b c) σ σ′ h = {!!}
+  C⇒⇩ (while b c) σ σ′′ h with  B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+
+  C⇒⇩ (while b c) σ σ′′ (laterˡ h) | true | [ b≡t ]ⁱ =
+    helper seq-inv
+    where
+      seq-comp : (C⟦ c ⟧ σ >>= C⟦ while b c ⟧) ≈ now σ′′
+      seq-comp =
+        (C⟦ c ⟧ σ >>= C⟦ while b c ⟧)
+          ≅⟨ PR.sym (Correct.>>=-hom (C⟦ c ⟧′ σ) C⟦ while b c ⟧′) ⟩
+        ⟦ C⟦ c ⟧′ σ >>=′ C⟦ while b c ⟧′ ⟧P
+          ≈⟨ _ □ ⟩
+        C⟦ seq c (while b c) ⟧ σ
+          ≈⟨ h ⟩
+        now σ′′
+        □
+
+      seq-inv : ∃ λ σ′ →
+        ∃₂ λ (h₁ : C⟦ c ⟧ σ ≈ now σ′) (h₂ : C⟦ while b c ⟧ σ′ ≈ now σ′′) →
+          steps h₁ + steps h₂ ≡ steps seq-comp
+      seq-inv = >>=-inversion-⇓ refl (C⟦ c ⟧ σ) seq-comp
+      
+      helper : ∃ (λ σ′ →
+        ∃₂ (λ (h₁ : C⟦ c ⟧ σ ≈ now σ′) (h₂ : C⟦ while b c ⟧ σ′ ≈ now σ′′) →
+                  steps h₁ + steps h₂ ≡ steps seq-comp)) →
+           while b c / σ ⇩ σ′′ --seq c (while b c) / σ ⇩ σ′′
+      helper (σ′ , h₁ , h₂ , s+s≡s) =
+        ⇩-while-true b≡t (C⇒⇩ c σ σ′ h₁) (C⇒⇩ (while b c) σ′ σ′′ h₂)
+      
+  C⇒⇩ (while b c) σ σ′′ (now eq) | false | [ b≡f ]ⁱ rewrite eq =
+    ⇩-while-false b≡f
 
   -- ⇩⇒C
 
