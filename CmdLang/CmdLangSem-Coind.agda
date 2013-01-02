@@ -46,8 +46,8 @@ record CmdLangSem-Bad (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set�
   -- C⟦_⟧
 
   C⟦_⟧ : (c : Cmd) (σ : State) → State ⊥
-  CIf : (bv : Bool) (c₁ c₂ : Cmd) (σ : State) → State ⊥
-  CWhile : (bv : Bool) (b : BExp) (c : Cmd) (σ : State) → State ⊥
+  C⟦If⟧ : (bv : Bool) (c₁ c₂ : Cmd) (σ : State) → State ⊥
+  C⟦While⟧ : (bv : Bool) (b : BExp) (c : Cmd) (σ : State) → State ⊥
 
   C⟦ skip ⟧ σ =
     return σ
@@ -56,18 +56,18 @@ record CmdLangSem-Bad (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set�
   C⟦ seq c₁ c₂ ⟧ σ =
     C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
   C⟦ if b c₁ c₂ ⟧ σ =
-    CIf (B⟦ b ⟧ σ) c₁ c₂ σ
+    C⟦If⟧ (B⟦ b ⟧ σ) c₁ c₂ σ
   C⟦ while b c ⟧ σ =
-    CWhile (B⟦ b ⟧ σ) b c σ
+    C⟦While⟧ (B⟦ b ⟧ σ) b c σ
 
-  CIf true c₁ c₂ σ =
+  C⟦If⟧ true c₁ c₂ σ =
     C⟦ c₁ ⟧ σ
-  CIf false c₁ c₂ σ =
+  C⟦If⟧ false c₁ c₂ σ =
     C⟦ c₂ ⟧ σ
 
-  CWhile true b c σ =
+  C⟦While⟧ true b c σ =
     C⟦ c ⟧ σ >>= C⟦ while b c ⟧
-  CWhile false b c σ =
+  C⟦While⟧ false b c σ =
     return σ
 
 --
@@ -88,8 +88,8 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- C⟦_⟧
 
   C⟦_⟧′ : (c : Cmd) (σ : State) → State ⊥P
-  CIf : (bv : Bool) (c₁ c₂ : Cmd) (σ : State) → State ⊥P
-  CWhile : (bv : Bool) (b : BExp) (c : Cmd) (σ : State) → State ⊥P
+  C⟦If⟧′ : (bv : Bool) (c₁ c₂ : Cmd) (σ : State) → State ⊥P
+  C⟦While⟧′ : (bv : Bool) (b : BExp) (c : Cmd) (σ : State) → State ⊥P
 
   C⟦ skip ⟧′ σ =
     return σ
@@ -98,18 +98,21 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⟦ seq c₁ c₂ ⟧′ σ =
     C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′
   C⟦ if b c₁ c₂ ⟧′ σ =
-    CIf (B⟦ b ⟧ σ) c₁ c₂ σ
+    C⟦If⟧′ (B⟦ b ⟧ σ) c₁ c₂ σ
   C⟦ while b c ⟧′ σ =
-    CWhile (B⟦ b ⟧ σ) b c σ
+    C⟦While⟧′ (B⟦ b ⟧ σ) b c σ
+--    later (♯ C⟦ if b (seq c (while b c)) skip ⟧′ σ)
 
-  CIf true c₁ c₂ σ =
+  C⟦If⟧′ true c₁ c₂ σ =
     C⟦ c₁ ⟧′ σ
-  CIf false c₁ c₂ σ =
+  C⟦If⟧′ false c₁ c₂ σ =
     C⟦ c₂ ⟧′ σ
 
-  CWhile true b c σ =
-    C⟦ c ⟧′ σ >>=′ (λ σ′ → later (♯ C⟦ while b c ⟧′ σ′))
-  CWhile false b c σ =
+  C⟦While⟧′ true b c σ =
+--    C⟦ c ⟧′ σ >>=′ (λ σ′ → later (♯ C⟦ while b c ⟧′ σ′))
+--    later (♯ (C⟦ c ⟧′ σ >>=′ C⟦ while b c ⟧′))
+      later (♯ C⟦ seq c (while b c) ⟧′ σ)
+  C⟦While⟧′ false b c σ =
     return σ
 
   C⟦_⟧ : (c : Cmd) → (σ : State) → State ⊥
@@ -151,43 +154,52 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
   -- ⇩⇒C
 
-  infix 5 _⟦seq⟧_
+  ⇩⇒C : (c : Cmd) (σ σ′ : State) →
+      c / σ ⇩ σ′ → C⟦ c ⟧ σ ≈ now σ′
 
-  _⟦seq⟧_ : State ⊥ → (State → State ⊥) → State ⊥
-  v ⟦seq⟧ f = v >>= λ σ → f σ
+  ⇩⇒C⟦seq⟧ : (c₁ c₂ : Cmd) (σ σ′ σ′′ : State) →
+      (h₁ : c₁ / σ ⇩ σ′) → (h₂ : c₂ / σ′ ⇩ σ′′) →
+        C⟦ seq c₁ c₂ ⟧ σ ≈ now σ′′
 
-  ⟦seq⟧-cong : ∀ {k v₁ v₂ f} →
-    Rel k v₁ v₂ → Rel k (v₁ ⟦seq⟧ f) (v₂ ⟦seq⟧ f)
+  ⇩⇒C skip .σ′ σ′ ⇩-skip =
+    now refl
+
+  ⇩⇒C (assign v a) σ .(update σ v (A⟦ a ⟧ σ)) ⇩-assign =
+    now refl
+
+  ⇩⇒C (seq c₁ c₂) σ σ′′ (⇩-seq {σ′ = σ′} h₁ h₂) =
+    ⇩⇒C⟦seq⟧ c₁ c₂ σ σ′ σ′′ h₁ h₂
+
+  ⇩⇒C (if b c₁ c₂) σ σ′ (⇩-if-true b≡t h₁) rewrite b≡t =
+    ⇩⇒C c₁ σ σ′ h₁
+  ⇩⇒C (if b c₁ c₂) σ σ′ (⇩-if-false b≡f h₂) rewrite b≡f =
+    ⇩⇒C c₂ σ σ′ h₂
+
+  ⇩⇒C (while b c) σ σ′′ (⇩-while-true {σ′ = σ′} b≡t h₁ h₂) rewrite b≡t =
+    laterˡ (⇩⇒C⟦seq⟧ c (while b c) σ σ′ σ′′ h₁ h₂)
+
+  ⇩⇒C (while b c) .σ σ (⇩-while-false b≡f) rewrite b≡f =
+    now refl
+
+  -- ⇩⇒C⟦seq⟧
+
+  ⟦seq⟧-cong : ∀ {k} {v₁ v₂ : State ⊥} {f : State → State ⊥} →
+    Rel k v₁ v₂ → Rel k (v₁ >>= f) (v₂ >>= f)
   ⟦seq⟧-cong {f = f} v₁≈v₂ =
     v₁≈v₂ ≡->>=-cong (λ σ → f σ □)
 
-  seq-comp : ∀ c₁ c₂ σ → C⟦ seq c₁ c₂ ⟧ σ ≅ C⟦ c₁ ⟧ σ ⟦seq⟧ C⟦ c₂ ⟧
-  seq-comp c₁ c₂ σ =
+  ⇩⇒C⟦seq⟧ c₁ c₂ σ σ′ σ′′ h₁ h₂ =
     C⟦ seq c₁ c₂ ⟧ σ
       ≅⟨ _ □ ⟩
     ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
       ≅⟨ Correct.>>=-hom (C⟦ c₁ ⟧′ σ) C⟦ c₂ ⟧′ ⟩
-    (C⟦ c₁ ⟧ σ >>= (λ σ′ → C⟦ c₂ ⟧ σ′))
-      ≅⟨ _ □ ⟩
-    C⟦ c₁ ⟧ σ ⟦seq⟧ C⟦ c₂ ⟧
-    □
-
-  ⇩⇒C : (c : Cmd) (σ σ′ : State) →
-      c / σ ⇩ σ′ → C⟦ c ⟧ σ ≈ now σ′
-
-  ⇩⇒C skip .σ′ σ′ ⇩-skip =
-    now refl
-  ⇩⇒C (assign v a) σ .(update σ v (A⟦ a ⟧ σ)) ⇩-assign =
-    now refl
-  ⇩⇒C (seq c₁ c₂) σ σ′′ (⇩-seq {σ′ = σ′} h₁ h₂) =
-    C⟦ seq c₁ c₂ ⟧ σ
-      ≅⟨ seq-comp c₁ c₂ σ ⟩
-    C⟦ c₁ ⟧ σ ⟦seq⟧ C⟦ c₂ ⟧
+    (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧)
       ≈⟨ ⟦seq⟧-cong (⇩⇒C c₁ σ σ′ h₁) ⟩
+    (now σ′ >>= C⟦ c₂ ⟧)
+      ≈⟨ _ □ ⟩
     C⟦ c₂ ⟧ σ′
       ≈⟨ ⇩⇒C c₂ σ′ σ′′ h₂ ⟩
-    now σ′′ □
-  ⇩⇒C (if b c₁ c₂) σ σ′ h = {!!}
-  ⇩⇒C (while b c) σ σ′ h = {!!}
+    now σ′′
+    □
 
 --
