@@ -139,9 +139,30 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩ (assign v a) σ σ′ (now eq)
     rewrite P.sym eq = ⇩-assign
 
-  C⇒⇩ (seq c₁ c₂) σ σ′ h with C⟦ c₁ ⟧ σ
-  C⇒⇩ (seq c₁ c₂) σ σ′ h | now σ′′ = {!!}
-  C⇒⇩ (seq c₁ c₂) σ σ′ h | later x = {!!}
+  C⇒⇩ (seq c₁ c₂) σ σ′′ h =
+    helper seq-inv
+    where
+      seq-comp : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≈ now σ′′
+      seq-comp =
+        (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧)
+          ≅⟨ PR.sym (Correct.>>=-hom (C⟦ c₁ ⟧′ σ) C⟦ c₂ ⟧′) ⟩
+        ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
+          ≈⟨ _ □ ⟩
+        C⟦ seq c₁ c₂ ⟧ σ
+          ≈⟨ h ⟩
+        now σ′′
+        □
+
+      seq-inv : ∃ λ σ′ →
+        ∃₂ λ (h₁ : C⟦ c₁ ⟧ σ ≈ now σ′) (h₂ : C⟦ c₂ ⟧ σ′ ≈ now σ′′) →
+          steps h₁ + steps h₂ ≡ steps seq-comp
+      seq-inv = >>=-inversion-⇓ refl (C⟦ c₁ ⟧ σ) seq-comp
+
+      helper : ∃ (λ σ′ →
+        ∃₂ (λ (h₁ : C⟦ c₁ ⟧ σ ≈ now σ′) (h₂ : C⟦ c₂ ⟧ σ′ ≈ now σ′′) →
+                  steps h₁ + steps h₂ ≡ steps seq-comp)) →
+           seq c₁ c₂ / σ ⇩ σ′′
+      helper (σ′ , h₁ , h₂ , s+s≡s) = ⇩-seq (C⇒⇩ c₁ σ σ′ h₁) (C⇒⇩ c₂ σ′ σ′′ h₂)
 
   C⇒⇩ (if b c₁ c₂) σ σ′ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
   ... | true | [ b≡t ]ⁱ =
@@ -150,17 +171,6 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     ⇩-if-false b≡f (C⇒⇩ c₂ σ σ′ h)
 
   C⇒⇩ (while b c) σ σ′ h = {!!}
-
-{-
-  C⇒⇩ i skip .σ′ σ′ refl =
-    ⇩-skip
-  C⇒⇩ i (assign v a) σ .(update σ v (A⟦ a ⟧ σ)) refl =
-    ⇩-assign
-  C⇒⇩ i (seq c₁ c₂) σ σ′ h with C⟦ c₁ ⟧ σ | inspect (C i ⟦ c₁ ⟧) σ
-  ... | r | [ g₁ ]ⁱ = ?
-  C⇒⇩ i (if b c₁ c₂) σ σ′ h = {!h!}
-  C⇒⇩ i (while b c) σ σ′ h = {!h!}
--}
 
   -- ⇩⇒C
 
