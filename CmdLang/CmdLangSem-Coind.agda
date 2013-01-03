@@ -14,6 +14,9 @@ open import Function
 
 open import Data.Nat.Properties
 
+open import Induction.WellFounded
+open import Induction.Nat
+
 open import Coinduction
 open import Category.Monad
 open import Category.Monad.Indexed using()
@@ -128,17 +131,28 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
       Partiality.Reasoning (P.isEquivalence {A = A})
       renaming (_∎ to _□)
 
- -- C⇒⇩
+  --
+  -- C⇒⇩
+  --
 
   C⇒⇩ : (c : Cmd) (σ σ′ : State) → C⟦ c ⟧ σ ≈ now σ′ → c / σ ⇩ σ′
 
-  C⇒⇩ skip σ σ′ (now eq)
-    rewrite P.sym eq = ⇩-skip
+  C⇒⇩′ : ∀ s (c : Cmd) (σ σ′ : State) (h : C⟦ c ⟧ σ ≈ now σ′) →
+               steps h ≡ s → Acc _<′_ s → c / σ ⇩ σ′
 
-  C⇒⇩ (assign v a) σ σ′ (now eq)
-    rewrite P.sym eq = ⇩-assign
+  -- C⇒⇩ = ... 
 
-  C⇒⇩ (seq c₁ c₂) σ σ′′ h =
+  C⇒⇩ c σ σ′′ h = C⇒⇩′ (steps h) c σ σ′′ h refl (<-well-founded (steps h))
+
+  -- C⇒⇩′ = ...
+
+  C⇒⇩′ s skip σ σ′′ (now eq) q a rewrite P.sym eq =
+    ⇩-skip
+
+  C⇒⇩′ s (assign v e) σ σ′′ (now eq) q a rewrite P.sym eq =
+    ⇩-assign
+
+  C⇒⇩′ s (seq c₁ c₂) σ σ′′ h q (acc p) =
     helper seq-inv
     where
       seq-comp : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≈ now σ′′
@@ -161,17 +175,24 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
         ∃₂ (λ (h₁ : C⟦ c₁ ⟧ σ ≈ now σ′) (h₂ : C⟦ c₂ ⟧ σ′ ≈ now σ′′) →
                   steps h₁ + steps h₂ ≡ steps seq-comp)) →
            seq c₁ c₂ / σ ⇩ σ′′
-      helper (σ′ , h₁ , h₂ , s+s≡s) = ⇩-seq (C⇒⇩ c₁ σ σ′ h₁) (C⇒⇩ c₂ σ′ σ′′ h₂)
+      helper (σ′ , h₁ , h₂ , s+s≡s) =
+        ⇩-seq (C⇒⇩′ (steps h₁) c₁ σ σ′ h₁ P.refl (p (steps h₁) prop₁))
+              (C⇒⇩′ (steps h₂) c₂ σ′ σ′′ h₂ P.refl (p (steps h₂) prop₂))
+        where
+          prop₁ : steps h₁ <′ s
+          prop₁ = {!!}
+          prop₂ : steps h₂ <′ s
+          prop₂ = {!!}
 
-  C⇒⇩ (if b c₁ c₂) σ σ′ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+  C⇒⇩′ s (if b c₁ c₂) σ σ′′ h q a with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
   ... | true | [ b≡t ]ⁱ =
-    ⇩-if-true b≡t (C⇒⇩ c₁ σ σ′ h)
+    ⇩-if-true b≡t (C⇒⇩′ s c₁ σ σ′′ h q a)
   ... | false | [ b≡f ]ⁱ =
-    ⇩-if-false b≡f (C⇒⇩ c₂ σ σ′ h)
+    ⇩-if-false b≡f (C⇒⇩′ s c₂ σ σ′′ h q a)
 
-  C⇒⇩ (while b c) σ σ′′ h with  B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+  C⇒⇩′ s (while b c) σ σ′′ h q (acc p) with  B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
 
-  C⇒⇩ (while b c) σ σ′′ (laterˡ h) | true | [ b≡t ]ⁱ =
+  C⇒⇩′ s (while b c) σ σ′′ (laterˡ h) q (acc p) | true | [ b≡t ]ⁱ =
     helper seq-inv
     where
       seq-comp : (C⟦ c ⟧ σ >>= C⟦ while b c ⟧) ≈ now σ′′
@@ -195,12 +216,21 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
                   steps h₁ + steps h₂ ≡ steps seq-comp)) →
            while b c / σ ⇩ σ′′ --seq c (while b c) / σ ⇩ σ′′
       helper (σ′ , h₁ , h₂ , s+s≡s) =
-        ⇩-while-true b≡t (C⇒⇩ c σ σ′ h₁) (C⇒⇩ (while b c) σ′ σ′′ h₂)
+        ⇩-while-true b≡t
+          (C⇒⇩′ (steps h₁) c σ σ′ h₁ P.refl (p (steps h₁) prop₁))
+          (C⇒⇩′ (steps h₂) (while b c) σ′ σ′′ h₂ P.refl (p (steps h₂) prop₂))
+        where
+          prop₁ : steps h₁ <′ s
+          prop₁ = {!!}
+          prop₂ : steps h₂ <′ s
+          prop₂ = {!!}
       
-  C⇒⇩ (while b c) σ σ′′ (now eq) | false | [ b≡f ]ⁱ rewrite eq =
+  C⇒⇩′ s (while b c) σ σ′′ (now eq) q (acc p) | false | [ b≡f ]ⁱ rewrite eq =
     ⇩-while-false b≡f
 
+  --
   -- ⇩⇒C
+  --
 
   ⇩⇒C : (c : Cmd) (σ σ′ : State) →
       c / σ ⇩ σ′ → C⟦ c ⟧ σ ≈ now σ′
