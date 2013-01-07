@@ -99,7 +99,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⟦ assign v a ⟧′ σ =
     return (update σ v (A⟦ a ⟧ σ))
   C⟦ seq c₁ c₂ ⟧′ σ =
-    C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′
+    later (♯ (C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′))
   C⟦ if b c₁ c₂ ⟧′ σ =
     C⟦If⟧′ (B⟦ b ⟧ σ) c₁ c₂ σ
   C⟦ while b c ⟧′ σ =
@@ -152,7 +152,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩′ (assign v e) σ σ′′ (now eq) a rewrite P.sym eq =
     ⇩-assign
 
-  C⇒⇩′ (seq c₁ c₂) σ σ′′ h (acc p) =
+  C⇒⇩′ (seq c₁ c₂) σ σ′′ (laterˡ h) (acc p) =
     helper seq-inv
     where
       bind-hom : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≅ ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
@@ -163,8 +163,6 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
         (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧)
           ≅⟨ bind-hom  ⟩
         ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
-          ≅⟨ _ □ ⟩
-        C⟦ seq c₁ c₂ ⟧ σ
           ≈⟨ h ⟩
         now σ′′
         □
@@ -186,10 +184,12 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
           prop₀ = Steps.left-identity {!bind-hom!} h
           hhh : steps h₁ + steps h₂ ≡ steps h
           hhh = trans s+s≡s prop₀
-          prop₁ : steps h₁ <′ steps h
-          prop₁ = {!!}
-          prop₂ : steps h₂ <′ steps h
-          prop₂ = {!!}
+          prop₁ : steps h₁ <′ suc (steps h)
+          prop₁ = s≤′s (subst (λ e → steps h₁ ≤′ e) hhh
+                              (m≤′m+n (steps h₁) (steps h₂)))
+          prop₂ : steps h₂ <′ suc (steps h)
+          prop₂ = s≤′s (subst (λ e → steps h₂ ≤′ e) hhh
+                              (n≤′m+n (steps h₁) (steps h₂)))
 
   C⇒⇩′ (if b c₁ c₂) σ σ′′ h a with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
   ... | true | [ b≡t ]ⁱ =
@@ -263,7 +263,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     ⇩⇒C c₂ σ σ′ h₂
 
   ⇩⇒C (while b c) σ σ′′ (⇩-while-true {σ′ = σ′} b≡t h₁ h₂) rewrite b≡t =
-    laterˡ (⇩⇒C⟦seq⟧ c (while b c) σ σ′ σ′′ h₁ h₂)
+    ⇩⇒C⟦seq⟧ c (while b c) σ σ′ σ′′ h₁ h₂
 
   ⇩⇒C (while b c) .σ σ (⇩-while-false b≡f) rewrite b≡f =
     now refl
@@ -278,12 +278,16 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   ⇩⇒C⟦seq⟧ c₁ c₂ σ σ′ σ′′ h₁ h₂ =
     C⟦ seq c₁ c₂ ⟧ σ
       ≅⟨ _ □ ⟩
+    ⟦ later (♯ (C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′)) ⟧P
+      ≅⟨ later (♯ (_ □)) ⟩
+    later (♯ ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P )
+      ≳⟨ laterˡ (_ □) ⟩
     ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
       ≅⟨ Correct.>>=-hom (C⟦ c₁ ⟧′ σ) C⟦ c₂ ⟧′ ⟩
     (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧)
       ≈⟨ ⟦seq⟧-cong (⇩⇒C c₁ σ σ′ h₁) ⟩
     (now σ′ >>= C⟦ c₂ ⟧)
-      ≈⟨ _ □ ⟩
+      ≅⟨ _ □ ⟩
     C⟦ c₂ ⟧ σ′
       ≈⟨ ⇩⇒C c₂ σ′ σ′′ h₂ ⟩
     now σ′′
