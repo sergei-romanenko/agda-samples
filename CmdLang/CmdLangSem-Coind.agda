@@ -138,7 +138,14 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩ : (c : Cmd) (σ σ′ : State) → C⟦ c ⟧ σ ≈ now σ′ → c / σ ⇩ σ′
 
   C⇒⇩′ : ∀ (c : Cmd) (σ σ′ : State) (h : C⟦ c ⟧ σ ≈ now σ′) →
-               Acc _<′_ (steps h) → c / σ ⇩ σ′
+              Acc _<′_ (steps h) → c / σ ⇩ σ′
+
+  C⇒⇩′-seq : (c₁ c₂ : Cmd) → (σ σ′′ : State) →
+             (h : C⟦ seq c₁ c₂ ⟧ σ ≈ now σ′′) →
+             Acc _<′_ (steps h) →
+             ∃ λ σ′ →
+             ∃₂ λ (h₁ : C⟦ c₁ ⟧ σ ≈ now σ′) (h₂ : C⟦ c₂ ⟧ σ′ ≈ now σ′′) →
+               steps h₁ <′ steps h × steps h₂ <′ steps h
 
   -- C⇒⇩ = ... 
 
@@ -152,7 +159,33 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩′ (assign v e) σ σ′′ (now eq) a rewrite P.sym eq =
     ⇩-assign
 
-  C⇒⇩′ (seq c₁ c₂) σ σ′′ (laterˡ h) (acc p) =
+  C⇒⇩′ (seq c₁ c₂) σ σ′′ (laterˡ h) (acc p)
+    with C⇒⇩′-seq c₁ c₂ σ σ′′ (laterˡ h) (acc p)
+  ... | σ′ , h₁ , h₂ , s₁<′ , s₂<′ =
+    ⇩-seq (C⇒⇩′ c₁ σ σ′ h₁ (p (steps h₁) s₁<′))
+          (C⇒⇩′ c₂ σ′ σ′′ h₂ (p (steps h₂) s₂<′))
+
+  C⇒⇩′ (if b c₁ c₂) σ σ′′ h a with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+  ... | true | [ b≡t ]ⁱ =
+    ⇩-if-true b≡t (C⇒⇩′ c₁ σ σ′′ h a)
+  ... | false | [ b≡f ]ⁱ =
+    ⇩-if-false b≡f (C⇒⇩′ c₂ σ σ′′ h a)
+
+  C⇒⇩′ (while b c) σ σ′′ h (acc p) with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+
+  C⇒⇩′ (while b c) σ σ′′ (laterˡ h) (acc p) | true | [ b≡t ]ⁱ rewrite b≡t
+    with C⇒⇩′-seq c (while b c) σ σ′′ (laterˡ h) (acc p)
+  ... | σ′′′ , h₁ , h₂ , <′₁ , <′₂ =
+    ⇩-while-true b≡t
+      (C⇒⇩′ c σ σ′′′ h₁ (p (steps h₁) <′₁))
+      (C⇒⇩′ (while b c) σ′′′ σ′′ h₂ (p (steps h₂) <′₂))
+    
+  C⇒⇩′ (while b c) σ σ′′ (now eq) (acc p) | false | [ b≡f ]ⁱ rewrite eq =
+    ⇩-while-false b≡f
+
+  -- C⇒⇩′-seq
+
+  C⇒⇩′-seq c₁ c₂ σ σ′′ (laterˡ h) (acc p) =
     helper seq-inv
     where
       bind-hom : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≅ ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
@@ -175,67 +208,22 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
       helper : ∃ (λ σ′ →
         ∃₂ (λ (h₁ : C⟦ c₁ ⟧ σ ≈ now σ′) (h₂ : C⟦ c₂ ⟧ σ′ ≈ now σ′′) →
                   steps h₁ + steps h₂ ≡ steps seq-comp)) →
-           seq c₁ c₂ / σ ⇩ σ′′
-      helper (σ′ , h₁ , h₂ , s+s≡s) =
-        ⇩-seq (C⇒⇩′ c₁ σ σ′ h₁ (p (steps h₁) prop₁))
-              (C⇒⇩′ c₂ σ′ σ′′ h₂ (p (steps h₂) prop₂))
+             ∃ λ σ′ →
+             ∃₂ λ (h₁ : C⟦ c₁ ⟧ σ ≈ now σ′) (h₂ : C⟦ c₂ ⟧ σ′ ≈ now σ′′) →
+               steps h₁ <′ suc (steps h) × steps h₂ <′ suc (steps h)
+      helper (σ′ , h₁ , h₂ , s+s≡s) = σ′ , h₁ , h₂ , s₁<′ , s₂<′
         where
           prop₀ : steps seq-comp ≡ steps h
           prop₀ = Steps.left-identity {!bind-hom!} h
           hhh : steps h₁ + steps h₂ ≡ steps h
           hhh = trans s+s≡s prop₀
-          prop₁ : steps h₁ <′ suc (steps h)
-          prop₁ = s≤′s (subst (λ e → steps h₁ ≤′ e) hhh
-                              (m≤′m+n (steps h₁) (steps h₂)))
-          prop₂ : steps h₂ <′ suc (steps h)
-          prop₂ = s≤′s (subst (λ e → steps h₂ ≤′ e) hhh
-                              (n≤′m+n (steps h₁) (steps h₂)))
+          s₁<′ : steps h₁ <′ suc (steps h)
+          s₁<′ = s≤′s (subst (λ e → steps h₁ ≤′ e) hhh
+                             (m≤′m+n (steps h₁) (steps h₂)))
+          s₂<′ : steps h₂ <′ suc (steps h)
+          s₂<′ = s≤′s (subst (λ e → steps h₂ ≤′ e) hhh
+                             (n≤′m+n (steps h₁) (steps h₂)))
 
-  C⇒⇩′ (if b c₁ c₂) σ σ′′ h a with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
-  ... | true | [ b≡t ]ⁱ =
-    ⇩-if-true b≡t (C⇒⇩′ c₁ σ σ′′ h a)
-  ... | false | [ b≡f ]ⁱ =
-    ⇩-if-false b≡f (C⇒⇩′ c₂ σ σ′′ h a)
-
-  C⇒⇩′ (while b c) σ σ′′ h (acc p) with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
-
-  C⇒⇩′ (while b c) σ σ′′ (laterˡ h) (acc p) | true | [ b≡t ]ⁱ rewrite b≡t =
-    helper seq-inv
-    where
-      bind-hom :
-        (C⟦ c ⟧ σ >>= C⟦ while b c ⟧) ≅ ⟦ C⟦ c ⟧′ σ >>=′ C⟦ while b c ⟧′ ⟧P
-      bind-hom = PR.sym (Correct.>>=-hom (C⟦ c ⟧′ σ) C⟦ while b c ⟧′)
-
-      seq-comp : (C⟦ c ⟧ σ >>= C⟦ while b c ⟧) ≈ now σ′′
-      seq-comp = _ ≅⟨ bind-hom ⟩ _ ≈⟨ h ⟩ _ □
-
-      seq-inv : ∃ λ σ′ →
-        ∃₂ λ (h₁ : C⟦ c ⟧ σ ≈ now σ′) (h₂ : C⟦ while b c ⟧ σ′ ≈ now σ′′) →
-          steps h₁ + steps h₂ ≡ steps seq-comp
-      seq-inv = >>=-inversion-⇓ refl (C⟦ c ⟧ σ) seq-comp
-      
-      helper : ∃ (λ σ′ →
-        ∃₂ (λ (h₁ : C⟦ c ⟧ σ ≈ now σ′) (h₂ : C⟦ while b c ⟧ σ′ ≈ now σ′′) →
-                  steps h₁ + steps h₂ ≡ steps seq-comp)) →
-           while b c / σ ⇩ σ′′
-      helper (σ′ , h₁ , h₂ , s+s≡s) =
-        ⇩-while-true b≡t
-          (C⇒⇩′ c σ σ′ h₁ (p (steps h₁) prop₁))
-          (C⇒⇩′ (while b c) σ′ σ′′ h₂ (p (steps h₂) prop₂))
-        where
-          prop₀ : steps seq-comp ≡ steps h
-          prop₀ = Steps.left-identity {!bind-hom!} h
-          hhh : steps h₁ + steps h₂ ≡ steps h
-          hhh = trans s+s≡s prop₀
-          prop₁ : steps h₁ <′ suc (steps h)
-          prop₁ = s≤′s (subst (λ e → steps h₁ ≤′ e) hhh
-                              (m≤′m+n (steps h₁) (steps h₂)))
-          prop₂ : steps h₂ <′ suc (steps h)
-          prop₂ = s≤′s (subst (λ e → steps h₂ ≤′ e) hhh
-                              (n≤′m+n (steps h₁) (steps h₂)))
-      
-  C⇒⇩′ (while b c) σ σ′′ (now eq) (acc p) | false | [ b≡f ]ⁱ rewrite eq =
-    ⇩-while-false b≡f
 
   --
   -- ⇩⇒C
