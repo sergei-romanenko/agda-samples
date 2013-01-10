@@ -1,14 +1,8 @@
 module CmdLangSem-Coind where
 
 open import Data.Bool
-  renaming (_≟_ to _≟B_)
 open import Data.Nat
---open import Data.Fin
---  renaming (_≤_ to _≤F_; _+_ to _+F_)
-open import Data.Maybe
 open import Data.Product
-open import Data.Vec
-  hiding (_>>=_)
 
 open import Function
 
@@ -19,22 +13,17 @@ open import Induction.Nat
 
 open import Coinduction
 open import Category.Monad
-open import Category.Monad.Indexed using()
 open import Category.Monad.Partiality as Partiality
 
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to [_]ⁱ)
 
---open import Algebra.Structures using (module IsCommutativeSemiringWithoutOne)
-
---open ≡-Reasoning
-
 open import CmdLang
 
 --
 -- CmdLangSem-Bad
--- Step-indexed evaluation function
+-- Coinductive evaluation function
 -- (Problems with productivity.)
 --
 
@@ -57,7 +46,7 @@ record CmdLangSem-Bad (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set�
   C⟦ assign v a ⟧ σ =
     return (update σ v (A⟦ a ⟧ σ))
   C⟦ seq c₁ c₂ ⟧ σ =
-    C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
+    later (♯ (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧))
   C⟦ if b c₁ c₂ ⟧ σ =
     C⟦If⟧ (B⟦ b ⟧ σ) c₁ c₂ σ
   C⟦ while b c ⟧ σ =
@@ -122,14 +111,17 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- Correctness
   --
 
-  open module M {f} = RawMonad (Partiality.monad {f})
-
   private
+
+    open module M{f} = RawMonad (Partiality.monad {f})
+
     open module PE {A : Set} = Partiality.Equality (_≡_ {A = A})
 
     open module PR {A : Set} =
       Partiality.Reasoning (P.isEquivalence {A = A})
       renaming (_∎ to _□)
+
+    open Equivalence
 
   --
   -- C⇒⇩
@@ -175,10 +167,10 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
   C⇒⇩′ (while b c) σ σ′′ (laterˡ h) (acc p) | true | [ b≡t ]ⁱ rewrite b≡t
     with C⇒⇩′-seq c (while b c) σ σ′′ (laterˡ h) (acc p)
-  ... | σ′′′ , h₁ , h₂ , <′₁ , <′₂ =
+  ... | σ′ , h₁ , h₂ , <′₁ , <′₂ =
     ⇩-while-true b≡t
-      (C⇒⇩′ c σ σ′′′ h₁ (p (steps h₁) <′₁))
-      (C⇒⇩′ (while b c) σ′′′ σ′′ h₂ (p (steps h₂) <′₂))
+      (C⇒⇩′ c σ σ′ h₁ (p (steps h₁) <′₁))
+      (C⇒⇩′ (while b c) σ′ σ′′ h₂ (p (steps h₂) <′₂))
     
   C⇒⇩′ (while b c) σ σ′′ (now eq) (acc p) | false | [ b≡f ]ⁱ rewrite eq =
     ⇩-while-false b≡f
@@ -188,22 +180,27 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩′-seq c₁ c₂ σ σ′′ (laterˡ h) (acc p) =
     helper seq-inv
     where
-      bind-hom : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≅ ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
+      bind-hom : (C⟦ c₁ ⟧ σ >>= (λ σ′ → C⟦ c₂ ⟧ σ′)) ≅
+                     ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
       bind-hom = PR.sym (Correct.>>=-hom (C⟦ c₁ ⟧′ σ) C⟦ c₂ ⟧′)
 
       seq-comp : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≈ now σ′′
+      seq-comp = Equivalence.trans P.trans (≅⇒ bind-hom) h
+      -- For some misterious reason this "piece of reasoning" doesn't work!
+      {-
       seq-comp =
         (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧)
-          ≅⟨ bind-hom  ⟩
+          ≅⟨ bind-hom ⟩
         ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
           ≈⟨ h ⟩
         now σ′′
         □
+      -}
 
       seq-inv : ∃ λ σ′ →
         ∃₂ λ (h₁ : C⟦ c₁ ⟧ σ ≈ now σ′) (h₂ : C⟦ c₂ ⟧ σ′ ≈ now σ′′) →
           steps h₁ + steps h₂ ≡ steps seq-comp
-      seq-inv = >>=-inversion-⇓ refl (C⟦ c₁ ⟧ σ) seq-comp
+      seq-inv = >>=-inversion-⇓ P.refl (C⟦ c₁ ⟧ σ) seq-comp
 
       helper : ∃ (λ σ′ →
         ∃₂ (λ (h₁ : C⟦ c₁ ⟧ σ ≈ now σ′) (h₂ : C⟦ c₂ ⟧ σ′ ≈ now σ′′) →
@@ -214,9 +211,9 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
       helper (σ′ , h₁ , h₂ , s+s≡s) = σ′ , h₁ , h₂ , s₁<′ , s₂<′
         where
           prop₀ : steps seq-comp ≡ steps h
-          prop₀ = Steps.left-identity {!bind-hom!} h
+          prop₀ = Steps.left-identity bind-hom h
           hhh : steps h₁ + steps h₂ ≡ steps h
-          hhh = trans s+s≡s prop₀
+          hhh = P.trans s+s≡s prop₀
           s₁<′ : steps h₁ <′ suc (steps h)
           s₁<′ = s≤′s (subst (λ e → steps h₁ ≤′ e) hhh
                              (m≤′m+n (steps h₁) (steps h₂)))
@@ -237,10 +234,10 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
         C⟦ seq c₁ c₂ ⟧ σ ≈ now σ′′
 
   ⇩⇒C skip .σ′ σ′ ⇩-skip =
-    now refl
+    now P.refl
 
   ⇩⇒C (assign v a) σ .(update σ v (A⟦ a ⟧ σ)) ⇩-assign =
-    now refl
+    now P.refl
 
   ⇩⇒C (seq c₁ c₂) σ σ′′ (⇩-seq {σ′ = σ′} h₁ h₂) =
     ⇩⇒C⟦seq⟧ c₁ c₂ σ σ′ σ′′ h₁ h₂
@@ -254,7 +251,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     ⇩⇒C⟦seq⟧ c (while b c) σ σ′ σ′′ h₁ h₂
 
   ⇩⇒C (while b c) .σ σ (⇩-while-false b≡f) rewrite b≡f =
-    now refl
+    now P.refl
 
   -- ⇩⇒C⟦seq⟧
 
