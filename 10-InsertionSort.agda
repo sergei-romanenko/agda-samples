@@ -206,26 +206,89 @@ insert-sorted m .(x ∷ xs) (⟨_∷_⟩ {x} {xs} x≤∷s s) with m ≤? x
   ⟨  (insert-≤∷ (≰⇒≤ m≰x) x≤∷s  ∶ x ≤∷ insert m xs)
   ∷ (insert-sorted m xs s       ∶ Sorted (insert m xs)) ⟩
 
--- sort
 
-sort : ∀ xs → ∃ λ ys → xs ≋ ys × Sorted ys
-sort [] = [] , (λ (x : ℕ) → refl) , []
-sort (m ∷ xs) with sort xs
-... | ys , xs≋ys , sorted-ys =
-  insert m ys ,
-  (≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
-           (≋-∷ m xs≋ys) (insert-≋ m ys)
-    ∶ m ∷ xs ≋ insert m ys) ,
-  (insert-sorted m ys sorted-ys
-    ∶ Sorted (insert m ys))
+--
+-- "Internalism": the algorithm and the proof of correctness
+-- are intertwined.
+--
+{-
+  See
+    Hsiang−Shang Ko.
+    Datatype ornamentation and the Dutch National Flag problem.
+    Transfer dissertation. October, 2011.
+    http://www.cs.ox.ac.uk/publications/publication5233-abstract.html
+-}
 
--- insertion-sort
+module Sort-internalism where
 
-insertion-sort : (xs : List ℕ) → List ℕ
-insertion-sort xs = proj₁ (sort xs)
+  -- sort
 
-insertion-sort-3251 :
-  insertion-sort (3 ∷ 2 ∷ 4 ∷ 1 ∷ []) ≡ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
-insertion-sort-3251 = refl
+  sort : ∀ xs → ∃ λ ys → xs ≋ ys × Sorted ys
+  sort [] = [] , (λ (n : ℕ) → refl) , []
+  sort (m ∷ xs) with sort xs
+  ... | ys , xs≋ys , sorted-ys =
+    insert m ys ,
+    (≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
+             (≋-∷ m xs≋ys) (insert-≋ m ys)
+      ∶ m ∷ xs ≋ insert m ys) ,
+    (insert-sorted m ys sorted-ys
+      ∶ Sorted (insert m ys))
+
+  -- insertion-sort
+
+  insertion-sort : (xs : List ℕ) → List ℕ
+  insertion-sort xs = proj₁ (sort xs)
+
+  insertion-sort-3251 :
+    insertion-sort (3 ∷ 2 ∷ 4 ∷ 1 ∷ []) ≡ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
+  insertion-sort-3251 = refl
+
+
+--
+-- "Externalism": the algorithm and the proof of correctness
+-- are separated.
+--
+
+module Sort-externalism where
+
+  insertion-sort : (xs : List ℕ) → List ℕ
+  insertion-sort [] = []
+  insertion-sort (m ∷ xs) with insertion-sort xs
+  ... | ys = insert m ys
+
+  insertion-sort-3251 :
+    insertion-sort (3 ∷ 2 ∷ 4 ∷ 1 ∷ []) ≡ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
+  insertion-sort-3251 = refl
+
+  respects-≋ : ∀ xs → xs ≋ insertion-sort xs
+  respects-≋ [] = λ n → refl
+  respects-≋ (m ∷ xs) with insertion-sort xs | respects-≋ xs
+  ... | ys | xs≋ys = 
+    (≋-trans {xs = m ∷ xs} {ys = m ∷ ys} {zs = insert m ys}
+             (≋-∷ m xs≋ys) (insert-≋ m ys)
+    ∶ m ∷ xs ≋ insert m ys)
+
+  ensures-Sorted : ∀ xs → Sorted (insertion-sort xs)
+  ensures-Sorted [] = []
+  ensures-Sorted (m ∷ xs)
+    with insertion-sort xs | ensures-Sorted xs
+  ... | ys | sorted-ys =
+    (insert-sorted m ys sorted-ys
+      ∶ Sorted (insert m ys))
+
+  insertion-sort-correct : ∀ xs {ys} → insertion-sort xs ≡ ys →
+    xs ≋ ys × Sorted ys
+  insertion-sort-correct xs refl =
+    (respects-≋ xs) , (ensures-Sorted xs)
+
+module IntExt-Equivalent where
+
+  open Sort-internalism
+  open Sort-externalism
+
+  equiv : ∀ xs →
+    Sort-internalism.insertion-sort xs ≡ Sort-externalism.insertion-sort xs
+  equiv [] = refl
+  equiv (m ∷ xs) = cong (insert m) (equiv xs)
 
 --
