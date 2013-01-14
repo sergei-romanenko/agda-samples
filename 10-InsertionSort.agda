@@ -25,27 +25,27 @@ open import Relation.Binary.PropositionalEquality
 open import Data.Nat.Properties
 
 infix 4 _≤∷_
-infix 10000 [∷]_
+infix 10000 [≤]_
 
 data _≤∷_ (m : ℕ) : (xs : List ℕ) → Set where
   [] : m ≤∷ []
-  [∷]_ : ∀ {x xs} → m ≤ x → m ≤∷ (x ∷ xs)
+  [≤]_ : ∀ {x xs} → m ≤ x → m ≤∷ (x ∷ xs)
 
 data Sorted : List ℕ → Set where
   [] : Sorted []
-  ⟨_≤∷_⟩ : ∀ {x xs} → (x≤∷s : x ≤∷ xs) →
+  ⟨_∷_⟩ : ∀ {x xs} → (x≤∷s : x ≤∷ xs) →
             (s : Sorted xs) →
             Sorted (x ∷ xs)
 
 sort-2357 : Sorted (2 ∷ 3 ∷ 5 ∷ 7 ∷ [])
 sort-2357 =
-  ⟨ ([∷] s≤s (s≤s z≤n)) ≤∷
-  ⟨ ([∷] s≤s (s≤s (s≤s z≤n))) ≤∷
-  ⟨ ([∷] s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))) ≤∷
-  ⟨ [] ≤∷ [] ⟩ ⟩ ⟩ ⟩
+  ⟨ [≤] s≤s (s≤s z≤n) ∷
+  ⟨ [≤] s≤s (s≤s (s≤s z≤n)) ∷
+  ⟨ [≤] s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))) ∷
+  ⟨ [] ∷ [] ⟩ ⟩ ⟩ ⟩
 
 sorted-inv : ∀ {x xs} → Sorted (x ∷ xs) → Sorted xs
-sorted-inv ⟨ x≤∷s ≤∷ s ⟩ = s
+sorted-inv ⟨ x≤∷s ∷ s ⟩ = s
 
 -- The number of occurrences of x in xs
 
@@ -193,18 +193,18 @@ insert-< {m} {x} {xs} x<m with m ≤? x
 ... | no  _   = refl
 
 insert-≤∷ : ∀ {m x xs} → x ≤ m → x ≤∷ xs → x ≤∷ insert m xs
-insert-≤∷ x≤m [] = [∷] x≤m
-insert-≤∷ {m} {x} {n ∷ xs} x≤m ([∷] x≤n) with m ≤? n
-... | yes m≤n = [∷] x≤m
-... | no  m≰n = [∷] x≤n
+insert-≤∷ x≤m [] = [≤] x≤m
+insert-≤∷ {m} {x} {n ∷ xs} x≤m ([≤] x≤n) with m ≤? n
+... | yes m≤n = [≤] x≤m
+... | no  m≰n = [≤] x≤n
 
 insert-sorted : ∀ m xs → Sorted xs → Sorted (insert m xs)
-insert-sorted m .[] [] = ⟨ [] ≤∷ [] ⟩
-insert-sorted m .(x ∷ xs) (⟨_≤∷_⟩ {x} {xs} x≤∷s s) with m ≤? x
-... | yes m≤x = ⟨ [∷] m≤x ≤∷ ⟨ x≤∷s ≤∷ s ⟩ ⟩
+insert-sorted m .[] [] = ⟨ [] ∷ [] ⟩
+insert-sorted m .(x ∷ xs) (⟨_∷_⟩ {x} {xs} x≤∷s s) with m ≤? x
+... | yes m≤x = ⟨ [≤] m≤x ∷ ⟨ x≤∷s ∷ s ⟩ ⟩
 ... | no  m≰x =
   ⟨  (insert-≤∷ (≰⇒≤ m≰x) x≤∷s  ∶ x ≤∷ insert m xs)
-  ≤∷ (insert-sorted m xs s       ∶ Sorted (insert m xs)) ⟩
+  ∷ (insert-sorted m xs s       ∶ Sorted (insert m xs)) ⟩
 
 -- sort
 
