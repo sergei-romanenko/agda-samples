@@ -22,6 +22,7 @@
 module 11-SmallStep where
 
 open import Data.Nat
+open import Data.List
 open import Data.Product
   renaming (map to map×)
 open import Data.Sum
@@ -134,7 +135,7 @@ module BigStepEvalRel-Val where
       (h₂ : t₂ ⇓ val n₂) →
       t₁ ⊕ t₂ ⇓ val (n₁ + n₂)
 
-module SimpleArith2 where
+module SmallStepEvalRel-Version1 where
 
   -- Small-step evaluation relation
 
@@ -397,5 +398,66 @@ big⇒nf {t} {v} h =
 nf⇔big : ∀ {t v} → (t has-normal-form v) ⇔ (t ⇓ v)
 nf⇔big = equivalence nf⇒big big⇒nf
 
+--
+-- Virtual machine
+--
+
+-- Program
+
+data Instruction : Set where
+  push : ℕ → Instruction
+  add  : Instruction
+
+Program : Set
+Program = List Instruction
+
+-- State
+
+Stack : Set
+Stack = List ℕ
+
+data State : Set where
+  ⟨_,_⟩ : Program → Stack → State
+
+-- Execution
+
+infix 3 _↦_ _↦*_
+
+data _↦_ : State → State → Set where
+  ↦-push : ∀ {c σ m} →
+    ⟨ push m ∷ c , σ ⟩ ↦  ⟨ c , m ∷ σ ⟩
+  ↦-add  : ∀ {c σ m n} →
+    ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ↦ ⟨ c , m + n ∷ σ ⟩ 
+
+_↦*_ : (σ σ′ : State) → Set
+_↦*_ = Star _↦_
+
+-- Compiler
+
+compile : Tm → Program → Program
+compile (val n) c = push n ∷ c
+compile (t₁ ⊕ t₂) c = compile t₁ (compile t₂ (add ∷ c))
+
+-- Correctness
+
+open BigStepEvalFn
+
+compile-correct′ : ∀ t c σ → ⟨ compile t c , σ ⟩ ↦* ⟨ c  , eval t ∷ σ ⟩
+compile-correct′ (val n) c σ = ↦-push ◅ ε
+compile-correct′ (t₁ ⊕ t₂) c σ =
+  prop₁ ◅◅ prop₂ ◅◅ prop₃ ◅ ε
+  where
+    prop₁ : ⟨ compile t₁ (compile t₂ (add ∷ c)) , σ ⟩ ↦*
+              ⟨ compile t₂ (add ∷ c) , eval t₁ ∷ σ ⟩
+    prop₁ = compile-correct′ t₁ (compile t₂ (add ∷ c)) σ
+    prop₂ : ⟨ compile t₂ (add ∷ c) , eval t₁ ∷ σ ⟩ ↦*
+              ⟨ add ∷ c , eval t₂ ∷ eval t₁ ∷ σ ⟩
+    prop₂ = compile-correct′ t₂ (add ∷ c) (eval t₁ ∷ σ)
+    prop₃ : ⟨ add ∷ c , eval t₂ ∷ eval t₁ ∷ σ ⟩ ↦
+              ⟨ c , eval t₁ + eval t₂ ∷ σ ⟩
+    prop₃ = ↦-add
+
+compile-correct : ∀ t → ⟨ compile t [] , [] ⟩ ↦* ⟨ []  , eval t ∷ [] ⟩
+compile-correct t = compile-correct′ t [] []
 
 --
