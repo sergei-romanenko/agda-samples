@@ -30,6 +30,7 @@ open import Data.Sum
 open import Data.Empty
 
 open import Data.Star
+open import Data.Star.Properties
 
 open import Function
 
@@ -445,17 +446,16 @@ open BigStepEvalFn
 compile-correct′ : ∀ t c σ → ⟨ compile t c , σ ⟩ ↦* ⟨ c  , eval t ∷ σ ⟩
 compile-correct′ (val n) c σ = ↦-push ◅ ε
 compile-correct′ (t₁ ⊕ t₂) c σ =
-  prop₁ ◅◅ prop₂ ◅◅ prop₃ ◅ ε
-  where
-    prop₁ : ⟨ compile t₁ (compile t₂ (add ∷ c)) , σ ⟩ ↦*
-              ⟨ compile t₂ (add ∷ c) , eval t₁ ∷ σ ⟩
-    prop₁ = compile-correct′ t₁ (compile t₂ (add ∷ c)) σ
-    prop₂ : ⟨ compile t₂ (add ∷ c) , eval t₁ ∷ σ ⟩ ↦*
-              ⟨ add ∷ c , eval t₂ ∷ eval t₁ ∷ σ ⟩
-    prop₂ = compile-correct′ t₂ (add ∷ c) (eval t₁ ∷ σ)
-    prop₃ : ⟨ add ∷ c , eval t₂ ∷ eval t₁ ∷ σ ⟩ ↦
-              ⟨ c , eval t₁ + eval t₂ ∷ σ ⟩
-    prop₃ = ↦-add
+  begin
+    ⟨ compile t₁ (compile t₂ (add ∷ c)) , σ ⟩
+      ⟶⋆⟨ compile-correct′ t₁ (compile t₂ (add ∷ c)) σ ⟩
+    ⟨ compile t₂ (add ∷ c) , eval t₁ ∷ σ ⟩
+      ⟶⋆⟨ compile-correct′ t₂ (add ∷ c) (eval t₁ ∷ σ) ⟩
+    ⟨ add ∷ c , eval t₂ ∷ eval t₁ ∷ σ ⟩
+      ⟶⟨ ↦-add ⟩
+    ⟨ c , eval t₁ + eval t₂ ∷ σ ⟩
+  ∎
+  where open StarReasoning _↦_
 
 compile-correct : ∀ t → ⟨ compile t [] , [] ⟩ ↦* ⟨ []  , eval t ∷ [] ⟩
 compile-correct t = compile-correct′ t [] []
