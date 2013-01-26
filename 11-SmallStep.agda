@@ -28,6 +28,7 @@ open import Data.Product
 open import Data.Sum
   renaming (map to map⊎)
 open import Data.Empty
+open import Data.Maybe
 
 open import Data.Star
 open import Data.Star.Properties
@@ -41,6 +42,7 @@ open import Relation.Nullary
 open import Relation.Binary
   using (Rel)
 open import Relation.Binary.PropositionalEquality
+  renaming ([_] to [_]ⁱ)
 
 --
 -- A Toy Language
@@ -443,21 +445,50 @@ compile (t₁ ⊕ t₂) c = compile t₁ (compile t₂ (add ∷ c))
 
 open BigStepEvalFn
 
-compile-correct′ : ∀ t c σ → ⟨ compile t c , σ ⟩ ↦* ⟨ c  , eval t ∷ σ ⟩
-compile-correct′ (val n) c σ = ↦-push ◅ ε
-compile-correct′ (t₁ ⊕ t₂) c σ =
+compile-↦′ : ∀ t c σ → ⟨ compile t c , σ ⟩ ↦* ⟨ c  , eval t ∷ σ ⟩
+compile-↦′ (val n) c σ = ↦-push ◅ ε
+compile-↦′ (t₁ ⊕ t₂) c σ =
   begin
     ⟨ compile t₁ (compile t₂ (add ∷ c)) , σ ⟩
-      ⟶⋆⟨ compile-correct′ t₁ (compile t₂ (add ∷ c)) σ ⟩
+      ⟶⋆⟨ compile-↦′ t₁ (compile t₂ (add ∷ c)) σ ⟩
     ⟨ compile t₂ (add ∷ c) , eval t₁ ∷ σ ⟩
-      ⟶⋆⟨ compile-correct′ t₂ (add ∷ c) (eval t₁ ∷ σ) ⟩
+      ⟶⋆⟨ compile-↦′ t₂ (add ∷ c) (eval t₁ ∷ σ) ⟩
     ⟨ add ∷ c , eval t₂ ∷ eval t₁ ∷ σ ⟩
       ⟶⟨ ↦-add ⟩
     ⟨ c , eval t₁ + eval t₂ ∷ σ ⟩
   ∎
   where open StarReasoning _↦_
 
-compile-correct : ∀ t → ⟨ compile t [] , [] ⟩ ↦* ⟨ []  , eval t ∷ [] ⟩
-compile-correct t = compile-correct′ t [] []
+compile-↦ : ∀ t → ⟨ compile t [] , [] ⟩ ↦* ⟨ []  , eval t ∷ [] ⟩
+compile-↦ t = compile-↦′ t [] []
+
+-- Interpreter
+
+exec : Program → Stack → Maybe Stack
+exec [] σ = just σ
+exec (push m ∷ c) σ = exec c (m ∷ σ)
+exec (add ∷ c) (n ∷ m ∷ σ) = exec c (m + n ∷ σ)
+exec (add ∷ c) σ = nothing
+
+compile-exec′ : ∀ t c σ → exec (compile t c) σ ≡ exec c (eval t ∷ σ)
+compile-exec′ (val n) c σ = refl
+compile-exec′ (t₁ ⊕ t₂) c σ =
+  begin
+    exec (compile (t₁ ⊕ t₂) c) σ
+      ≡⟨ refl ⟩
+    exec (compile t₁ (compile t₂ (add ∷ c))) σ
+      ≡⟨ compile-exec′ t₁ (compile t₂ (add ∷ c)) σ ⟩
+    exec (compile t₂ (add ∷ c)) (eval t₁ ∷ σ)
+      ≡⟨ compile-exec′ t₂ (add ∷ c) (eval t₁ ∷ σ) ⟩
+    exec (add ∷ c) (eval t₂ ∷ eval t₁ ∷ σ)
+      ≡⟨ refl ⟩
+    exec c (eval t₁ + eval t₂ ∷ σ)
+      ≡⟨ refl ⟩
+    exec c (eval (t₁ ⊕ t₂) ∷ σ)
+  ∎
+  where open ≡-Reasoning
+
+compile-exec : ∀ t → exec (compile t []) [] ≡ just [ eval t ]
+compile-exec t = compile-exec′ t [] []
 
 --
