@@ -19,7 +19,7 @@
     Programming, Komarno, Slovakia, June 2009. 
 -}
 
-module 11-SmallStep where
+module SmallStepSeq where
 
 open import Data.Nat
 open import Data.List
@@ -323,14 +323,24 @@ normalizing {X} R =
                t₁ ⇒* u →
                t₁ ⊕ t₂ ⇒* u ⊕ t₂
 ⇒*-congr-1 ε = ε
-⇒*-congr-1 {t₁} {u} {t₂} (t₁⇒ ◅ ⇒*u) = (r+t t₁⇒) ◅ (⇒*-congr-1 ⇒*u)
+⇒*-congr-1 {t₁} {u} {t₂} (t₁⇒ ◅ ⇒*u) = begin
+  t₁ ⊕ t₂ ⟶⟨ r+t t₁⇒ ⟩ _ ⊕ t₂ ⟶⋆⟨ ⇒*-congr-1 ⇒*u ⟩ u ⊕ t₂ ∎
+  where open StarReasoning _⇒_
 
 ⇒*-congr-2 : ∀ {t₁ t₂ u} →
                value t₁ →
                t₂ ⇒* u →
                t₁ ⊕ t₂ ⇒* t₁ ⊕ u
 ⇒*-congr-2 v-c ε = ε
-⇒*-congr-2 v-c (t₂⇒ ◅ ⇒*u) = (n+r v-c t₂⇒) ◅ (⇒*-congr-2 v-c ⇒*u)
+⇒*-congr-2 {val n} {t₂} {u} v-c (t₂⇒ ◅ ⇒*u) =
+  begin
+    val n ⊕ t₂
+      ⟶⟨ n+r v-c t₂⇒ ⟩
+    val n ⊕ _
+      ⟶⋆⟨ ⇒*-congr-2 v-c ⇒*u ⟩
+    val n ⊕ u
+  ∎
+  where open StarReasoning _⇒_
 
 ⇒-normalizing : normalizing _⇒_
 -- ∀ t → ∃ λ u → (t ⇒* u) × ∄ (λ u′ → u ⇒ u′)
@@ -346,8 +356,14 @@ normalizing {X} R =
 
     t⇒*u₁u₂ : t₁ ⊕ t₂ ⇒* u₁ ⊕ u₂
     t⇒*u₁u₂ =
-      (⇒*-congr-1 t₁⇒*u₁) ◅◅
-        (⇒*-congr-2 (nf-is-value u₁ ¬u₁⇒) t₂⇒*u₂)
+      begin
+        t₁ ⊕ t₂
+          ⟶⋆⟨ ⇒*-congr-1 t₁⇒*u₁ ⟩
+        u₁ ⊕ t₂
+          ⟶⋆⟨ ⇒*-congr-2 (nf-is-value u₁ ¬u₁⇒) t₂⇒*u₂ ⟩
+        u₁ ⊕ u₂
+      ∎
+      where open StarReasoning _⇒_
 
     u₁u₂⇒u : u₁ ⊕ u₂ ⇒ val (n₁ + n₂)
     u₁u₂⇒u = subst₂
@@ -356,7 +372,9 @@ normalizing {X} R =
       n+n
 
     t⇒*u : t₁ ⊕ t₂ ⇒* val (n₁ + n₂)
-    t⇒*u = t⇒*u₁u₂ ◅◅ (u₁u₂⇒u ◅ ε)
+    t⇒*u = begin
+      t₁ ⊕ t₂ ⟶⋆⟨ t⇒*u₁u₂ ⟩ u₁ ⊕ u₂ ⟶⟨ u₁u₂⇒u ⟩ val (n₁ + n₂) ∎
+      where open StarReasoning _⇒_
 
 --
 -- Equivalence of Big-Step and Small-Step Reduction
@@ -373,9 +391,16 @@ big⇒small* e-const = ε
 big⇒small* (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
   with big⇒small* h₁ | big⇒small* h₂
 ... | t₁⇒*v₁ | t₂⇒*v₂ =
-  (⇒*-congr-1 t₁⇒*v₁) ◅◅
-    (⇒*-congr-2 v-c t₂⇒*v₂) ◅◅
-      (n+n ◅ ε)
+  begin
+    t₁ ⊕ t₂
+      ⟶⋆⟨ ⇒*-congr-1 t₁⇒*v₁ ⟩
+    val n₁ ⊕ t₂
+      ⟶⋆⟨ ⇒*-congr-2 v-c t₂⇒*v₂ ⟩
+    val n₁ ⊕ val n₂
+      ⟶⟨ n+n ⟩
+    val (n₁ + n₂)
+  ∎
+  where open StarReasoning _⇒_
 
 small⇒big : ∀ {t t' v} → t ⇒ t' → t' ⇓ v → t ⇓ v
 small⇒big n+n e-const = e-plus e-const e-const
@@ -469,6 +494,8 @@ exec [] σ = just σ
 exec (push m ∷ c) σ = exec c (m ∷ σ)
 exec (add ∷ c) (n ∷ m ∷ σ) = exec c (m + n ∷ σ)
 exec (add ∷ c) σ = nothing
+
+-- Correctness
 
 compile-exec′ : ∀ t c σ → exec (compile t c) σ ≡ exec c (eval t ∷ σ)
 compile-exec′ (val n) c σ = refl
