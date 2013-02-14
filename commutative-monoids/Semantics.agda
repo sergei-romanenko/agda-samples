@@ -10,6 +10,8 @@ open import Data.Vec
   using(Vec; _∷_; []; lookup; replicate; zipWith; tabulate)
 open import Data.Vec.Properties
   using (lookup∘tabulate)
+open import Data.Product
+open import Data.Vec.N-ary
 
 open import Function 
 
@@ -21,6 +23,8 @@ open module ≈-Reasoning = EqR setoid
 
 open import Expr
 
+-- Evaluation
+
 Env : ℕ → Set c
 Env n = Vec Carrier n
 
@@ -29,19 +33,22 @@ Env n = Vec Carrier n
 ⟦ a ⊕ b ⟧ ρ = ⟦ a ⟧ ρ ∙ ⟦ b ⟧ ρ
 ⟦ nil  ⟧ ρ = ε
 
-[∣_∣] : ∀ {n} → Eqn n → Env n → Set ℓ
-[∣ a == b ∣] ρ = ⟦ a ⟧ ρ ≈ ⟦ b ⟧ ρ
+-- Semantic equivalence
 
 _≅_ : ∀ {n} → Expr n → Expr n → Set (ℓ ⊔l c)
 a ≅ b = ∀ ρ → ⟦ a ⟧ ρ ≈ ⟦ b ⟧ ρ
 
--- Soundness
+--
+-- Soundness: e ≅ norm e
+--
 
-open import Data.Product
+-- sound-zero
 
 sound-zero : ∀ {n m} (es : Vec (Expr m) n) →
-             nil ≅ fold-zip (replicate 0) es
+               nil ≅ fold-zip (replicate 0) es
+
 sound-zero {zero}  [] ρ = refl
+
 sound-zero {suc n} (e ∷ es) ρ =
   begin
     ⟦ nil ⟧ ρ
@@ -55,8 +62,13 @@ sound-zero {suc n} (e ∷ es) ρ =
     ⟦ fold-zip (replicate 0) (e ∷ es) ⟧ ρ
   ∎
 
-distr : ∀ {n} k j (e : Expr n) → k ⊗ e ⊕ j ⊗ e ≅ (k + j) ⊗ e
+-- distr
+
+distr : ∀ {n} k j (e : Expr n) →
+          k ⊗ e ⊕ j ⊗ e ≅ (k + j) ⊗ e
+
 distr zero    j e ρ = proj₁ identity (⟦ j ⊗ e ⟧ ρ)
+
 distr (suc k) j e ρ =
   begin
     ⟦ suc k ⊗ e ⊕ j ⊗ e ⟧ ρ
@@ -69,6 +81,8 @@ distr (suc k) j e ρ =
       ≈⟨ refl ⟩
     ⟦ (suc k + j) ⊗ e ⟧ ρ
   ∎
+
+-- shuffle
 
 shuffle : ∀ {n} (a b c d : Expr n) →
           (a ⊕ b) ⊕ (c ⊕ d) ≅ (a ⊕ c) ⊕ (b ⊕ d)
@@ -86,13 +100,15 @@ shuffle a b c d ρ =
       ≈⟨ sym $ assoc (⟦ a ⟧ ρ) (⟦ c ⟧ ρ) (⟦ b ⊕ d ⟧ ρ) ⟩
     ⟦ (a ⊕ c) ⊕ (b ⊕ d) ⟧ ρ
   ∎
-  where open ≈-Reasoning
 
+-- sound-plus
 
 sound-plus : ∀ {n m} (ks js : Vec ℕ n) (xs : Vec (Expr m) n) →
              fold-zip ks xs ⊕ fold-zip js xs ≅
              fold-zip (zipWith _+_ ks js) xs
+
 sound-plus [] [] [] ρ = proj₁ identity _
+
 sound-plus (k ∷ ks) (j ∷ js) (x ∷ xs) ρ =
   begin
     ⟦ fold-zip (k ∷ ks) (x ∷ xs) ⊕ fold-zip (j ∷ js) (x ∷ xs) ⟧ ρ
@@ -105,7 +121,8 @@ sound-plus (k ∷ ks) (j ∷ js) (x ∷ xs) ρ =
       ≈⟨ refl ⟩
     ⟦ fold-zip (zipWith _+_ (k ∷ ks) (j ∷ js)) (x ∷ xs) ⟧ ρ
   ∎
-  where open ≈-Reasoning
+
+-- sound-var
 
 sound-var : ∀ {n m} (i : Fin n) (es : Vec (Expr m) n) →
             (lookup i es) ≅ fold-zip (1-at i) es
@@ -123,7 +140,6 @@ sound-var zero (e ∷ es) ρ =
       ≈⟨ refl ⟩
     ⟦ fold-zip (1-at zero) (e ∷ es) ⟧ ρ
   ∎
-  where open ≈-Reasoning
 
 sound-var (suc i) (e ∷ es) ρ =
   begin
@@ -138,7 +154,10 @@ sound-var (suc i) (e ∷ es) ρ =
     ⟦ fold-zip (1-at (suc i)) (e ∷ es) ⟧ ρ
   ∎
 
+-- sound
+
 sound : ∀ {n} (e : Expr n) → e ≅ norm e
+
 sound {n} (var i) ρ =
   begin
     ⟦ var i ⟧ ρ
@@ -149,26 +168,65 @@ sound {n} (var i) ρ =
       ≡⟨ P.refl ⟩
     ⟦ norm (var i) ⟧ ρ
   ∎
+
 sound (a ⊕ b) ρ =
   begin
     ⟦ a ⊕ b ⟧ ρ
       ≈⟨ sound a ρ ⟨ ∙-cong ⟩ sound b ρ ⟩
     ⟦ norm a ⊕ norm b ⟧ ρ
-      ≈⟨ sound-plus (eval a) (eval b) vars ρ ⟩
+      ≈⟨ sound-plus (nf a) (nf b) vars ρ ⟩
     ⟦ norm (a ⊕ b) ⟧ ρ
   ∎
+
 sound nil ρ = sound-zero vars ρ
 
-prove : ∀ {n} (eq : Eqn n) ρ → [∣ normEqn eq ∣] ρ → [∣ eq ∣] ρ
-prove (a == b) ρ prf =
+-- Proving that e₁ ≅ e₂
+-- See Relation.Binary.Reflection
+
+prove : ∀ {n} (ρ : Env n) e₁ e₂ →
+           ⟦ norm e₁ ⟧ ρ ≈ ⟦ norm e₂ ⟧ ρ →
+           ⟦ e₁  ⟧ ρ ≈ ⟦ e₂  ⟧ ρ
+
+prove ρ e₁ e₂ hyp =
   begin
-    ⟦ a ⟧ ρ
-      ≈⟨ sound a ρ ⟩
-    ⟦ norm a ⟧ ρ
-      ≈⟨ prf ⟩
-    ⟦ norm b ⟧ ρ
-      ≈⟨ sym (sound b ρ) ⟩
-    ⟦ b ⟧ ρ
+    ⟦ e₁ ⟧ ρ
+      ≈⟨ sound e₁ ρ ⟩
+    ⟦ norm e₁ ⟧ ρ
+      ≈⟨ hyp ⟩
+    ⟦ norm e₂ ⟧ ρ
+      ≈⟨ sym $ sound e₂ ρ ⟩
+    ⟦ e₂ ⟧ ρ
   ∎
+
+-- A variant of prove which should in many cases be easier to use,
+-- because variables and environments are handled in a less explicit
+-- way.
+--
+-- (Try to instantiate n with a small natural number and normalise
+-- the remainder of the type.)
+
+-- See Relation.Binary.Reflection
+
+solve : ∀ n (f : N-ary n (Expr n) (Expr n × Expr n)) →
+  let e₁ = proj₁ (close n f)
+      e₂ = proj₂ (close n f)
+  in
+  Eqʰ n _≈_ (curryⁿ ⟦ norm e₁ ⟧) (curryⁿ ⟦ norm e₂ ⟧) →
+  Eq  n _≈_ (curryⁿ ⟦ e₁ ⟧) (curryⁿ ⟦ e₂  ⟧)
+
+solve n f hyp =
+  curryⁿ-cong _≈_ ⟦ e₁ ⟧ ⟦ e₂ ⟧ (λ ρ → prove ρ e₁ e₂
+    (curryⁿ-cong⁻¹ _≈_ ⟦ norm e₁ ⟧ ⟦ norm e₂ ⟧ (Eqʰ-to-Eq n _≈_ hyp) ρ))
+  where
+    e₁ = proj₁ (close n f)
+    e₂ = proj₂ (close n f)
+
+-- A variant of _,_ which is intended to make uses of solve
+-- look a bit nicer.
+
+infix 4 _⊜_
+
+_⊜_ : ∀ {n} → Expr n → Expr n → Expr n × Expr n
+_⊜_ = _,_
 
 --

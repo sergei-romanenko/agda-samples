@@ -1,4 +1,3 @@
-
 module Expr where
 
 open import Data.Nat
@@ -8,7 +7,8 @@ open import Data.Vec.N-ary
 
 open import Function using (_∘_; const)
 
-infix  20 _==_
+-- Expressions
+
 infixr 40 _⊕_
 infixr 60 _⊗_
 
@@ -17,20 +17,23 @@ data Expr n : Set where
   _⊕_ : (a b : Expr n) → Expr n
   nil   : Expr n
 
-data Eqn n : Set where
-  _==_ : (a b : Expr n) → Eqn n
+-- "Normal forms" (which are not expressions)
 
 NF : ℕ → Set
 NF n = Vec ℕ n
+
+-- Evaluating an expression to produce its "normal form"
 
 1-at : ∀ {n} → Fin n → NF n
 1-at zero    = 1 ∷ replicate 0
 1-at (suc i) = 0 ∷ 1-at i
 
-eval : ∀ {n} → Expr n → NF n
-eval (var i) = 1-at i
-eval (a ⊕ b) = zipWith _+_ (eval a) (eval b)
-eval nil     = replicate 0
+nf : ∀ {n} → Expr n → NF n
+nf (var i) = 1-at i
+nf (a ⊕ b) = zipWith _+_ (nf a) (nf b)
+nf nil     = replicate 0
+
+-- Reifying a "normal forms" to an expression
 
 _⊗_ : ∀ {n} → ℕ → Expr n → Expr n
 zero  ⊗ a = nil
@@ -45,23 +48,34 @@ vars = tabulate var
 reify : ∀ {n} → NF n → Expr n
 reify nf = fold-zip nf vars
 
+-- Normalization (to an expression)
+
 norm : ∀ {n} → Expr n → Expr n
-norm = reify ∘ eval
+norm = reify ∘ nf
 
-normEqn : ∀ {n} → Eqn n → Eqn n
-normEqn (a == b) = norm a == norm b
+-- Applies the function to all possible "variables".
 
-build : ∀ {a} {A : Set a} (n : ℕ) → N-ary n (Expr n) A → A
-build n f = f $ⁿ vars {n}
+close : ∀ {a} {A : Set a} (n : ℕ) → N-ary n (Expr n) A → A
+close n f = f $ⁿ vars {n}
 
 private
   module Examples where
+    open import Relation.Binary.PropositionalEquality
 
     expr₁ : Expr 3
     expr₁ = var zero ⊕ (var (suc zero) ⊕ var zero)
 
-    expr₂ = build 3 λ a b c → a ⊕ (b ⊕ a)
+    expr₂ = close 3 λ a b c → a ⊕ (b ⊕ a)
 
-    eqn₁ = build 4 λ a b c d →
-             (a ⊕ b) ⊕ (c ⊕ d) == (a ⊕ c) ⊕ (b ⊕ d)
+    expr₁≡expr₂ : expr₁ ≡ expr₂
+    expr₁≡expr₂ = refl
 
+    nf₁ : nf expr₁ ≡
+      suc (suc zero) ∷ suc zero ∷ zero ∷ []
+    nf₁ = refl
+
+    norm₁ : norm expr₁ ≡
+      (var zero ⊕ var zero ⊕ nil) ⊕ (var (suc zero) ⊕ nil) ⊕ nil ⊕ nil
+    norm₁ = refl
+
+--
