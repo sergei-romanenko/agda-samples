@@ -20,15 +20,104 @@ import Induction.Nat
 open import Relation.Binary.PropositionalEquality
   renaming ([_] to [_]ⁱ)
 
+-- The termination checker of Agda is basicly the same as that of Foetus:
+--
+--   Andreas Abel. 1998. foetus -- Termination Checker for Simple
+--   Functional Programs. Programming Lab Report.
+--   http://www2.tcs.ifi.lmu.de/~abel/foetus/
+
+-- The termination checker of Agda inspects the parameters of recursive call.
+-- In the third line, (x′ < suc x′ & y = y).
+
+add : (x y : ℕ) → ℕ
+add zero y = y
+add (suc x′) y = suc (add x′ y)
+
+-- The dependency relation is defined as follows:
+--
+--  * Constructor elimination: if cons is a constructor,
+--      x < cons a1 ... an x b1 ... bn
+--  * Application: if y < x then
+--       y a1 ... an < x
+
+data Bin : Set where
+  ε  : Bin
+  c0 : Bin → Bin
+  c1 : Bin → Bin
+
+-- Here c0 x < c0 (c1 x) .
+
+foo1 : Bin → ℕ
+foo1 ε = zero
+foo1 (c0 ε) = zero
+foo1 (c0 (c1 x)) = suc (foo1 (c0 x))
+foo1 (c0 (c0 x)) = suc (foo1 (c0 x))
+foo1 (c1 x)      = suc (foo1 x)
+
+module ConsElim-Bad where
+
+  -- Here c1 x < c0 (c0 x) doesn't hold!
+
+  foo2 : Bin → ℕ
+  foo2 ε = zero
+  foo2 (c0 ε) = zero
+  foo2 (c0 (c1 x)) = suc (foo2 (c0 x))
+  foo2 (c0 (c0 x)) = suc (foo2 (c1 x))
+  foo2 (c1 x)      = suc (foo2 x)
+
+
 -- Agda can find termination orders across mutually recursive functions.
 -- Agda can find lexicographic termination orders.
+
+-- There is a lexicographic order on parameters with respect
+-- to the dependency order:
+--   (x , y) << (x’, y’) ⇔ (x < x’ or (x ≤ x’ & y < y’))
 
 ack : ℕ → ℕ → ℕ
 ack 0 n = 1
 ack (suc m) 0 = ack m 1
 ack (suc m) (suc n) = ack m (ack (suc m) n)
 
--- But in some cases it is not sufficient
+-- And what about the application rule:
+--  y < x ⇒ y a1 ... an < x ?
+
+--
+-- Transfinite addition of ordinal numbers
+--
+
+data Ordℕ : Set where
+  zero : Ordℕ
+  suc  : (n : Ordℕ) → Ordℕ
+  lim  : (f : ℕ → Ordℕ) → Ordℕ
+
+addOrd : (n m : Ordℕ) → Ordℕ
+addOrd zero m = m
+addOrd (suc n) m = suc (addOrd n m)
+addOrd (lim f) m = lim (λ u → addOrd (f u) m)
+
+lim₀ : Ordℕ
+lim₀ = lim (λ u → zero)
+
+lim₀+0 : addOrd lim₀ zero ≡ lim (λ _ → zero)
+lim₀+0 = refl
+
+lim₀+m≡ : ∀ m → addOrd lim₀ m ≡ lim (λ _ → m)
+lim₀+m≡ m = refl
+
+ℕtoOrdℕ : (n : ℕ) → Ordℕ
+ℕtoOrdℕ zero = zero
+ℕtoOrdℕ (suc n) = suc (ℕtoOrdℕ n)
+
+branch : Ordℕ
+branch = lim (λ u → ℕtoOrdℕ u)
+
+branch+branch : addOrd branch branch ≡
+  lim (λ u → addOrd (ℕtoOrdℕ u) (lim ℕtoOrdℕ))
+branch+branch = refl
+
+--
+-- But in some cases all the above is not sufficient.
+--
 
 module log2-bad where
 
