@@ -5,6 +5,7 @@ open import Data.Nat
 open import Relation.Binary.PropositionalEquality
 
 open import Function
+import Function.Related as Related
 
 n+0 : ∀ n → n + 0 ≡ n
 n+0 zero = refl
@@ -22,7 +23,7 @@ n+sm (suc n) m = cong suc (n+sm n m)
     suc (n + m) ≡⟨ cong suc (+-comm n m) ⟩
     suc (m + n) ≡⟨ sym (n+sm m n) ⟩
     m + suc n
-  ∎
+   ∎
   where open ≡-Reasoning
 
 -- Induction by derivation
@@ -37,6 +38,7 @@ ev2 = ev-ss ev-z
 ev4 : Even 4
 ev4 = ev-ss (ev-ss ev-z)
 
+
 ev2n : ∀ n → Even (n + n)
 ev2n zero = ev-z
 ev2n (suc n) =
@@ -47,19 +49,21 @@ ev2n (suc n) =
         ∶ Even (suc (suc (n + n))))
   ∶ Even (suc (n + suc n))
 
-import Function.Related as Related
 
 ev2n₂ : ∀ n → Even (n + n)
 ev2n₂ zero = ev-z
 ev2n₂ (suc n) = step (ev2n₂ n)
   where
-    open Related.EquationalReasoning renaming (_∼⟨_⟩_ to _⇒⟨_⟩_)
+    open Related.EquationalReasoning
+      renaming (_∼⟨_⟩_ to _⇒⟨_⟩_; sym to ⇒-sym)
     step : Even (n + n) → Even (suc n + suc n)
     step =
       Even (n + n)
         ⇒⟨ ev-ss ⟩
       Even (suc (suc (n + n)))
-        ⇒⟨ subst (Even ∘ suc) (+-comm (suc n) n) ⟩
+        ⇒⟨ subst (Even ∘ suc) (sym $ n+sm n n) ⟩
+      Even (suc (n + suc n))
+        ⇒⟨ id ⟩
       Even (suc n + suc n) ∎
 
 --
