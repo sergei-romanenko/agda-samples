@@ -6,8 +6,6 @@ open import Relation.Binary.PropositionalEquality
 
 open import Function
 
-open ≡-Reasoning
-
 n+0 : ∀ n → n + 0 ≡ n
 n+0 zero = refl
 n+0 (suc n) = cong suc (n+0 n)
@@ -25,6 +23,7 @@ n+sm (suc n) m = cong suc (n+sm n m)
     suc (m + n) ≡⟨ sym (n+sm m n) ⟩
     m + suc n
   ∎
+  where open ≡-Reasoning
 
 -- Induction by derivation
 
@@ -47,3 +46,20 @@ ev2n (suc n) =
         (ev-ss (ev2n n)
         ∶ Even (suc (suc (n + n))))
   ∶ Even (suc (n + suc n))
+
+import Function.Related as Related
+
+ev2n₂ : ∀ n → Even (n + n)
+ev2n₂ zero = ev-z
+ev2n₂ (suc n) = step (ev2n₂ n)
+  where
+    open Related.EquationalReasoning renaming (_∼⟨_⟩_ to _⇒⟨_⟩_)
+    step : Even (n + n) → Even (suc n + suc n)
+    step =
+      Even (n + n)
+        ⇒⟨ ev-ss ⟩
+      Even (suc (suc (n + n)))
+        ⇒⟨ subst (Even ∘ suc) (+-comm (suc n) n) ⟩
+      Even (suc n + suc n) ∎
+
+--

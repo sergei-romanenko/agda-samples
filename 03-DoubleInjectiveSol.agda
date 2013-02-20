@@ -58,6 +58,7 @@ double-injective₂ (suc n') (suc m') ssd≡ssd = sn≡sm
   sn≡sm : suc n' ≡ suc m'
   sn≡sm = cong suc n≡m
 
+
 double-injective₃ : (n m : ℕ) → double n ≡ double m → n ≡ m
 double-injective₃ zero zero _ = refl
 double-injective₃ zero (suc m') ()
@@ -74,11 +75,11 @@ double-injective₄ (suc n) (suc m) =
   double (suc n) ≡ double (suc m)
     ⇒⟨ id ⟩
   suc (suc (double n)) ≡ suc (suc (double m))
-    ⇒⟨ ≡-pred ∘ ≡-pred ⟩
+    ⇒⟨ cong (pred ∘ pred) ⟩
   double n ≡ double m
     ⇒⟨ double-injective₄ n m ⟩
   n ≡ m
-    ⇒⟨ P.cong suc ⟩
+    ⇒⟨ cong suc ⟩
   suc n ≡ suc m ∎
   where open Related.EquationalReasoning renaming (_∼⟨_⟩_ to _⇒⟨_⟩_)
 
@@ -89,3 +90,5 @@ double-injective₅ (suc n) zero ()
 double-injective₅ (suc n) (suc m) h
   rewrite (double-injective₅ n m ∘ ≡-pred ∘ ≡-pred)  h
   = refl
+
+--
