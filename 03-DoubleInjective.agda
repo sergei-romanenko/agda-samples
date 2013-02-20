@@ -1,14 +1,12 @@
 module 03-DoubleInjective where
 
 open import Data.Nat
-open import Function using (_∘_)
+open import Function using (_∘_; id)
 
 open import Relation.Binary
-open import Relation.Binary.PropositionalEquality hiding([_])
+open import Relation.Binary.PropositionalEquality as P
 
-open ≡-Reasoning
-
-module Gen where
+import Function.Related as Related
 
 double : ℕ → ℕ
 double zero = zero
@@ -42,6 +40,7 @@ double-injective₁ (suc n') zero ()
 double-injective₁ (suc n') (suc m') ssd with ≡-pred (≡-pred ssd)
 ... | d = cong suc (double-injective₁ n' m' d)
 
+
 double-injective₂ : (n m : ℕ) → double n ≡ double m → n ≡ m
 double-injective₂ zero zero _ = refl
 double-injective₂ zero (suc m') ()
@@ -66,4 +65,27 @@ double-injective₃ (suc n') zero ()
 double-injective₃ (suc n') (suc m') ssd≡ssd =
   cong suc (double-injective₃ n' m' (cong (pred ∘ pred) ssd≡ssd))
 
-  
+
+double-injective₄ : (n m : ℕ) → double n ≡ double m → n ≡ m
+double-injective₄ zero zero = λ _ → refl
+double-injective₄ zero (suc n) = λ ()
+double-injective₄ (suc n) zero = λ ()
+double-injective₄ (suc n) (suc m) =
+  double (suc n) ≡ double (suc m)
+    ⇒⟨ id ⟩
+  suc (suc (double n)) ≡ suc (suc (double m))
+    ⇒⟨ ≡-pred ∘ ≡-pred ⟩
+  double n ≡ double m
+    ⇒⟨ double-injective₄ n m ⟩
+  n ≡ m
+    ⇒⟨ P.cong suc ⟩
+  suc n ≡ suc m ∎
+  where open Related.EquationalReasoning renaming (_∼⟨_⟩_ to _⇒⟨_⟩_)
+
+double-injective₅ : (n m : ℕ) → double n ≡ double m → n ≡ m
+double-injective₅ zero zero h = refl
+double-injective₅ zero (suc n) ()
+double-injective₅ (suc n) zero ()
+double-injective₅ (suc n) (suc m) h
+  rewrite (double-injective₅ n m ∘ ≡-pred ∘ ≡-pred)  h
+  = refl
