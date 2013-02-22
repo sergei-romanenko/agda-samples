@@ -5,14 +5,14 @@ open import Data.List
 open import Data.List.Properties
 open import Data.Empty
 open import Data.Sum
-  renaming([_,_] to ⊎[_,_])
+  using (_⊎_; inj₁; inj₂)
 
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
 
 open import Function
+import Function.Related as Related
 
-open ≡-Reasoning
 
 ℕ-ind : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
            ∀ n → P n
@@ -64,6 +64,23 @@ even2n (suc n) =
   subst (Even ∘ suc)
         (sym (+s n n) ∶ suc (n + n) ≡ n + suc n)
         (ev-step (odd-step (even2n n)) ∶ Even (suc (suc (n + n))))
+
+even2n′ : ∀ n → Even (n + n)
+even2n′ zero = ev-base
+even2n′ (suc n) = step (even2n′ n)
+  where
+    open Related.EquationalReasoning
+      renaming (_∼⟨_⟩_ to _⇒⟨_⟩_; sym to ⇒-sym)
+    step : Even (n + n) → Even (suc n + suc n)
+    step = Even (n + n)
+             ⇒⟨ odd-step ⟩
+           Odd (suc (n + n))
+             ⇒⟨ ev-step ⟩
+           Even (suc (suc (n + n)))
+             ⇒⟨ subst (Even ∘ suc) (sym (+s n n)) ⟩
+           Even (suc (n + suc n))
+             ⇒⟨ id ⟩
+           Even (suc n + suc n) ∎
 
 even⊎odd : ∀ n → Even n ⊎ Odd n
 even⊎odd zero = inj₁ ev-base
@@ -141,6 +158,7 @@ module Test⟱ {A : Set} (a b c : A) where
       ≡⟨ refl ⟩
     (t1 < a > t2) ➥ xs
   ∎
+  where open ≡-Reasoning
 
 ++-[] : {A : Set} (xs : List A) → xs ++ [] ≡ xs
 ++-[] [] = refl
@@ -157,3 +175,6 @@ module Test⟱ {A : Set} (a b c : A) where
       ≡⟨ ➥-correct' t [] ⟩
     t ➥ []
   ∎
+  where open ≡-Reasoning
+
+--

@@ -17,6 +17,8 @@ open import Relation.Binary
 import Induction.WellFounded
 import Induction.Nat
 
+import Level
+
 open import Relation.Binary.PropositionalEquality
   renaming ([_] to [_]ⁱ)
 
@@ -236,34 +238,67 @@ module Quicksort-bad where
       small′ = quicksort p small
       big′   = quicksort p big
 
-module Quicksort-good where
 
-  open Induction.WellFounded
-  open Induction.Nat
+module PartitionSize where
 
   _≼_ : ∀ {a} {A : Set a} → Rel (List A) _
-  xs ≼ ys = length xs <′ suc (length ys)
+  _≼_ = _≤′_ on length
 
   partition-size : ∀ {a} {A : Set a} (p : A → Bool) (xs : List A) →
     proj₁ (partition p xs) ≼ xs × proj₂ (partition p xs) ≼ xs
 
   partition-size p [] = ≤′-refl , ≤′-refl
   partition-size p (x ∷ xs)
-    with p x | partition p xs | partition-size p xs
-  ... | true  | as , bs | as-size , bs-size = s≤′s as-size , ≤′-step bs-size
-  ... | false | as , bs | as-size , bs-size = ≤′-step as-size , s≤′s bs-size
+    with p x | partition-size p xs
+  ... | true  | as≼xs , bs≼xs = s≤′s as≼xs , ≤′-step bs≼xs
+  ... | false | as≼xs , bs≼xs = ≤′-step as≼xs , s≤′s bs≼xs
+
+module Quicksort-good where
+
+  open Induction.WellFounded
+  open Induction.Nat
+
+  open PartitionSize
 
   quicksort′ : {A : Set} (p : A → A → Bool) → (xs : List A) →
                  Acc _<′_ (length xs) → List A
   quicksort′ p [] _ = []
   quicksort′ p (x ∷ xs) (acc g)
     with partition (p x) xs | partition-size (p x) xs
-  ... | small , big | small-size , big-size = small′ ++ [ x ] ++ big′
+  ... | small , big | small≼xs , big≼xs = small′ ++ [ x ] ++ big′
     where
-      small′ = quicksort′ p small (g (length small) small-size)
-      big′   = quicksort′ p big   (g (length big) big-size)
+      small′ = quicksort′ p small (g (length small) (s≤′s small≼xs))
+      big′   = quicksort′ p big   (g (length big)   (s≤′s big≼xs))
 
   quicksort : {A : Set} (p : A → A → Bool) → (xs : List A) → List A
   quicksort p xs = quicksort′ p xs (<-well-founded (length xs))
 
+module Quicksort-good-with-Inverse-image where
+
+  open Induction.WellFounded
+  open Induction.Nat
+
+  open PartitionSize
+
+  open module WF-ll {A : Set} = Inverse-image {_} {List A} {ℕ} {_<′_} length
+
+  _≺_ : ∀ {a} {A : Set a} → Rel (List A) _
+  _≺_ = _<′_ on length
+
+  wf-ll : ∀ {A : Set} → Well-founded {_} {List A} _≺_
+  wf-ll = well-founded <-well-founded
+
+  quicksort′ : {A : Set} (p : A → A → Bool) → (xs : List A) →
+                  Acc _≺_ xs → List A
+  quicksort′ p [] _ = []
+  quicksort′ p (x ∷ xs) (acc g)
+    with partition (p x) xs | partition-size (p x) xs
+  ... | small , big | small≼xs , big≼xs = small′ ++ [ x ] ++ big′
+    where
+      small′ = quicksort′ p small (g small (s≤′s small≼xs))
+      big′   = quicksort′ p big   (g big   (s≤′s big≼xs))
+
+  quicksort : {A : Set} (p : A → A → Bool) → (xs : List A) → List A
+  quicksort p xs = quicksort′ p xs (wf-ll xs)
+  
 --
