@@ -15,7 +15,7 @@ infixr 60 _⊗_
 data Expr n : Set where
   var : (i : Fin n) → Expr n
   _⊕_ : (a b : Expr n) → Expr n
-  nil   : Expr n
+  ◇   : Expr n
 
 -- "Normal forms" (which are not expressions)
 
@@ -36,11 +36,11 @@ nf nil     = replicate 0
 -- Reifying a "normal forms" to an expression
 
 _⊗_ : ∀ {n} → ℕ → Expr n → Expr n
-zero  ⊗ a = nil
+zero  ⊗ a = ◇
 suc n ⊗ a = a ⊕ (n ⊗ a)
 
 fold-zip : ∀ {n m} → Vec ℕ m → Vec (Expr n) m → Expr n
-fold-zip ks as = Vec.foldr _ _⊕_ nil (zipWith _⊗_ ks as)
+fold-zip ks as = Vec.foldr _ _⊕_ ◇ (zipWith _⊗_ ks as)
 
 vars : ∀ {n} → Vec (Expr n) n
 vars = tabulate var
@@ -75,7 +75,7 @@ private
     nf₁ = refl
 
     norm₁ : norm expr₁ ≡
-      (var zero ⊕ var zero ⊕ nil) ⊕ (var (suc zero) ⊕ nil) ⊕ nil ⊕ nil
+      (var zero ⊕ var zero ⊕ ◇) ⊕ (var (suc zero) ⊕ ◇) ⊕ ◇ ⊕ ◇
     norm₁ = refl
 
 --

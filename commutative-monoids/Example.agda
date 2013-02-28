@@ -9,28 +9,64 @@ open import Data.Nat.Properties using (commutativeSemiring)
 open CommutativeSemiring commutativeSemiring
      using (+-commutativeMonoid)
 
+open import Data.Product
+
 open import Expr
 import Semantics
 open Semantics +-commutativeMonoid
 
-prove₁ : ∀ a b → (a + b) + a ≡ b + (a + a)
-prove₁ a b = prove ρ e₁ e₂ refl
+
+0+0≡0-prove : 0 + 0 ≡ 0
+0+0≡0-prove = prove ρ e₁ e₂ refl
+  where
+    ρ = []
+    e₁ = close 0 (◇ ⊕ ◇)
+    e₂ = close 0 ◇
+
+0+0≡0-solve0 : 0 + 0 ≡ 0
+0+0≡0-solve0 = solve0 (◇ ⊕ ◇ ⊜ ◇) refl
+
+0+0≡0-solve : 0 + 0 ≡ 0
+0+0≡0-solve = solve 0 (◇ ⊕ ◇ ⊜ ◇) refl
+
+
+0+a≡a-prove : ∀ (a : ℕ) → 0 + a ≡ a
+0+a≡a-prove a = prove ρ e₁ e₂ refl
+  where
+    ρ = a ∷ []
+    e₁ = close 1 λ a → ◇ ⊕ a
+    e₂ = close 1 λ a → a
+
+0+a≡a-solve1 : ∀ (a : ℕ) → 0 + a ≡ a
+0+a≡a-solve1 = solve1 (λ a → ◇ ⊕ a ⊜ a) refl
+
+0+a≡a-solve : ∀ (a : ℕ) → 0 + a ≡ a
+0+a≡a-solve = solve 1 (λ a → ◇ ⊕ a ⊜ a) refl
+
+
+ab-prove : ∀ (a b : ℕ) → (a + b) + a ≡ b + (a + a)
+ab-prove a b = prove ρ e₁ e₂ refl
   where
     ρ = a ∷ b ∷ []
-    e₁ = close 2 λ a b → (a ⊕ b) ⊕ a
-    e₂ = close 2 λ a b → b ⊕ (a ⊕ a)
+    e₁₂ = close 2 λ a b → (a ⊕ b) ⊕ a ⊜ b ⊕ (a ⊕ a)
+    e₁ = proj₁ e₁₂
+    e₂ = proj₂ e₁₂
 
-prove₂ : ∀ a b c d → (a + b) + (c + d) ≡ (a + c) + (b + d)
-prove₂ a b c d = prove ρ e₁ e₂ refl
+ab-solve2 : ∀ (a b : ℕ) → (a + b) + a ≡ b + (a + a)
+ab-solve2 = solve2 (λ a b → (a ⊕ b) ⊕ a ⊜ b ⊕ a ⊕ a) refl
+
+ab-solve : ∀ a b → (a + b) + a ≡ b + (a + a)
+ab-solve = solve 2 (λ a b → (a ⊕ b) ⊕ a ⊜ b ⊕ (a ⊕ a)) refl
+
+
+abcd-prove : ∀ a b c d → (a + b) + (c + d) ≡ (a + c) + (b + d)
+abcd-prove a b c d = prove ρ e₁ e₂ refl
   where
     ρ = a ∷ b ∷ c ∷ d ∷ []
     e₁ = close 4 λ a b c d → (a ⊕ b) ⊕ (c ⊕ d)
     e₂ = close 4 λ a b c d → (a ⊕ c) ⊕ (b ⊕ d)
 
-solve₁ : ∀ a b → (a + b) + a ≡ b + (a + a)
-solve₁ = solve 2 (λ a b → (a ⊕ b) ⊕ a ⊜ b ⊕ (a ⊕ a)) refl
-
-solve₂ : ∀ a b c d → (a + b) + (c + d) ≡ (a + c) + (b + d)
-solve₂ = solve 4 (λ a b c d → (a ⊕ b) ⊕ (c ⊕ d) ⊜ (a ⊕ c) ⊕ (b ⊕ d)) refl
+abcd-solve : ∀ a b c d → (a + b) + (c + d) ≡ (a + c) + (b + d)
+abcd-solve = solve 4 (λ a b c d → (a ⊕ b) ⊕ (c ⊕ d) ⊜ (a ⊕ c) ⊕ (b ⊕ d)) refl
 
 --

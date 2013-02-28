@@ -31,7 +31,7 @@ Env n = Vec Carrier n
 ⟦_⟧ : ∀ {n} → Expr n → Env n → Carrier
 ⟦ var i ⟧ ρ = lookup i ρ
 ⟦ a ⊕ b ⟧ ρ = ⟦ a ⟧ ρ ∙ ⟦ b ⟧ ρ
-⟦ nil  ⟧ ρ = ε
+⟦ ◇ ⟧ ρ = ε
 
 -- Semantic equivalence
 
@@ -45,18 +45,18 @@ a ≅ b = ∀ ρ → ⟦ a ⟧ ρ ≈ ⟦ b ⟧ ρ
 -- sound-zero
 
 sound-zero : ∀ {n m} (es : Vec (Expr m) n) →
-               nil ≅ fold-zip (replicate 0) es
+               ◇ ≅ fold-zip (replicate 0) es
 
 sound-zero {zero}  [] ρ = refl
 
 sound-zero {suc n} (e ∷ es) ρ =
   begin
-    ⟦ nil ⟧ ρ
+    ⟦ ◇ ⟧ ρ
       ≈⟨ refl ⟩
     ε
       ≈⟨ sym $ proj₁ identity ε ⟩
     ε ∙ ε
-      ≈⟨ ∙-cong refl (sound-zero es ρ) ⟩
+      ≈⟨ refl ⟨ ∙-cong ⟩ sound-zero es ρ ⟩
     ε ∙ ⟦ fold-zip (replicate 0) es ⟧ ρ
       ≈⟨ refl ⟩
     ⟦ fold-zip (replicate 0) (e ∷ es) ⟧ ρ
@@ -76,7 +76,7 @@ distr (suc k) j e ρ =
     ⟦ (e ⊕ k ⊗ e) ⊕ j ⊗ e ⟧ ρ
       ≈⟨ assoc (⟦ e ⟧ ρ) (⟦ k ⊗ e ⟧ ρ) (⟦ j ⊗ e ⟧ ρ) ⟩
     ⟦ e ⊕ (k ⊗ e ⊕ j ⊗ e) ⟧ ρ
-      ≈⟨ ∙-cong refl (distr k j e ρ) ⟩
+      ≈⟨ refl ⟨ ∙-cong ⟩ distr k j e ρ ⟩
     ⟦ e ⊕ (k + j) ⊗ e ⟧ ρ
       ≈⟨ refl ⟩
     ⟦ (suc k + j) ⊗ e ⟧ ρ
@@ -132,11 +132,11 @@ sound-var zero (e ∷ es) ρ =
       ≈⟨ refl ⟩
     ⟦ e ⟧ ρ
       ≈⟨ sym $ proj₂ identity (⟦ e ⟧ ρ) ⟩
-    ⟦ e ⊕ nil ⟧ ρ
-      ≈⟨ sym $ proj₂ identity (⟦ e ⊕ nil ⟧ ρ) ⟩
-    ⟦ (e ⊕ nil) ⊕ nil ⟧ ρ
+    ⟦ e ⊕ ◇ ⟧ ρ
+      ≈⟨ sym $ proj₂ identity (⟦ e ⊕ ◇ ⟧ ρ) ⟩
+    ⟦ (e ⊕ ◇) ⊕ ◇ ⟧ ρ
       ≈⟨ refl ⟨ ∙-cong ⟩ sound-zero es ρ ⟩
-    ⟦ (e ⊕ nil) ⊕ fold-zip (replicate 0) es ⟧ ρ
+    ⟦ (e ⊕ ◇) ⊕ fold-zip (replicate 0) es ⟧ ρ
       ≈⟨ refl ⟩
     ⟦ fold-zip (1-at zero) (e ∷ es) ⟧ ρ
   ∎
@@ -149,7 +149,7 @@ sound-var (suc i) (e ∷ es) ρ =
       ≈⟨ sound-var i es ρ ⟩
     ⟦ fold-zip (1-at i) es ⟧ ρ
       ≈⟨ sym $ proj₁ identity (⟦ fold-zip (1-at i) es ⟧ ρ) ⟩
-    ⟦ nil ⊕ fold-zip (1-at i) es ⟧ ρ
+    ⟦ ◇ ⊕ fold-zip (1-at i) es ⟧ ρ
       ≡⟨ P.refl ⟩
     ⟦ fold-zip (1-at (suc i)) (e ∷ es) ⟧ ρ
   ∎
@@ -178,14 +178,14 @@ sound (a ⊕ b) ρ =
     ⟦ norm (a ⊕ b) ⟧ ρ
   ∎
 
-sound nil ρ = sound-zero vars ρ
+sound ◇ ρ = sound-zero vars ρ
 
 -- Proving that e₁ ≅ e₂
 -- See Relation.Binary.Reflection
 
 prove : ∀ {n} (ρ : Env n) e₁ e₂ →
            ⟦ norm e₁ ⟧ ρ ≈ ⟦ norm e₂ ⟧ ρ →
-           ⟦ e₁  ⟧ ρ ≈ ⟦ e₂  ⟧ ρ
+           ⟦ e₁ ⟧ ρ ≈ ⟦ e₂ ⟧ ρ
 
 prove ρ e₁ e₂ hyp =
   begin
@@ -197,6 +197,45 @@ prove ρ e₁ e₂ hyp =
       ≈⟨ sym $ sound e₂ ρ ⟩
     ⟦ e₂ ⟧ ρ
   ∎
+
+-- Specialized variants of prove for n = 0, 1 , 2.
+
+-- ρ = []
+
+solve0 : ∀ (f : Expr 0 × Expr 0) →
+  let e₁ = proj₁ f
+      e₂ = proj₂ f
+  in
+  (∀ {ρ} → ⟦ norm e₁ ⟧ ρ ≈ ⟦ norm e₂ ⟧ ρ) →
+  let ρ = [] in ⟦ e₁ ⟧ ρ ≈ ⟦ e₂ ⟧ ρ
+
+solve0 f hyp =
+  prove [] (proj₁ f) (proj₂ f) hyp
+
+-- ρ = a ∷ []
+
+solve1 : ∀ (f : (a : Expr 1) → Expr 1 × Expr 1) →
+  let e₁ = proj₁ (close 1 f)
+      e₂ = proj₂ (close 1 f)
+  in
+  (∀ {ρ} → ⟦ norm e₁ ⟧ ρ ≈ ⟦ norm e₂ ⟧ ρ) →
+  (a : Carrier) → let ρ = a ∷ [] in ⟦ e₁ ⟧ ρ ≈ ⟦ e₂ ⟧ ρ
+
+solve1 f hyp a =
+  prove (a ∷ []) (proj₁ (close 1 f)) (proj₂ (close 1 f)) hyp
+
+-- ρ = a ∷ b ∷ []
+
+solve2 : ∀ (f : (a b : Expr 2) → Expr 2 × Expr 2) →
+  let e₁ = proj₁ (close 2 f)
+      e₂ = proj₂ (close 2 f)
+  in
+  (∀ {ρ} → ⟦ norm e₁ ⟧ ρ ≈ ⟦ norm e₂ ⟧ ρ) →
+  (a b : Carrier) → let ρ = a ∷ b ∷ [] in ⟦ e₁ ⟧ ρ ≈ ⟦ e₂ ⟧ ρ
+
+solve2 f hyp a b =
+  prove (a ∷ b ∷ []) (proj₁ (close 2 f)) (proj₂ (close 2 f)) hyp
+
 
 -- A variant of prove which should in many cases be easier to use,
 -- because variables and environments are handled in a less explicit
@@ -212,7 +251,7 @@ solve : ∀ n (f : N-ary n (Expr n) (Expr n × Expr n)) →
       e₂ = proj₂ (close n f)
   in
   Eqʰ n _≈_ (curryⁿ ⟦ norm e₁ ⟧) (curryⁿ ⟦ norm e₂ ⟧) →
-  Eq  n _≈_ (curryⁿ ⟦ e₁ ⟧) (curryⁿ ⟦ e₂  ⟧)
+  Eq  n _≈_ (curryⁿ ⟦ e₁ ⟧) (curryⁿ ⟦ e₂ ⟧)
 
 solve n f hyp =
   curryⁿ-cong _≈_ ⟦ e₁ ⟧ ⟦ e₂ ⟧ (λ ρ → prove ρ e₁ e₂
