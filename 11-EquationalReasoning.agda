@@ -80,6 +80,7 @@ m+1+n≡1+m+n m n = begin
 2*-injective′ (suc n) zero = λ ()
 2*-injective′ (suc n) (suc m) =
   -- Here ∼ corresponds to implication.
+  -- Note that ∼ is "Chinese" and is entered as \~ .
   2* (suc n) ≡ 2* (suc m)
     ≡⟨ refl ⟩
   suc (suc (2* n)) ≡ suc (suc (2* m))
@@ -101,63 +102,78 @@ open import Relation.Binary.Sum
 open import Relation.Binary.Product.Pointwise
   using (_×-cong_)
 
+open import Function.Equivalence
+  using (_⇔_; equivalence)
+open import Function.Inverse
+  using (_↔_)
 
-⊎-comm : ∀ {ℓ} (A B : Set ℓ) → A ⊎ B → B ⊎ A
+⊎-comm : ∀ {ℓ} (A B : Set ℓ) → (A ⊎ B) ↔ (B ⊎ A)
 ⊎-comm A B =
   (A ⊎ B)
     ↔⟨ ×⊎.+-comm A B ⟩
   (B ⊎ A) ∎
   where open ~-Reasoning
 
-×-comm : ∀ {ℓ} (A B : Set ℓ) → A × B → B × A
+×-comm : ∀ {ℓ} (A B : Set ℓ) → (A × B) ↔ (B × A)
 ×-comm A B =
   (A × B)
     ↔⟨ ×⊎.*-comm A B ⟩
   (B × A) ∎
   where open ~-Reasoning
 
-⊎-assoc : ∀ {ℓ} (A B C : Set ℓ) → (A ⊎ B) ⊎ C → A ⊎ (B ⊎ C)
+⊎-assoc : ∀ {ℓ} (A B C : Set ℓ) → ((A ⊎ B) ⊎ C) ↔ (A ⊎ (B ⊎ C))
 ⊎-assoc A B C =
   ((A ⊎ B) ⊎ C)
     ↔⟨ ×⊎.+-assoc A B C ⟩
   (A ⊎ (B ⊎ C)) ∎
   where open ~-Reasoning
 
-×⊎-distribˡ : ∀ {ℓ} (C A B : Set ℓ) → C × (A ⊎ B) → C × A ⊎ C × B
+×⊎-distribˡ : ∀ {ℓ} (C A B : Set ℓ) → (C × (A ⊎ B)) ↔ (C × A ⊎ C × B)
 ×⊎-distribˡ C A B =
   (C × (A ⊎ B))
     ↔⟨ proj₁ ×⊎.distrib C A B ⟩
   (C × A ⊎ C × B) ∎
   where open ~-Reasoning
 
-×⊎-distribʳ : ∀ {ℓ} (C A B : Set ℓ) → (A ⊎ B) × C → A × C ⊎ B × C
+×⊎-distribʳ : ∀ {ℓ} (C A B : Set ℓ) → ((A ⊎ B) × C) ↔ (A × C ⊎ B × C)
 ×⊎-distribʳ C A B =
   ((A ⊎ B) × C)
     ↔⟨ proj₂ ×⊎.distrib C A B ⟩
   (A × C ⊎ B × C) ∎
   where open ~-Reasoning
 
---
--- This is hardly an optimal way of proving this thing.
--- Just to show the use of ×⊎.distrib and ×⊎.+-assoc.
---
-
 -- Here ∼ is just implication. Note that ∼ is "Chinese" and is entered as \~ .
 
-cacb⇒cab : ∀ {ℓ} {C A B : Set ℓ} → (C ⊎ A) × (C ⊎ B) → C ⊎ A × B
-cacb⇒cab {_} {C} {A} {B} =
-  ((C ⊎ A) × (C ⊎ B))
-    ↔⟨ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
-  (C × (C ⊎ B) ⊎ A × (C ⊎ B))
-    ∼⟨ proj₁ ⊎-cong id ⟩
-  (C ⊎ (A × (C ⊎ B)))
-    ↔⟨ (C ∎) ⊎-cong proj₁ ×⊎.distrib A C B ⟩
-  (C ⊎ (A × C ⊎ A × B))
-    ↔⟨ ↔-sym $ ×⊎.+-assoc C (A × C) (A × B) ⟩
-  ((C ⊎ A × C) ⊎ A × B)
-    ∼⟨ [ id , proj₂ ]′ ⊎-cong id ⟩
-  (C ⊎ A × B) ∎
+⊎-intro : ∀ {ℓ} (A B : Set ℓ) → A → A ⊎ B
+⊎-intro A B =
+  A ∼⟨ inj₁ ⟩ (A ⊎ B) ∎
   where open ~-Reasoning
 
+×-elim : ∀ {ℓ} (A B : Set ℓ) → A × B → A
+×-elim A B =
+  (A × B) ∼⟨ proj₁ ⟩ A ∎
+  where open ~-Reasoning
+
+--
+-- This is hardly an optimal way of proving this thing.
+-- Just to show the use of ×⊎.distrib , ×⊎.+-assoc ,
+-- and ∼ as ⇔ .
+--
+
+⊎-distribˡ : ∀ {ℓ} {C A B : Set ℓ} → (C ⊎ A × B) ⇔ ((C ⊎ A) × (C ⊎ B))
+⊎-distribˡ {_} {C} {A} {B} =
+  -- Here ∼ is ⇔ .
+  (C ⊎ A × B)
+    ∼⟨ equivalence inj₁ [ id , proj₂ ]′ ⊎-cong (_ ∎) ⟩
+  ((C ⊎ A × C) ⊎ A × B)
+    ↔⟨ ×⊎.+-assoc C (A × C) (A × B) ⟩
+  (C ⊎ (A × C ⊎ A × B))
+    ↔⟨ (C ∎) ⊎-cong (↔-sym $ proj₁ ×⊎.distrib A C B) ⟩
+  (C ⊎ (A × (C ⊎ B)))
+    ∼⟨ equivalence < id , inj₁ >  proj₁ ⊎-cong (_ ∎) ⟩
+  (C × (C ⊎ B) ⊎ A × (C ⊎ B))
+    ↔⟨ ↔-sym $ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
+  ((C ⊎ A) × (C ⊎ B)) ∎
+  where open ~-Reasoning
 
 --
