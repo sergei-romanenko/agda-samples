@@ -1,6 +1,9 @@
 module 11-EquationalReasoning where
 
 open import Data.Nat
+open import Data.Bool
+  using (true; false)
+open import Data.Empty
 
 open import Data.Sum
   renaming (map to map⊎)
@@ -114,6 +117,53 @@ open import Function.Inverse
   (B ⊎ A) ∎
   where open ~-Reasoning
 
+-- What is ×⊎.+-comm ?
+
+×⊎-+-comm : ∀ {ℓ} (A B : Set ℓ) → (A ⊎ B) ↔ (B ⊎ A)
+×⊎-+-comm A B = record
+  { to   = →-to-⟶ to&from
+  ; from = →-to-⟶ to&from
+  ; inverse-of = record
+    { left-inverse-of = li&ri
+    ; right-inverse-of = li&ri
+    }
+  }
+  where
+    to&from : ∀ {ℓ} {A B : Set ℓ} → A ⊎ B → B ⊎ A
+    to&from = [ inj₂ , inj₁ ]′
+
+    li&ri : ∀ {ℓ} {A B : Set ℓ} → (p : A ⊎ B) → to&from (to&from p) ≡ p
+    li&ri (inj₁ a) = refl
+    li&ri (inj₂ b) = refl
+
+--
+-- In ×⊎-+-comm the functions "to" and "from" coincide (by chance).
+-- Let us consider an example, where "to" and "from" are different.
+--
+
+ℕ∃-suc↔ : ∀ {x} → 0 < x ↔ (∃ λ y → x ≡ suc y)
+ℕ∃-suc↔ {x} = record
+  { to = →-to-⟶ to
+  ; from = →-to-⟶ from
+  ; inverse-of = record
+    { left-inverse-of = li
+    ; right-inverse-of = ri
+    }
+  }
+  where
+    to : ∀ {x} → 0 < x → (∃ λ y → x ≡ suc y)
+    to {zero} ()
+    to {suc y} (s≤s z≤n) = y , refl
+
+    from : ∀ {x} → (∃ λ y → x ≡ suc y) → 0 < x
+    from (y , refl) = s≤s z≤n
+
+    li : ∀ {x} (p : 1 ≤ x) → from (to p) ≡ p
+    li (s≤s z≤n) = refl
+
+    ri : ∀ {x} → (p : ∃ λ y → x ≡ suc y) → to (from p) ≡ p
+    ri (y , refl) = refl
+
 ×-comm : ∀ {ℓ} (A B : Set ℓ) → (A × B) ↔ (B × A)
 ×-comm A B =
   (A × B)
@@ -175,5 +225,35 @@ open import Function.Inverse
     ↔⟨ ↔-sym $ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
   ((C ⊎ A) × (C ⊎ B)) ∎
   where open ~-Reasoning
+
+--
+-- What is the difference between ↔ and ⇔ ?
+-- ⇔ does not guarantee that either to (from p) p ≡ p or from (to p) ≡ p .
+
+a→aa : ∀ {ℓ} {A : Set ℓ} → A → A × A
+a→aa a = a , a
+
+a←aa₁ : ∀ {ℓ} {A : Set ℓ} → A × A → A
+a←aa₁ (a₁ , a₂) = a₁
+
+a←aa₂ : ∀ {ℓ} {A : Set ℓ} → A × A → A
+a←aa₂ (a₁ , a₂) = a₂
+
+a⇔aa : ∀ {ℓ} {A : Set ℓ} → (A ⇔ (A × A))
+a⇔aa =
+  -- equivalence a→aa a←aa₁
+  record
+  { to = →-to-⟶ a→aa
+  ; from = →-to-⟶ a←aa₁ -- or a←aa₂
+  }
+
+a-aa-li : ∀ {ℓ} {A : Set ℓ} → (p : A) → a←aa₁ (a→aa p) ≡ p
+a-aa-li p = refl
+
+∃¬a-aa-ri : a→aa (a←aa₁ (true , false)) ≡ (true , true)
+∃¬a-aa-ri = refl
+
+-- Therefore, this is not provable:
+--     ∀ {ℓ} {A : Set ℓ} → (p : A × A) → a→aa (a←aa₁ p) ≡ p
 
 --
