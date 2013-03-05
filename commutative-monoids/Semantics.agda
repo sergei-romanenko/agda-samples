@@ -174,7 +174,7 @@ sound (a ⊕ b) ρ =
     ⟦ a ⊕ b ⟧ ρ
       ≈⟨ sound a ρ ⟨ ∙-cong ⟩ sound b ρ ⟩
     ⟦ norm a ⊕ norm b ⟧ ρ
-      ≈⟨ sound-plus (nf a) (nf b) vars ρ ⟩
+      ≈⟨ sound-plus (nr a) (nr b) vars ρ ⟩
     ⟦ norm (a ⊕ b) ⟧ ρ
   ∎
 

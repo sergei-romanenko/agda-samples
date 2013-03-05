@@ -17,21 +17,21 @@ data Expr n : Set where
   _⊕_ : (a b : Expr n) → Expr n
   ◇   : Expr n
 
--- "Normal forms" (which are not expressions)
+-- "Normalized representations" (which are not expressions)
 
-NF : ℕ → Set
-NF n = Vec ℕ n
+NR : ℕ → Set
+NR n = Vec ℕ n
 
--- Evaluating an expression to produce its "normal form"
+-- Evaluating an expression to produce its "normalized representation"
 
-1-at : ∀ {n} → Fin n → NF n
+1-at : ∀ {n} → Fin n → NR n
 1-at zero    = 1 ∷ replicate 0
 1-at (suc i) = 0 ∷ 1-at i
 
-nf : ∀ {n} → Expr n → NF n
-nf (var i) = 1-at i
-nf (a ⊕ b) = zipWith _+_ (nf a) (nf b)
-nf nil     = replicate 0
+nr : ∀ {n} → Expr n → NR n
+nr (var i) = 1-at i
+nr (a ⊕ b) = zipWith _+_ (nr a) (nr b)
+nr nil     = replicate 0
 
 -- Reifying a "normal forms" to an expression
 
@@ -45,13 +45,13 @@ fold-zip ks as = Vec.foldr _ _⊕_ ◇ (zipWith _⊗_ ks as)
 vars : ∀ {n} → Vec (Expr n) n
 vars = tabulate var
 
-reify : ∀ {n} → NF n → Expr n
+reify : ∀ {n} → NR n → Expr n
 reify nf = fold-zip nf vars
 
 -- Normalization (to an expression)
 
 norm : ∀ {n} → Expr n → Expr n
-norm = reify ∘ nf
+norm = reify ∘ nr
 
 -- Applies the function to all possible "variables".
 
@@ -70,9 +70,9 @@ private
     expr₁≡expr₂ : expr₁ ≡ expr₂
     expr₁≡expr₂ = refl
 
-    nf₁ : nf expr₁ ≡
+    nr₁ : nr expr₁ ≡
       suc (suc zero) ∷ suc zero ∷ zero ∷ []
-    nf₁ = refl
+    nr₁ = refl
 
     norm₁ : norm expr₁ ≡
       (var zero ⊕ var zero ⊕ ◇) ⊕ (var (suc zero) ⊕ ◇) ⊕ ◇ ⊕ ◇
