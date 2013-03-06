@@ -124,6 +124,24 @@ module BigStep-FnRel-Equiv where
   ...  | .n₁     | refl          | .n₂     | refl
     = refl
 
+  -- rel⇒eval by means of ≡-Reasoning
+
+  rel⇒eval′′′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
+  rel⇒eval′′′ (e-const {n}) = begin
+    eval (val n)
+      ≡⟨ refl ⟩
+    n ∎
+    where open ≡-Reasoning
+  rel⇒eval′′′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂) = begin
+    eval (t₁ ⊕ t₂)
+      ≡⟨ refl ⟩
+    eval t₁ + eval t₂
+      ≡⟨ cong (flip _+_ (eval t₂)) (rel⇒eval′′′ h₁) ⟩
+    n₁ + eval t₂
+      ≡⟨ cong (_+_ n₁) (rel⇒eval′′′ h₂) ⟩
+    n₁ + n₂ ∎
+    where open ≡-Reasoning
+
 module BigStepEvalRel-Val where
 
   -- Big-step evaluation relation
@@ -319,25 +337,25 @@ normalizing {X} R =
   ∀ t → ∃ (λ t' → Star R t t' × normal-form R t')
 
 
-⇒*-congr-1 : ∀ {t₁ u t₂} →
-               t₁ ⇒* u →
-               t₁ ⊕ t₂ ⇒* u ⊕ t₂
-⇒*-congr-1 ε = ε
-⇒*-congr-1 {t₁} {u} {t₂} (t₁⇒ ◅ ⇒*u) = begin
-  t₁ ⊕ t₂ ⟶⟨ r+t t₁⇒ ⟩ _ ⊕ t₂ ⟶⋆⟨ ⇒*-congr-1 ⇒*u ⟩ u ⊕ t₂ ∎
+⇒*-congˡ : ∀ {t₁ u t₂} →
+             t₁ ⇒* u →
+             t₁ ⊕ t₂ ⇒* u ⊕ t₂
+⇒*-congˡ ε = ε
+⇒*-congˡ {t₁} {u} {t₂} (t₁⇒ ◅ ⇒*u) = begin
+  t₁ ⊕ t₂ ⟶⟨ r+t t₁⇒ ⟩ _ ⊕ t₂ ⟶⋆⟨ ⇒*-congˡ ⇒*u ⟩ u ⊕ t₂ ∎
   where open StarReasoning _⇒_
 
-⇒*-congr-2 : ∀ {t₁ t₂ u} →
-               value t₁ →
-               t₂ ⇒* u →
-               t₁ ⊕ t₂ ⇒* t₁ ⊕ u
-⇒*-congr-2 v-c ε = ε
-⇒*-congr-2 {val n} {t₂} {u} v-c (t₂⇒ ◅ ⇒*u) =
+⇒*-congʳ : ∀ {t₁ t₂ u} →
+             value t₁ →
+             t₂ ⇒* u →
+             t₁ ⊕ t₂ ⇒* t₁ ⊕ u
+⇒*-congʳ v-c ε = ε
+⇒*-congʳ {val n} {t₂} {u} v-c (t₂⇒ ◅ ⇒*u) =
   begin
     val n ⊕ t₂
       ⟶⟨ n+r v-c t₂⇒ ⟩
     val n ⊕ _
-      ⟶⋆⟨ ⇒*-congr-2 v-c ⇒*u ⟩
+      ⟶⋆⟨ ⇒*-congʳ v-c ⇒*u ⟩
     val n ⊕ u
   ∎
   where open StarReasoning _⇒_
@@ -358,9 +376,9 @@ normalizing {X} R =
     t⇒*u₁u₂ =
       begin
         t₁ ⊕ t₂
-          ⟶⋆⟨ ⇒*-congr-1 t₁⇒*u₁ ⟩
+          ⟶⋆⟨ ⇒*-congˡ t₁⇒*u₁ ⟩
         u₁ ⊕ t₂
-          ⟶⋆⟨ ⇒*-congr-2 (nf-is-value u₁ ¬u₁⇒) t₂⇒*u₂ ⟩
+          ⟶⋆⟨ ⇒*-congʳ (nf-is-value u₁ ¬u₁⇒) t₂⇒*u₂ ⟩
         u₁ ⊕ u₂
       ∎
       where open StarReasoning _⇒_
@@ -393,9 +411,9 @@ big⇒small* (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
 ... | t₁⇒*v₁ | t₂⇒*v₂ =
   begin
     t₁ ⊕ t₂
-      ⟶⋆⟨ ⇒*-congr-1 t₁⇒*v₁ ⟩
+      ⟶⋆⟨ ⇒*-congˡ t₁⇒*v₁ ⟩
     val n₁ ⊕ t₂
-      ⟶⋆⟨ ⇒*-congr-2 v-c t₂⇒*v₂ ⟩
+      ⟶⋆⟨ ⇒*-congʳ v-c t₂⇒*v₂ ⟩
     val n₁ ⊕ val n₂
       ⟶⟨ n+n ⟩
     val (n₁ + n₂)
