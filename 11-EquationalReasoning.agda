@@ -100,10 +100,6 @@ open import Function.Related.TypeIsomorphisms
   using(×⊎-CommutativeSemiring)
 private
   module ×⊎ {k ℓ} = CommutativeSemiring (×⊎-CommutativeSemiring k ℓ)
-open import Relation.Binary.Sum
-  using (_⊎-cong_)
-open import Relation.Binary.Product.Pointwise
-  using (_×-cong_)
 
 open import Function.Equivalence
   using (_⇔_; equivalence)
@@ -214,13 +210,13 @@ open import Function.Inverse
 ⊎-distribˡ {_} {C} {A} {B} =
   -- Here ∼ is ⇔ .
   (C ⊎ A × B)
-    ∼⟨ equivalence inj₁ [ id , proj₂ ]′ ⊎-cong (_ ∎) ⟩
+    ∼⟨ equivalence inj₁ [ id , proj₂ ]′ ⟨ ×⊎.+-cong ⟩ (_ ∎) ⟩
   ((C ⊎ A × C) ⊎ A × B)
     ↔⟨ ×⊎.+-assoc C (A × C) (A × B) ⟩
   (C ⊎ (A × C ⊎ A × B))
-    ↔⟨ (C ∎) ⊎-cong (↔-sym $ proj₁ ×⊎.distrib A C B) ⟩
+    ↔⟨ (C ∎) ⟨ ×⊎.+-cong ⟩ (↔-sym $ proj₁ ×⊎.distrib A C B) ⟩
   (C ⊎ (A × (C ⊎ B)))
-    ∼⟨ equivalence < id , inj₁ >  proj₁ ⊎-cong (_ ∎) ⟩
+    ∼⟨ equivalence < id , inj₁ >  proj₁ ⟨ ×⊎.+-cong ⟩ (_ ∎) ⟩
   (C × (C ⊎ B) ⊎ A × (C ⊎ B))
     ↔⟨ ↔-sym $ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
   ((C ⊎ A) × (C ⊎ B)) ∎
