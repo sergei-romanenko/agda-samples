@@ -37,8 +37,10 @@ open import Algebra
 open import Relation.Binary.PropositionalEquality
 
 import Function.Related as Related
-module ~-Reasoning = Related.EquationalReasoning
-  renaming (sym to ↔-sym)
+
+private
+  module ~-Reasoning = Related.EquationalReasoning
+    renaming (sym to ↔-sym)
 
 ------------------------------------------------------------------------
 -- Binary trees
@@ -81,13 +83,35 @@ x ∉T t = ¬ x ∈T t
 _≈-bagT_ : ∀ {a} {A : Set a} → Tree A → Tree A → Set a
 t₁ ≈-bagT t₂ = ∀ x → x ∈T t₁ ↔ x ∈T t₂
 
-{-
-AnyT-singleton : ∀ {A : Set} (P : A → Set) {x} →
-                AnyT P (singleton x) ↔ P x
-AnyT-singleton P {x} = {!!}
--}
+-- Lift⊥↔⊥
 
-AnyT-leaf : ∀ {a p} {A : Set a} {P : A → Set p} →
+Lift⊥↔⊥ : ∀ {ℓ} → Lift {Level.zero} {ℓ} ⊥ ↔ ⊥
+Lift⊥↔⊥ {ℓ} = record
+  { to = →-to-⟶ lower
+  ; from = →-to-⟶ lift
+  ; inverse-of = record
+    { left-inverse-of = from∘to
+    ; right-inverse-of = λ ()
+    }
+  }
+  where
+    from∘to : (h : Lift ⊥) → lift (lower h) ≡ h
+    from∘to (lift ())
+
+-- ⊎⊥
+
+⊎⊥ : ∀ {A : Set} → (A ⊎ ⊥) ↔ A
+⊎⊥ {A} =
+  (A ⊎ ⊥)
+    ↔⟨ ×⊎.+-cong (_ ∎) (↔-sym $ Lift⊥↔⊥) ⟩
+  (A ⊎ Lift ⊥)
+    ↔⟨ proj₂ ×⊎.+-identity A ⟩
+  A ∎
+  where open ~-Reasoning
+
+-- AnyT-leaf
+
+AnyT-leaf : ∀ {a} {A : Set a} {P : A → Set} →
   AnyT P leaf ↔ ⊥
 AnyT-leaf {P = P} = record
   { to = →-to-⟶ (λ ())
@@ -97,6 +121,8 @@ AnyT-leaf {P = P} = record
     ; right-inverse-of = λ ()
     }
   }
+
+-- AnyT-node
 
 AnyT-node : ∀ {a p} {A : Set a} {P : A → Set p} {x l r} →
   AnyT P (node l x r) ↔ (P x ⊎ AnyT P l ⊎ AnyT P r)
@@ -175,6 +201,31 @@ AnyT↔ {P = P} {t} = record
     to∘from (node l y r) (thereʳ pt₂) with to∘from r pt₂
     ... | eq rewrite eq = refl
 
+-- Singleton
+
+-- Singleton trees.
+
+singleton : ∀ {a} {A : Set a} → A → Tree A
+singleton x = node leaf x leaf
+
+-- Any lemma for singleton.
+
+AnyT-singleton : ∀ {A : Set} (P : A → Set) {x} →
+                AnyT P (singleton x) ↔ P x
+AnyT-singleton P {x} =
+  AnyT P (singleton x)
+    ↔⟨ _ ∎ ⟩
+  AnyT P (node leaf x leaf)
+    ↔⟨ AnyT-node ⟩
+  (P x ⊎ AnyT P leaf ⊎ AnyT P leaf)
+    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (AnyT-leaf ⟨ ×⊎.+-cong ⟩ AnyT-leaf) ⟩
+  (P x ⊎ ⊥ ⊎ ⊥)
+    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ ⊎⊥ ⟩
+  (P x ⊎ ⊥)
+    ↔⟨ ⊎⊥ ⟩
+  P x ∎
+  where open ~-Reasoning
+
 ------------------------------------------------------------------------
 -- Flatten
 
@@ -184,30 +235,16 @@ flatten : ∀ {a} {A : Set a} → Tree A → List A
 flatten leaf         = []
 flatten (node l x r) = flatten l ++ x ∷ flatten r
 
--- Auxiliary.
--- (The problem with ⊥↔Any[] in the Library is that
--- P is declared as {P : A → Set}.
-
-⊥↔Any[]′ : ∀ {a p} {A : Set a} {P : A → Set p} → ⊥ ↔ Any P []
-⊥↔Any[]′ = record
-  { to         = →-to-⟶ (λ ())
-  ; from       = →-to-⟶ (λ ())
-  ; inverse-of = record
-    { left-inverse-of  = λ ()
-    ; right-inverse-of = λ ()
-    }
-  }
-
 -- Flatten does not add or remove any elements.
 
-flatten↔ : ∀ {a} {A : Set a} (t : Tree A) → ∀ (x : A) →
+flatten↔ : ∀ {A : Set} (t : Tree A) → ∀ (x : A) →
   x ∈ flatten t ↔ x ∈T t
 
 flatten↔ leaf x =
   x ∈ flatten leaf
     ↔⟨ _ ∎ ⟩
   Any (_≡_ x) []
-    ↔⟨ ↔-sym $ ⊥↔Any[]′ ⟩
+    ↔⟨ ↔-sym $ ⊥↔Any[] ⟩
   ⊥
     ↔⟨ ↔-sym $ AnyT-leaf ⟩
   AnyT (_≡_ x) leaf
