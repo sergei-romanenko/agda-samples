@@ -96,15 +96,79 @@ m+1+n≡1+m+n m n = begin
   where open ~-Reasoning
 
 
+open import Function.Equivalence
+  using (_⇔_; equivalence)
+open import Function.Inverse
+  using (_↔_)
+
+open import Data.List
+open import Data.Unit
+  using (⊤; tt)
+
+-- What is "isomorphism"?
+-- suc (suc zero) ↔ ⊤ ∷ ⊤ ∷ []
+
+ℕ↔List⊤ : ℕ ↔ List ⊤
+
+ℕ↔List⊤ = record
+  {to = →-to-⟶ to
+  ; from = →-to-⟶ from
+  ; inverse-of = record
+    { left-inverse-of = from∘to
+    ; right-inverse-of = to∘from
+    }
+  }
+  where
+    to : ℕ → List ⊤
+    to zero = []
+    to (suc n) = tt ∷ to n
+
+    from : List ⊤ → ℕ
+    from [] = zero
+    from (tt ∷ xs) = suc (from xs)
+
+    from∘to : (n : ℕ) → from (to n) ≡ n
+    from∘to zero = refl
+    from∘to (suc n) = cong suc (from∘to n)
+
+    to∘from : (xs : List ⊤) → to (from xs) ≡ xs
+    to∘from [] = refl
+    to∘from (tt ∷ xs) = cong (_∷_ tt) (to∘from xs)
+
+-- In Agda, "data" and "proofs" are the same thing.
+-- Here is an example of an isomorphism between proofs!
+
+ℕ∃-suc↔ : ∀ {x} → 0 < x ↔ (∃ λ y → x ≡ suc y)
+ℕ∃-suc↔ {x} = record
+  { to = →-to-⟶ to
+  ; from = →-to-⟶ from
+  ; inverse-of = record
+    { left-inverse-of = from∘to
+    ; right-inverse-of = to∘from
+    }
+  }
+  where
+    to : ∀ {x} → 0 < x → (∃ λ y → x ≡ suc y)
+    to {zero} ()
+    to {suc y} (s≤s z≤n) = y , refl
+
+    from : ∀ {x} → (∃ λ y → x ≡ suc y) → 0 < x
+    from (y , refl) = s≤s z≤n
+
+    from∘to : ∀ {x} (p : 1 ≤ x) → from (to p) ≡ p
+    from∘to (s≤s z≤n) = refl
+
+    to∘from : ∀ {x} → (p : ∃ λ y → x ≡ suc y) → to (from p) ≡ p
+    to∘from (y , refl) = refl
+
+-- × and ⊎ form a commutative semiring.
+
 open import Function.Related.TypeIsomorphisms
   using(×⊎-CommutativeSemiring)
 private
   module ×⊎ {k ℓ} = CommutativeSemiring (×⊎-CommutativeSemiring k ℓ)
 
-open import Function.Equivalence
-  using (_⇔_; equivalence)
-open import Function.Inverse
-  using (_↔_)
+-- Let us use a theorem provided by ×⊎ .
 
 ⊎-comm : ∀ {ℓ} (A B : Set ℓ) → (A ⊎ B) ↔ (B ⊎ A)
 ⊎-comm A B =
@@ -117,48 +181,22 @@ open import Function.Inverse
 
 ×⊎-+-comm : ∀ {ℓ} (A B : Set ℓ) → (A ⊎ B) ↔ (B ⊎ A)
 ×⊎-+-comm A B = record
-  { to   = →-to-⟶ to&from
-  ; from = →-to-⟶ to&from
+  { to   = →-to-⟶ to
+  ; from = →-to-⟶ to  -- By chance, "to" and "from" coincide...
   ; inverse-of = record
-    { left-inverse-of = li&ri
-    ; right-inverse-of = li&ri
+    { left-inverse-of = to∘to
+    ; right-inverse-of = to∘to
     }
   }
   where
-    to&from : ∀ {ℓ} {A B : Set ℓ} → A ⊎ B → B ⊎ A
-    to&from = [ inj₂ , inj₁ ]′
+    to : ∀ {ℓ} {A B : Set ℓ} → A ⊎ B → B ⊎ A
+    to = [ inj₂ , inj₁ ]′
 
-    li&ri : ∀ {ℓ} {A B : Set ℓ} → (p : A ⊎ B) → to&from (to&from p) ≡ p
-    li&ri (inj₁ a) = refl
-    li&ri (inj₂ b) = refl
+    to∘to : ∀ {ℓ} {A B : Set ℓ} → (p : A ⊎ B) → to (to p) ≡ p
+    to∘to (inj₁ a) = refl
+    to∘to (inj₂ b) = refl
 
---
--- In ×⊎-+-comm the functions "to" and "from" coincide (by chance).
--- Let us consider an example, where "to" and "from" are different.
---
-
-ℕ∃-suc↔ : ∀ {x} → 0 < x ↔ (∃ λ y → x ≡ suc y)
-ℕ∃-suc↔ {x} = record
-  { to = →-to-⟶ to
-  ; from = →-to-⟶ from
-  ; inverse-of = record
-    { left-inverse-of = li
-    ; right-inverse-of = ri
-    }
-  }
-  where
-    to : ∀ {x} → 0 < x → (∃ λ y → x ≡ suc y)
-    to {zero} ()
-    to {suc y} (s≤s z≤n) = y , refl
-
-    from : ∀ {x} → (∃ λ y → x ≡ suc y) → 0 < x
-    from (y , refl) = s≤s z≤n
-
-    li : ∀ {x} (p : 1 ≤ x) → from (to p) ≡ p
-    li (s≤s z≤n) = refl
-
-    ri : ∀ {x} → (p : ∃ λ y → x ≡ suc y) → to (from p) ≡ p
-    ri (y , refl) = refl
+-- More theorems provided by ×⊎-+-comm...
 
 ×-comm : ∀ {ℓ} (A B : Set ℓ) → (A × B) ↔ (B × A)
 ×-comm A B =
@@ -188,7 +226,10 @@ open import Function.Inverse
   (A × C ⊎ B × C) ∎
   where open ~-Reasoning
 
--- Here ∼ is just implication. Note that ∼ is "Chinese" and is entered as \~ .
+
+-- Reasoning about implications.
+-- In this context ∼ denotes implication.
+-- Note that ∼ is "Chinese" and is entered as \~ .
 
 ⊎-intro : ∀ {ℓ} (A B : Set ℓ) → A → A ⊎ B
 ⊎-intro A B =
@@ -201,27 +242,7 @@ open import Function.Inverse
   where open ~-Reasoning
 
 --
--- This is hardly an optimal way of proving this thing.
--- Just to show the use of ×⊎.distrib , ×⊎.+-assoc ,
--- and ∼ as ⇔ .
---
-
-⊎-distribˡ : ∀ {ℓ} {C A B : Set ℓ} → (C ⊎ A × B) ⇔ ((C ⊎ A) × (C ⊎ B))
-⊎-distribˡ {_} {C} {A} {B} =
-  -- Here ∼ is ⇔ .
-  (C ⊎ A × B)
-    ∼⟨ equivalence inj₁ [ id , proj₂ ]′ ⟨ ×⊎.+-cong ⟩ (_ ∎) ⟩
-  ((C ⊎ A × C) ⊎ A × B)
-    ↔⟨ ×⊎.+-assoc C (A × C) (A × B) ⟩
-  (C ⊎ (A × C ⊎ A × B))
-    ↔⟨ (C ∎) ⟨ ×⊎.+-cong ⟩ (↔-sym $ proj₁ ×⊎.distrib A C B) ⟩
-  (C ⊎ (A × (C ⊎ B)))
-    ∼⟨ equivalence < id , inj₁ >  proj₁ ⟨ ×⊎.+-cong ⟩ (_ ∎) ⟩
-  (C × (C ⊎ B) ⊎ A × (C ⊎ B))
-    ↔⟨ ↔-sym $ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
-  ((C ⊎ A) × (C ⊎ B)) ∎
-  where open ~-Reasoning
-
+-- A ⇔ B means (A → B) × (B → A)
 --
 -- What is the difference between ↔ and ⇔ ?
 -- ⇔ does not guarantee that either to (from p) p ≡ p or from (to p) ≡ p .
@@ -251,5 +272,26 @@ a-aa-li p = refl
 
 -- Therefore, this is not provable:
 --     ∀ {ℓ} {A : Set ℓ} → (p : A × A) → a→aa (a←aa₁ p) ≡ p
+
+--
+-- An example of using ×⊎.distrib , ×⊎.+-assoc , ×⊎.+-cong
+-- and ∼ as ⇔ .
+--
+
+⊎-distribˡ : ∀ {ℓ} {C A B : Set ℓ} → (C ⊎ A × B) ⇔ ((C ⊎ A) × (C ⊎ B))
+⊎-distribˡ {_} {C} {A} {B} =
+  -- Here ∼ is ⇔ .
+  (C ⊎ A × B)
+    ∼⟨ equivalence inj₁ [ id , proj₂ ]′ ⟨ ×⊎.+-cong ⟩ (_ ∎) ⟩
+  ((C ⊎ A × C) ⊎ A × B)
+    ↔⟨ ×⊎.+-assoc C (A × C) (A × B) ⟩
+  (C ⊎ (A × C ⊎ A × B))
+    ↔⟨ (C ∎) ⟨ ×⊎.+-cong ⟩ (↔-sym $ proj₁ ×⊎.distrib A C B) ⟩
+  (C ⊎ (A × (C ⊎ B)))
+    ∼⟨ equivalence < id , inj₁ >  proj₁ ⟨ ×⊎.+-cong ⟩ (_ ∎) ⟩
+  (C × (C ⊎ B) ⊎ A × (C ⊎ B))
+    ↔⟨ ↔-sym $ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
+  ((C ⊎ A) × (C ⊎ B)) ∎
+  where open ~-Reasoning
 
 --
