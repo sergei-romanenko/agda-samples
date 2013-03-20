@@ -13,7 +13,6 @@ open import Data.List.Any.Properties
 
 open import Data.Empty
 open import Data.Product
-  --using(_×_; _,_; proj₁; proj₂)
 open import Data.Sum
 
 open import Relation.Nullary
@@ -98,17 +97,6 @@ Lift⊥↔⊥ {ℓ} = record
     from∘to : (h : Lift ⊥) → lift (lower h) ≡ h
     from∘to (lift ())
 
--- ⊎⊥
-
-⊎⊥ : ∀ {A : Set} → (A ⊎ ⊥) ↔ A
-⊎⊥ {A} =
-  (A ⊎ ⊥)
-    ↔⟨ ×⊎.+-cong (_ ∎) (↔-sym $ Lift⊥↔⊥) ⟩
-  (A ⊎ Lift ⊥)
-    ↔⟨ proj₂ ×⊎.+-identity A ⟩
-  A ∎
-  where open ~-Reasoning
-
 -- AnyT-leaf
 
 AnyT-leaf : ∀ {a} {A : Set a} {P : A → Set} →
@@ -125,7 +113,7 @@ AnyT-leaf {P = P} = record
 -- AnyT-node
 
 AnyT-node : ∀ {a p} {A : Set a} {P : A → Set p} {x l r} →
-  AnyT P (node l x r) ↔ (P x ⊎ AnyT P l ⊎ AnyT P r)
+  AnyT P (node l x r) ↔ (AnyT P l ⊎ P x ⊎ AnyT P r)
 AnyT-node {P = P} {x} {l} {r} = record
   { to = →-to-⟶ to
   ; from = →-to-⟶ from
@@ -135,21 +123,20 @@ AnyT-node {P = P} {x} {l} {r} = record
     }
   }
   where
-    to : AnyT P (node l x r) → P x ⊎ AnyT P l ⊎ AnyT P r
-
-    to (here px) = inj₁ px
-    to (thereˡ pt₁) = inj₂ (inj₁ pt₁)
+    to : AnyT P (node l x r) → AnyT P l ⊎ P x ⊎ AnyT P r
+    to (here px) = inj₂ (inj₁ px)
+    to (thereˡ pt₁) = inj₁ pt₁
     to (thereʳ pt₂) = inj₂ (inj₂ pt₂)
 
-    from : P x ⊎ AnyT P l ⊎ AnyT P r → AnyT P (node l x r)
-    from = [ here , [ thereˡ , thereʳ ]′ ]′
+    from : AnyT P l ⊎ P x ⊎ AnyT P r → AnyT P (node l x r)
+    from = [ thereˡ , [ here , thereʳ ]′ ]′
 
     from∘to : (h : AnyT P (node l x r)) → from (to h) ≡ h
     from∘to (here px) = refl
     from∘to (thereˡ pt₁) = refl
     from∘to (thereʳ pt₂) = refl
 
-    to∘from : (h : P x ⊎ AnyT P l ⊎ AnyT P r) → to (from h) ≡ h
+    to∘from : (h : AnyT P l ⊎ P x ⊎ AnyT P r) → to (from h) ≡ h
     to∘from (inj₁ px) = refl
     to∘from (inj₂ (inj₁ pt₁)) = refl
     to∘from (inj₂ (inj₂ pt₂)) = refl
@@ -217,12 +204,14 @@ AnyT-singleton P {x} =
     ↔⟨ _ ∎ ⟩
   AnyT P (node leaf x leaf)
     ↔⟨ AnyT-node ⟩
-  (P x ⊎ AnyT P leaf ⊎ AnyT P leaf)
-    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (AnyT-leaf ⟨ ×⊎.+-cong ⟩ AnyT-leaf) ⟩
-  (P x ⊎ ⊥ ⊎ ⊥)
-    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ ⊎⊥ ⟩
-  (P x ⊎ ⊥)
-    ↔⟨ ⊎⊥ ⟩
+  (AnyT P leaf ⊎ P x ⊎ AnyT P leaf)
+    ↔⟨ AnyT-leaf ⟨ ×⊎.+-cong ⟩ ((_ ∎) ⟨ ×⊎.+-cong ⟩ AnyT-leaf) ⟩
+  (⊥ ⊎ P x ⊎ ⊥)
+    ↔⟨ ↔-sym Lift⊥↔⊥ ⟨ ×⊎.+-cong ⟩ (_ ∎ ⟨ ×⊎.+-cong ⟩ ↔-sym Lift⊥↔⊥) ⟩
+  (Lift ⊥ ⊎ P x ⊎ Lift ⊥)
+    ↔⟨ proj₁ ×⊎.+-identity (P x ⊎ Lift ⊥) ⟩
+  (P x ⊎ Lift ⊥)
+    ↔⟨ proj₂ ×⊎.+-identity (P x) ⟩
   P x ∎
   where open ~-Reasoning
 
@@ -260,19 +249,10 @@ flatten↔ (node l y r) x =
   (x ∈ flatten l ⊎ x ∈ y ∷ flatten r)
     ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ ↔-sym (∷↔ (_≡_ x)) ⟩
   (x ∈ flatten l ⊎ x ≡ y ⊎ x ∈ flatten r)
-    ↔⟨ helper ⟩
-  (x ≡ y ⊎ x ∈ flatten l ⊎ x ∈ flatten r)
-    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (flatten↔ l x ⟨ ×⊎.+-cong ⟩ flatten↔ r x) ⟩
-  (x ≡ y ⊎ x ∈T l ⊎ x ∈T r)
+    ↔⟨ flatten↔ l x ⟨ ×⊎.+-cong ⟩ (_ ∎ ⟨ ×⊎.+-cong ⟩ flatten↔ r x) ⟩
+  (x ∈T l ⊎ x ≡ y ⊎ x ∈T r)
     ↔⟨ ↔-sym AnyT-node ⟩
   x ∈T node l y r ∎
-  where
-    open ~-Reasoning
-    helper : ∀ {ℓ} {A B C : Set ℓ} → (A ⊎ B ⊎ C) ↔ (B ⊎ (A ⊎ C))
-    helper {ℓ} {A} {B} {C} =
-      (A ⊎ B ⊎ C)    ↔⟨ ↔-sym $ ×⊎.+-assoc A B C ⟩
-      ((A ⊎ B) ⊎ C)  ↔⟨ ×⊎.+-comm A B ⟨ ×⊎.+-cong ⟩ _ ∎ ⟩
-      ((B ⊎ A) ⊎ C)  ↔⟨ ×⊎.+-assoc B A C ⟩
-      (B ⊎ (A ⊎ C))  ∎
+  where open ~-Reasoning
 
 --
