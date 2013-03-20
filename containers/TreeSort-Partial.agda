@@ -1,9 +1,21 @@
-module TreeSort-Partial where
+open import Data.Bool
+
+module TreeSort-Partial
+  {A : Set}
+  (_≤_ : A → A → Bool) -- A comparison function.
+  where
 
 open import Level
   using (Level; _⊔_; Lift; lift; lower)
 
-open import Data.Bool
+open import Data.List
+open import Data.List.Any as Any
+  using (Any; here; there)
+open Any.Membership-≡
+
+open import Data.List.Any.Properties
+  using (⊥↔Any[]; ++↔; ∷↔)
+
 open import Data.Empty
 open import Data.Product
 open import Data.Sum
@@ -44,21 +56,19 @@ open import Tree
 -- Insertion of n into xs at the right place
 -- (assuming that xs is sorted)
 
-insert : ∀ {A : Set} (_≤_ : A → A → Bool)
-           (x : A) (t : Tree A) → Tree A
-insert _≤_ x leaf = node leaf x leaf
-insert _≤_ x (node l y r) with x ≤ y
-... | true  = node (insert _≤_ x l) y r
-... | false = node l y (insert _≤_ x r)
+insert : ∀ (x : A) (t : Tree A) → Tree A
+insert x leaf = node leaf x leaf
+insert x (node l y r) with x ≤ y
+... | true  = node (insert x l) y r
+... | false = node l y (insert x r)
 
 -- The insert function inserts.
 
-AnyT-insert : ∀ {A : Set}
-               (P : A → Set) (_≤_ : A → A → Bool) (x : A) (t : Tree A) →
-               AnyT P (insert _≤_ x t) ↔ (P x ⊎ AnyT P t)
+AnyT-insert : ∀ (P : A → Set) (x : A) (t : Tree A) →
+               AnyT P (insert x t) ↔ (P x ⊎ AnyT P t)
 
-AnyT-insert P _≤_ x leaf =
-  AnyT P (insert _≤_ x leaf)
+AnyT-insert P x leaf =
+  AnyT P (insert x leaf)
     ↔⟨ _ ∎ ⟩
   AnyT P (node leaf x leaf)
     ↔⟨ AnyT-node ⟩
@@ -71,12 +81,12 @@ AnyT-insert P _≤_ x leaf =
   (P x ⊎ AnyT P leaf) ∎
   where open ~-Reasoning
 
-AnyT-insert P _≤_ x (node l y r) with x ≤ y
+AnyT-insert P x (node l y r) with x ≤ y
 ... | true =
-  AnyT P (node (insert _≤_ x l) y r)
+  AnyT P (node (insert x l) y r)
     ↔⟨ AnyT-node ⟩
-  (AnyT P (insert _≤_ x l) ⊎ P y ⊎ AnyT P r)
-    ↔⟨ AnyT-insert P _≤_ x l ⟨ ×⊎.+-cong ⟩ _ ∎ ⟩
+  (AnyT P (insert x l) ⊎ P y ⊎ AnyT P r)
+    ↔⟨ AnyT-insert P x l ⟨ ×⊎.+-cong ⟩ _ ∎ ⟩
   ((P x ⊎ AnyT P l) ⊎ P y ⊎ AnyT P r)
     ↔⟨ ×⊎.+-assoc (P x) (AnyT P l) (P y ⊎ AnyT P r) ⟩
   (P x ⊎ (AnyT P l ⊎ P y ⊎ AnyT P r))
@@ -84,10 +94,10 @@ AnyT-insert P _≤_ x (node l y r) with x ≤ y
   (P x ⊎ AnyT P (node l y r)) ∎
   where open ~-Reasoning
 ... | false =
-  AnyT P (node l y (insert _≤_ x r))
+  AnyT P (node l y (insert x r))
     ↔⟨ AnyT-node ⟩
-  (AnyT P l ⊎ P y ⊎ AnyT P (insert _≤_ x r))
-    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (_ ∎ ⟨ ×⊎.+-cong ⟩ AnyT-insert P _≤_ x r) ⟩
+  (AnyT P l ⊎ P y ⊎ AnyT P (insert x r))
+    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (_ ∎ ⟨ ×⊎.+-cong ⟩ AnyT-insert P x r) ⟩
   (AnyT P l ⊎ P y ⊎ P x ⊎ AnyT P r)
     ↔⟨ shuffle ⟩
   (P x ⊎ AnyT P l ⊎ P y ⊎ AnyT P r)
@@ -110,5 +120,56 @@ AnyT-insert P _≤_ x (node l y r) with x ≤ y
       ((A ⊎ B) ⊎ (C ⊎ D))
         ↔⟨ ×⊎.+-assoc A B (C ⊎ D) ⟩
       (A ⊎ B ⊎ C ⊎ D) ∎
+
+------------------------------------------------------------------------
+-- Turning a list into a search tree
+
+-- Converts the list to a search tree.
+
+to-search-tree : List A → Tree A
+to-search-tree = foldr insert leaf
+
+-- No elements are added or removed.
+
+to-search-tree↔ : ∀ x xs → x ∈T to-search-tree xs ↔ x ∈ xs
+to-search-tree↔ x [] =
+  x ∈T to-search-tree []
+    ↔⟨ AnyT-leaf ⟩
+  ⊥
+    ↔⟨ ⊥↔Any[] ⟩
+  x ∈ [] ∎
+  where open ~-Reasoning
+to-search-tree↔ x (y ∷ xs) =
+  x ∈T to-search-tree (y ∷ xs)
+    ↔⟨ _ ∎ ⟩
+  x ∈T insert y (to-search-tree xs)
+    ↔⟨ AnyT-insert (_≡_ x) y (to-search-tree xs) ⟩
+  (x ≡ y ⊎ x ∈T to-search-tree xs)
+    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ to-search-tree↔ x xs ⟩
+  (x ≡ y ⊎ x ∈ xs)
+    ↔⟨ ∷↔ (_≡_ x) ⟩
+  x ∈ y ∷ xs ∎
+  where open ~-Reasoning
+
+------------------------------------------------------------------------
+-- Sorting
+
+-- Sorts a list.
+
+tree-sort : List A → List A
+tree-sort = flatten ∘ to-search-tree
+
+-- The result is a permutation of the input.
+
+tree-sort-permutes : ∀ {x xs} → x ∈ tree-sort xs ↔ x ∈ xs
+tree-sort-permutes {x} {xs} =
+  x ∈ tree-sort xs
+    ↔⟨ _ ∎ ⟩
+  x ∈  flatten (to-search-tree xs)
+    ↔⟨ flatten↔ (to-search-tree xs) x ⟩
+  x ∈T to-search-tree xs
+    ↔⟨ to-search-tree↔ x xs ⟩
+  x ∈ xs ∎
+  where open ~-Reasoning
 
 --
