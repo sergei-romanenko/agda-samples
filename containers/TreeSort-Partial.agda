@@ -38,13 +38,10 @@ private
 open import Algebra
   using (module CommutativeSemiring)
 
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality as P
+  using (_≡_)
 
 import Function.Related as Related
-
-private
-  module ~-Reasoning = Related.EquationalReasoning
-    renaming (sym to ↔-sym)
 
 open import Tree
 
@@ -75,11 +72,11 @@ AnyT-insert P x leaf =
   (AnyT P leaf ⊎ P x ⊎ AnyT P leaf)
     ↔⟨ AnyT-leaf ⟨ ×⊎.+-cong ⟩ _ ∎  ⟩
   (⊥ ⊎ P x ⊎ AnyT P leaf)
-    ↔⟨ (↔-sym $ Lift⊥↔⊥) ⟨ ×⊎.+-cong ⟩ _ ∎ ⟩
+    ↔⟨ (sym $ Lift⊥↔⊥) ⟨ ×⊎.+-cong ⟩ _ ∎ ⟩
   (Lift ⊥ ⊎ P x ⊎ AnyT P leaf)
     ↔⟨ proj₁ ×⊎.+-identity (P x ⊎ AnyT P leaf) ⟩
   (P x ⊎ AnyT P leaf) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 AnyT-insert P x (node l y r) with x ≤ y
 ... | true =
@@ -90,9 +87,9 @@ AnyT-insert P x (node l y r) with x ≤ y
   ((P x ⊎ AnyT P l) ⊎ P y ⊎ AnyT P r)
     ↔⟨ ×⊎.+-assoc (P x) (AnyT P l) (P y ⊎ AnyT P r) ⟩
   (P x ⊎ (AnyT P l ⊎ P y ⊎ AnyT P r))
-    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (↔-sym $ AnyT-node) ⟩
+    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (sym $ AnyT-node) ⟩
   (P x ⊎ AnyT P (node l y r)) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 ... | false =
   AnyT P (node l y (insert x r))
     ↔⟨ AnyT-node ⟩
@@ -101,20 +98,20 @@ AnyT-insert P x (node l y r) with x ≤ y
   (AnyT P l ⊎ P y ⊎ P x ⊎ AnyT P r)
     ↔⟨ shuffle ⟩
   (P x ⊎ AnyT P l ⊎ P y ⊎ AnyT P r)
-    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (↔-sym $ AnyT-node) ⟩
+    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (sym $ AnyT-node) ⟩
   (P x ⊎ AnyT P (node l y r)) ∎
   where
-    open ~-Reasoning
+    open Related.EquationalReasoning
     shuffle : ∀ {A B C D : Set} → ((B ⊎ C ⊎ A ⊎ D) ↔ (A ⊎ B ⊎ C ⊎ D))
     shuffle {A} {B} {C} {D} =
       (B ⊎ (C ⊎ A ⊎ D))
-        ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (↔-sym $ ×⊎.+-assoc C A D) ⟩
+        ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (sym $ ×⊎.+-assoc C A D) ⟩
       (B ⊎ ((C ⊎ A) ⊎ D))
         ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ (×⊎.+-comm C A ⟨ ×⊎.+-cong ⟩ _ ∎) ⟩
       (B ⊎ ((A ⊎ C) ⊎ D))
         ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ ×⊎.+-assoc A C D ⟩
       (B ⊎ (A ⊎ (C ⊎ D)))
-        ↔⟨ ↔-sym $ ×⊎.+-assoc B A (C ⊎ D) ⟩
+        ↔⟨ sym $ ×⊎.+-assoc B A (C ⊎ D) ⟩
       ((B ⊎ A) ⊎ (C ⊎ D))
         ↔⟨ ×⊎.+-comm B A ⟨ ×⊎.+-cong ⟩ _ ∎ ⟩
       ((A ⊎ B) ⊎ (C ⊎ D))
@@ -138,7 +135,7 @@ to-search-tree↔ x [] =
   ⊥
     ↔⟨ ⊥↔Any[] ⟩
   x ∈ [] ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 to-search-tree↔ x (y ∷ xs) =
   x ∈T to-search-tree (y ∷ xs)
     ↔⟨ _ ∎ ⟩
@@ -149,7 +146,7 @@ to-search-tree↔ x (y ∷ xs) =
   (x ≡ y ⊎ x ∈ xs)
     ↔⟨ ∷↔ (_≡_ x) ⟩
   x ∈ y ∷ xs ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 ------------------------------------------------------------------------
 -- Sorting
@@ -170,6 +167,6 @@ tree-sort-permutes {x} {xs} =
   x ∈T to-search-tree xs
     ↔⟨ to-search-tree↔ x xs ⟩
   x ∈ xs ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 --

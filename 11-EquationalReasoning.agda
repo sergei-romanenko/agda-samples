@@ -16,16 +16,14 @@ open import Algebra
   using (module CommutativeSemiring)
 
 private
-  module +* =
+  module *+ =
     CommutativeSemiring Data.Nat.Properties.commutativeSemiring
 
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality as P
+  using (_≡_; refl; cong; →-to-⟶; module ≡-Reasoning)
 
 open import Function
 import Function.Related as Related
-
-module ~-Reasoning = Related.EquationalReasoning
-  renaming (sym to ↔-sym)
 
 2* : ℕ → ℕ
 2* zero = zero
@@ -38,9 +36,9 @@ m+1+n≡1+m+n m n = begin
   m + suc n
     ≡⟨ refl ⟩
   m + (1 + n)
-    ≡⟨ sym (+*.+-assoc m (suc zero) n) ⟩
+    ≡⟨ P.sym (*+.+-assoc m (suc zero) n) ⟩
   (m + 1) + n
-    ≡⟨ cong (flip _+_ n) (+*.+-comm m (suc zero)) ⟩
+    ≡⟨ *+.+-comm m (suc zero) ⟨ *+.+-cong ⟩ refl ⟩
   (1 + m) + n
     ≡⟨ refl ⟩
   suc (m + n)
@@ -55,7 +53,7 @@ m+1+n≡1+m+n m n = begin
   suc (suc (2* n))
     ≡⟨ cong (suc ∘ suc) (2*-correct n) ⟩
   suc (suc (n + n))
-    ≡⟨ sym (m+1+n≡1+m+n (suc n) n) ⟩
+    ≡⟨ P.sym (m+1+n≡1+m+n (suc n) n) ⟩
   suc (n + suc n)
     ≡⟨ refl ⟩
   suc n + suc n
@@ -93,7 +91,7 @@ m+1+n≡1+m+n m n = begin
   n ≡ m
     ∼⟨ cong suc ⟩
   suc n ≡ suc m ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 
 open import Function.Equivalence
@@ -175,7 +173,7 @@ private
   (A ⊎ B)
     ↔⟨ ×⊎.+-comm A B ⟩
   (B ⊎ A) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 -- What is ×⊎.+-comm ?
 
@@ -203,28 +201,28 @@ private
   (A × B)
     ↔⟨ ×⊎.*-comm A B ⟩
   (B × A) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 ⊎-assoc : ∀ {ℓ} (A B C : Set ℓ) → ((A ⊎ B) ⊎ C) ↔ (A ⊎ (B ⊎ C))
 ⊎-assoc A B C =
   ((A ⊎ B) ⊎ C)
     ↔⟨ ×⊎.+-assoc A B C ⟩
   (A ⊎ (B ⊎ C)) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 ×⊎-distribˡ : ∀ {ℓ} (C A B : Set ℓ) → (C × (A ⊎ B)) ↔ (C × A ⊎ C × B)
 ×⊎-distribˡ C A B =
   (C × (A ⊎ B))
     ↔⟨ proj₁ ×⊎.distrib C A B ⟩
   (C × A ⊎ C × B) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 ×⊎-distribʳ : ∀ {ℓ} (C A B : Set ℓ) → ((A ⊎ B) × C) ↔ (A × C ⊎ B × C)
 ×⊎-distribʳ C A B =
   ((A ⊎ B) × C)
     ↔⟨ proj₂ ×⊎.distrib C A B ⟩
   (A × C ⊎ B × C) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 
 -- Reasoning about implications.
@@ -234,12 +232,12 @@ private
 ⊎-intro : ∀ {ℓ} (A B : Set ℓ) → A → A ⊎ B
 ⊎-intro A B =
   A ∼⟨ inj₁ ⟩ (A ⊎ B) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 ×-elim : ∀ {ℓ} (A B : Set ℓ) → A × B → A
 ×-elim A B =
   (A × B) ∼⟨ proj₁ ⟩ A ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 --
 -- A ⇔ B means (A → B) × (B → A)
@@ -286,12 +284,12 @@ a-aa-li p = refl
   ((C ⊎ A × C) ⊎ A × B)
     ↔⟨ ×⊎.+-assoc C (A × C) (A × B) ⟩
   (C ⊎ (A × C ⊎ A × B))
-    ↔⟨ (C ∎) ⟨ ×⊎.+-cong ⟩ (↔-sym $ proj₁ ×⊎.distrib A C B) ⟩
+    ↔⟨ (C ∎) ⟨ ×⊎.+-cong ⟩ (sym $ proj₁ ×⊎.distrib A C B) ⟩
   (C ⊎ (A × (C ⊎ B)))
     ∼⟨ equivalence < id , inj₁ >  proj₁ ⟨ ×⊎.+-cong ⟩ (_ ∎) ⟩
   (C × (C ⊎ B) ⊎ A × (C ⊎ B))
-    ↔⟨ ↔-sym $ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
+    ↔⟨ sym $ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
   ((C ⊎ A) × (C ⊎ B)) ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 --

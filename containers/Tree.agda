@@ -33,13 +33,10 @@ private
 open import Algebra
   using (module CommutativeSemiring)
 
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality as P
+  using (_≡_; refl; →-to-⟶)
 
 import Function.Related as Related
-
-private
-  module ~-Reasoning = Related.EquationalReasoning
-    renaming (sym to ↔-sym)
 
 ------------------------------------------------------------------------
 -- Binary trees
@@ -146,74 +143,61 @@ AnyT-node {P = P} {x} {l} {r} = record
 AnyT↔ : ∀ {a p} {A : Set a} {P : A → Set p} {t : Tree A} →
        (∃ λ x → x ∈T t × P x) ↔ AnyT P t
 AnyT↔ {P = P} {t} = record
-  { to = →-to-⟶ (to t)
-  ; from = →-to-⟶ (from t)
+  { to = →-to-⟶ to
+  ; from = →-to-⟶ from
   ; inverse-of = record
-    { left-inverse-of = from∘to t
-    ; right-inverse-of = to∘from t
+    { left-inverse-of = from∘to
+    ; right-inverse-of = to∘from
     }
   }
   where
-    to : ∀ t → ∃ (λ x → x ∈T t × P x) → AnyT P t
+    to : ∀ {t} → ∃ (λ x → x ∈T t × P x) → AnyT P t
 
-    to leaf (x , () , px)
-    to (node l y r) (x , here x≡y , px) rewrite sym x≡y = here px
-    to (node l _ r) (x , thereˡ pt₁ , px) = thereˡ (to l (x , pt₁ , px))
-    to (node l _ r) (x , thereʳ pt₂ , px) = thereʳ (to r (x , pt₂ , px))
+    to (x , here x≡y , px) rewrite P.sym x≡y = here px
+    to (x , thereˡ pt₁ , px) = thereˡ (to (x , pt₁ , px))
+    to (x , thereʳ pt₂ , px) = thereʳ (to (x , pt₂ , px))
 
-    from : ∀ t → AnyT P t → ∃ (λ x → x ∈T t × P x)
+    from : ∀ {t} → AnyT P t → ∃ (λ x → x ∈T t × P x)
 
-    from leaf ()
-    from (node l x′ r) (here px) = x′ , here refl , px
-    from (node l x′ r) (thereˡ pt₁) with from l pt₁
+    from {node _ x _} (here px) =
+      x , here refl , px
+    from (thereˡ pt₁) with from pt₁
     ... | x , x∈Tt₁ , px = x , thereˡ x∈Tt₁ , px
-    from (node l x′ r) (thereʳ pt₂) with from r pt₂
+    from (thereʳ pt₂) with from pt₂
     ... | x , x∈Tt₂ , px = x , thereʳ x∈Tt₂ , px
 
-    from∘to : ∀ t → (h : ∃ λ x → x ∈T t × P x) → from t (to t h) ≡ h
+    from∘to : ∀ {t} → (h : ∃ λ x → x ∈T t × P x) → from (to h) ≡ h
 
-    from∘to leaf (x , () , px)
-    from∘to (node l y r) (x , here x≡y , px) rewrite x≡y = refl
-    from∘to (node l y r) (x , thereˡ pt₁ , px) with from∘to l (x , pt₁ , px)
-    ... | eq rewrite eq = refl
-    from∘to (node l y r) (x , thereʳ pt₂ , px) with from∘to r (x , pt₂ , px)
-    ... | eq rewrite eq = refl
+    from∘to (x , here x≡y , px)
+      rewrite x≡y = refl
+    from∘to (x , thereˡ pt₁ , px)
+      rewrite from∘to (x , pt₁ , px) = refl
+    from∘to (x , thereʳ pt₂ , px)
+      rewrite from∘to (x , pt₂ , px) = refl
 
-    to∘from : ∀ t → (h : AnyT P t) → to t (from t h) ≡ h
+    to∘from : ∀ {t} → (h : AnyT P t) → to (from h) ≡ h
 
-    to∘from leaf ()
-    to∘from (node l y r) (here px) = refl
-    to∘from (node l y r) (thereˡ pt₁) with to∘from l pt₁
-    ... | eq rewrite eq = refl
-    to∘from (node l y r) (thereʳ pt₂) with to∘from r pt₂
-    ... | eq rewrite eq = refl
-
--- Singleton
+    to∘from (here px) = refl
+    to∘from (thereˡ pt₁) rewrite to∘from pt₁ = refl
+    to∘from (thereʳ pt₂) rewrite to∘from pt₂ = refl
 
 -- Singleton trees.
 
-singleton : ∀ {a} {A : Set a} → A → Tree A
-singleton x = node leaf x leaf
-
--- Any lemma for singleton.
-
 AnyT-singleton : ∀ {A : Set} (P : A → Set) {x} →
-                AnyT P (singleton x) ↔ P x
+                AnyT P (node leaf x leaf) ↔ P x
 AnyT-singleton P {x} =
-  AnyT P (singleton x)
-    ↔⟨ _ ∎ ⟩
   AnyT P (node leaf x leaf)
     ↔⟨ AnyT-node ⟩
   (AnyT P leaf ⊎ P x ⊎ AnyT P leaf)
     ↔⟨ AnyT-leaf ⟨ ×⊎.+-cong ⟩ ((_ ∎) ⟨ ×⊎.+-cong ⟩ AnyT-leaf) ⟩
   (⊥ ⊎ P x ⊎ ⊥)
-    ↔⟨ ↔-sym Lift⊥↔⊥ ⟨ ×⊎.+-cong ⟩ (_ ∎ ⟨ ×⊎.+-cong ⟩ ↔-sym Lift⊥↔⊥) ⟩
+    ↔⟨ sym Lift⊥↔⊥ ⟨ ×⊎.+-cong ⟩ (_ ∎ ⟨ ×⊎.+-cong ⟩ sym Lift⊥↔⊥) ⟩
   (Lift ⊥ ⊎ P x ⊎ Lift ⊥)
     ↔⟨ proj₁ ×⊎.+-identity (P x ⊎ Lift ⊥) ⟩
   (P x ⊎ Lift ⊥)
     ↔⟨ proj₂ ×⊎.+-identity (P x) ⟩
   P x ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 ------------------------------------------------------------------------
 -- Flatten
@@ -233,26 +217,26 @@ flatten↔ leaf x =
   x ∈ flatten leaf
     ↔⟨ _ ∎ ⟩
   Any (_≡_ x) []
-    ↔⟨ ↔-sym $ ⊥↔Any[] ⟩
+    ↔⟨ sym $ ⊥↔Any[] ⟩
   ⊥
-    ↔⟨ ↔-sym $ AnyT-leaf ⟩
+    ↔⟨ sym $ AnyT-leaf ⟩
   AnyT (_≡_ x) leaf
     ↔⟨ _ ∎ ⟩
   x ∈T leaf ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 flatten↔ (node l y r) x =
   x ∈ flatten (node l y r)
     ↔⟨ _ ∎ ⟩
   x ∈ flatten l ++ y ∷ flatten r
-    ↔⟨ ↔-sym $ ++↔ ⟩
+    ↔⟨ sym $ ++↔ ⟩
   (x ∈ flatten l ⊎ x ∈ y ∷ flatten r)
-    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ ↔-sym (∷↔ (_≡_ x)) ⟩
+    ↔⟨ _ ∎ ⟨ ×⊎.+-cong ⟩ sym (∷↔ (_≡_ x)) ⟩
   (x ∈ flatten l ⊎ x ≡ y ⊎ x ∈ flatten r)
     ↔⟨ flatten↔ l x ⟨ ×⊎.+-cong ⟩ (_ ∎ ⟨ ×⊎.+-cong ⟩ flatten↔ r x) ⟩
   (x ∈T l ⊎ x ≡ y ⊎ x ∈T r)
-    ↔⟨ ↔-sym AnyT-node ⟩
+    ↔⟨ sym AnyT-node ⟩
   x ∈T node l y r ∎
-  where open ~-Reasoning
+  where open Related.EquationalReasoning
 
 --
