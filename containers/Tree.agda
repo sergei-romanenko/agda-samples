@@ -86,26 +86,35 @@ Lift⊥↔⊥ {ℓ} = record
   { to = →-to-⟶ lower
   ; from = →-to-⟶ lift
   ; inverse-of = record
-    { left-inverse-of = from∘to
+    { left-inverse-of = λ _ → refl
     ; right-inverse-of = λ ()
     }
   }
-  where
-    from∘to : (h : Lift ⊥) → lift (lower h) ≡ h
-    from∘to (lift ())
+
+Lift⊥↔Any[] : ∀ {a} {A : Set a} {P : A → Set} → Lift {ℓ = a} ⊥ ↔ Any P []
+Lift⊥↔Any[] {P = P} =
+  Lift ⊥ ↔⟨ Lift⊥↔⊥ ⟩ ⊥ ↔⟨ ⊥↔Any[] ⟩ Any P [] ∎
+  where open Related.EquationalReasoning
 
 -- AnyT-leaf
 
 AnyT-leaf : ∀ {a} {A : Set a} {P : A → Set} →
-  AnyT P leaf ↔ ⊥
+  AnyT P leaf ↔ Lift {Level.zero} {Level.zero} ⊥
 AnyT-leaf {P = P} = record
-  { to = →-to-⟶ (λ ())
-  ; from = →-to-⟶ (λ ())
+  { to = →-to-⟶ to
+  ; from = →-to-⟶ from
   ; inverse-of = record
     { left-inverse-of = λ ()
-    ; right-inverse-of = λ ()
+    ; right-inverse-of = to∘from
     }
   }
+  where
+    to : AnyT P leaf → Lift ⊥
+    to ()
+    from : Lift ⊥ → AnyT P leaf
+    from (lift ())
+    to∘from : (h : Lift ⊥) → to (from h) ≡ h
+    to∘from (lift ())
 
 -- AnyT-node
 
@@ -159,7 +168,7 @@ AnyT↔ {P = P} {t} = record
 
     from : ∀ {t} → AnyT P t → ∃ (λ x → x ∈T t × P x)
 
-    from {node _ x _} (here px) =
+    from (here {x} px) =
       x , here refl , px
     from (thereˡ pt₁) with from pt₁
     ... | x , x∈Tt₁ , px = x , thereˡ x∈Tt₁ , px
@@ -190,8 +199,6 @@ AnyT-singleton P {x} =
     ↔⟨ AnyT-node ⟩
   (AnyT P leaf ⊎ P x ⊎ AnyT P leaf)
     ↔⟨ AnyT-leaf ⟨ ×⊎.+-cong ⟩ ((_ ∎) ⟨ ×⊎.+-cong ⟩ AnyT-leaf) ⟩
-  (⊥ ⊎ P x ⊎ ⊥)
-    ↔⟨ sym Lift⊥↔⊥ ⟨ ×⊎.+-cong ⟩ (_ ∎ ⟨ ×⊎.+-cong ⟩ sym Lift⊥↔⊥) ⟩
   (Lift ⊥ ⊎ P x ⊎ Lift ⊥)
     ↔⟨ proj₁ ×⊎.+-identity (P x ⊎ Lift ⊥) ⟩
   (P x ⊎ Lift ⊥)
@@ -217,8 +224,8 @@ flatten↔ leaf x =
   x ∈ flatten leaf
     ↔⟨ _ ∎ ⟩
   Any (_≡_ x) []
-    ↔⟨ sym $ ⊥↔Any[] ⟩
-  ⊥
+    ↔⟨ sym $ Lift⊥↔Any[] ⟩
+  Lift ⊥
     ↔⟨ sym $ AnyT-leaf ⟩
   AnyT (_≡_ x) leaf
     ↔⟨ _ ∎ ⟩

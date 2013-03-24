@@ -71,8 +71,6 @@ AnyT-insert P x leaf =
     ↔⟨ AnyT-node ⟩
   (AnyT P leaf ⊎ P x ⊎ AnyT P leaf)
     ↔⟨ AnyT-leaf ⟨ ×⊎.+-cong ⟩ _ ∎  ⟩
-  (⊥ ⊎ P x ⊎ AnyT P leaf)
-    ↔⟨ (sym $ Lift⊥↔⊥) ⟨ ×⊎.+-cong ⟩ _ ∎ ⟩
   (Lift ⊥ ⊎ P x ⊎ AnyT P leaf)
     ↔⟨ proj₁ ×⊎.+-identity (P x ⊎ AnyT P leaf) ⟩
   (P x ⊎ AnyT P leaf) ∎
@@ -132,8 +130,8 @@ to-search-tree↔ : ∀ x xs → x ∈T to-search-tree xs ↔ x ∈ xs
 to-search-tree↔ x [] =
   x ∈T to-search-tree []
     ↔⟨ AnyT-leaf ⟩
-  ⊥
-    ↔⟨ ⊥↔Any[] ⟩
+  Lift ⊥
+    ↔⟨ Lift⊥↔Any[] ⟩
   x ∈ [] ∎
   where open Related.EquationalReasoning
 to-search-tree↔ x (y ∷ xs) =
