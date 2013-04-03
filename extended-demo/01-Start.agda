@@ -130,8 +130,8 @@ data _≡_ {A : Set} (x : A) : A → Set where
 
 -- Hence, the idea of "Curry-Howard correspondence":
 --
---     type = statement
---     value = proof
+--     type  ~ statement
+--     value ~ proof
 
 -- Any theorem has the form
 --     value : type
@@ -167,18 +167,60 @@ data _≡_ {A : Set} (x : A) : A → Set where
 -- Quantification! for any n : ℕ the function 0+n≡n generates
 -- a specific proof (0+n≡n n) of the fact zero + n ≡ n .
 
--- What about proving that n + zero ≡ n ?
--- We need a lemma about "congruence".
+----------------------------------
+-- _≡_ is an equivalence relation
+----------------------------------
+
+-- Reflexivity trivially holds "by construction":
+
+--refl′ : {A : Set} {x : A} → x ≡ x
+--refl′ = refl
+
+-- Symmetry
+
+sym : {A : Set} {x y : A} → x ≡ y → y ≡ x
+sym refl = refl
+
+-- Transitivity
+
+trans : {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
+trans refl y≡z = y≡z
+
+--
+-- Substitutivity: x ≡ y → P x → P y
+--
+-- In Agda this is a theorem...
+
+subst : {A : Set} {x y : A} → (P : A → Set) → x ≡ y → P x → P y
+subst P refl px = px
 
 --
 -- Congruence: x ≡ y → f x ≡ f y .
 --
 
+-- Congruence is a consequence of substitutivity
+
 cong : {A B : Set} {x y : A} (f : A → B) →
           x ≡ y → f x ≡ f y
-cong f refl = refl
+cong {x = x} f x≡y = subst (λ z → f x ≡ f z) x≡y refl
 
+-- ⇑ In English.
+-- Let P z = f x ≡ f z.
+-- f x ≡ f x  ⟨ by refl ⟩
+-- Hence, P x.
+-- P x → P y ⟨ by x ≡ y and subst ⟩
+-- Thus P y.
+-- So f x ≡ f y.
+
+-- A direct proof:
+
+cong′ : {A B : Set} {x y : A} (f : A → B) →
+          x ≡ y → f x ≡ f y
+cong′ f refl = refl
+
+--
 -- ⇓ Now, using congruence, let us prove that n + zero ≡ n :
+--
 
 n+0≡n : (n : ℕ) → n + zero ≡ n
 n+0≡n zero = refl
@@ -206,40 +248,18 @@ n+sm≡sn+m (suc n′) m = cong suc (n+sm≡sn+m n′ m)
 
 -- A proof (by transitivity):
 
-trans : {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
-trans refl y≡z = y≡z
-
 +-comm : (n m : ℕ) → n + m ≡ m + n
 +-comm n zero = n+0≡n n
 +-comm n (suc m′) =
-  --subst (λ z → n + suc m′ ≡ suc z) (+-comm n m′) (n+sm≡sn+m n m′)
   trans (n+sm≡sn+m n m′)
   (trans (+-comm (suc n) m′) (n+sm≡sn+m m′ n))
-  where
-    prop₂ : n + suc m′ ≡ suc (n + m′)
-    prop₂ = n+sm≡sn+m n m′
-    prop₁ : n + m′ ≡ m′ + n
-    prop₁ = +-comm n m′
 
 -- Another proof (by substitutivity):
-
---
--- Substitutivity: x ≡ y → P x → P y
---
-
-subst : {A : Set} {x y : A} → (P : A → Set) → x ≡ y → P x → P y
-subst P refl px = px
 
 +-comm′ : (n m : ℕ) → n + m ≡ m + n
 +-comm′ n zero = n+0≡n n
 +-comm′ n (suc m′) =
   subst (λ z → n + suc m′ ≡ suc z) (+-comm′ n m′) (n+sm≡sn+m n m′)
-
-
--- Certainly,
-
-sym : {A : Set} {x y : A} → x ≡ y → y ≡ x
-sym refl = refl
 
 ---------------------------------------------
 -- Induction for ℕ as a general "principle"
@@ -251,6 +271,36 @@ sym refl = refl
            ∀ n → P n
 ℕ-ind P base step zero = base
 ℕ-ind P base step (suc n) = step n (ℕ-ind P base step n)
+
+----------------------------------------------------------------
+-- A DSL for presenting ≡-reasoning in more human-friendly form
+----------------------------------------------------------------
+
+module ≡-Reasoning where
+
+  infixr 2 _≡⟨_⟩_
+  infix 2 _∎
+
+  _≡⟨_⟩_ : {A : Set} (x : A) {y z : A} → x ≡ y → y ≡ z → x ≡ z
+  x ≡⟨ x≡y ⟩ y≡z = trans x≡y y≡z
+
+  _∎ : {A : Set} (x : A) → x ≡ x
+  x ∎ = refl
+
+-- Now we can rewrite the above proof of +-comm as follows:
+
++-comm′′ : (n m : ℕ) → n + m ≡ m + n
++-comm′′ n zero = n+0≡n n
++-comm′′ n (suc m′) =
+   n + suc m′
+     ≡⟨ n+sm≡sn+m n m′ ⟩
+   suc (n + m′)
+     ≡⟨ cong suc (+-comm′′ n m′) ⟩
+   suc (m′ + n)
+     ≡⟨ refl ⟩
+   suc m′ + n
+   ∎
+   where open ≡-Reasoning
 
 --------------------------------------------
 -- First-order intuitionistic logic in Agda
@@ -360,31 +410,56 @@ total-pred : (n : ℕ) → n ≢ zero → ℕ
 total-pred zero 0≢0 = ⊥-elim (0≢0 (refl {ℕ} {zero}))
 total-pred (suc n′) _ = n′
 
+------------------------------
+-- Existential quantification
+------------------------------
 
-{-
--- Even numbers.
+-- ∃ λ (x : A) → P x
+--  is a shorthand for
+-- Σ A P
 
-data Even : ℕ → Set where
-  base  : Even zero
-  step : {n : ℕ} → Even n → Even (suc (suc n))
+-- A (silly) theorem: ∀ (x : A) → ∃ λ (y : A) → y ≡ x .
 
--- Note that `Even` is a function that maps a number to a type.
--- The type of `step` is a "dependent type", since `Even n` depends on `n`.
+∃y≡x : {A : Set} (x : A) → ∃ λ (y : A) → y ≡ x
+∃y≡x x = x , refl
 
--- A theorem: 2 is even (= 2 inhabits Even n).
+-------------------
+-- Problem solving
+-------------------
 
-2-is-even : Even (suc (suc zero))
-2-is-even = step base
+open ≡-Reasoning
 
-4-is-even : Even (suc (suc (suc (suc zero))))
-4-is-even = step (step base)
+2+1≡x : ∃ λ x → suc (suc zero) + suc zero ≡ x
+2+1≡x = suc (suc (suc zero)) , refl
 
--- Implicit arguments may be specified, if we like:
+m+n≡? : ∀ m n →  ∃ λ x → (m + n ≡ x)
+m+n≡? m n = m + n , refl
 
-4-is-even′ : Even (suc (suc (suc (suc zero))))
-4-is-even′ = step {suc (suc zero)} (step {zero} base)
--}
+2+x≡3 : ∃ λ x → suc (suc zero) + x ≡ suc (suc (suc zero))
+2+x≡3 = suc zero , refl
 
+infix 4 _≤_
 
+data _≤_ : ℕ → ℕ → Set where
+  z≤n : ∀ {n}                 → zero  ≤ n
+  s≤s : ∀ {m n} (m≤n : m ≤ n) → suc m ≤ suc n
+
+m+?≡n : {m n : ℕ} → m ≤ n →  ∃ λ x → (m + x ≡ n)
+m+?≡n {zero} {n} z≤n = n , refl
+m+?≡n (s≤s {m} {n} m≤n) with m+?≡n m≤n
+... | x , m+x≡n = x , cong suc m+x≡n
+
+--
+-- Conclusion
+--
+
+-- In Agda:
+
+-- types = values
+-- programming = theorem proving
+-- testing = theorem proving
+
+-- There can be defined DSLs for writing programs/proofs
+-- in human-friendly form.
 
 --
