@@ -11,7 +11,7 @@ open import Data.Vec
 open import Data.Vec.Properties
   using (lookup∘tabulate)
 open import Data.Product
-  using (_×_; proj₁; proj₂)
+  using (_×_; _,_; proj₁; proj₂)
 
 open import Function 
 
@@ -21,7 +21,7 @@ import Relation.Binary.EqReasoning as EqR
 open CommutativeMonoid CM
 open module ≈-Reasoning = EqR setoid
 
-open import Expr
+open import Expr public
 
 -- Evaluation
 
@@ -183,11 +183,11 @@ sound ◇ ρ = sound-zero vars ρ
 -- Proving that e₁ ≅ e₂
 -- See Relation.Binary.Reflection
 
-prove : ∀ {n} (ρ : Env n) e₁ e₂ →
-           ⟦ norm e₁ ⟧ ρ ≈ ⟦ norm e₂ ⟧ ρ →
-           ⟦ e₁ ⟧ ρ ≈ ⟦ e₂ ⟧ ρ
+prove : ∀ {n} (eq : Expr n × Expr n) (ρ : Env n)  →
+          let e₁ = proj₁ eq; e₂ = proj₂ eq in
+            ⟦ norm e₁ ⟧ ρ ≈ ⟦ norm e₂ ⟧ ρ → ⟦ e₁ ⟧ ρ ≈ ⟦ e₂ ⟧ ρ
 
-prove ρ e₁ e₂ hyp =
+prove (e₁ , e₂) ρ hyp =
   begin
     ⟦ e₁ ⟧ ρ
       ≈⟨ sound e₁ ρ ⟩
