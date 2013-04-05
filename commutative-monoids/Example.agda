@@ -12,8 +12,10 @@ open CommutativeSemiring commutativeSemiring
 open import Data.Product
 
 open import Expr
-import Semantics
-open Semantics +-commutativeMonoid
+import Prover
+open Prover +-commutativeMonoid
+import Solver
+open Solver +-commutativeMonoid
 
 
 0+0≡0-prove : 0 + 0 ≡ 0

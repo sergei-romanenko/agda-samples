@@ -2,6 +2,7 @@ module Expr where
 
 open import Data.Nat
 open import Data.Fin using (Fin; zero; suc)
+open import Data.Product using (_×_; _,_)
 open import Data.Vec as Vec
 open import Data.Vec.N-ary
 
@@ -17,12 +18,20 @@ data Expr n : Set where
   _⊕_ : (a b : Expr n) → Expr n
   ◇   : Expr n
 
--- "Normalized representations" (which are not expressions)
+-- A variant of _,_ which is intended to make equalities
+-- look a bit nicer.
+
+infix 4 _⊜_
+
+_⊜_ : ∀ {n} → Expr n → Expr n → Expr n × Expr n
+_⊜_ = _,_
+
+-- "Normal representations" (which are not expressions)
 
 NR : ℕ → Set
 NR n = Vec ℕ n
 
--- Evaluating an expression to produce its "normalized representation"
+-- Evaluating an expression to produce its "normal representation"
 
 1-at : ∀ {n} → Fin n → NR n
 1-at zero    = 1 ∷ replicate 0
@@ -33,20 +42,20 @@ nr (var i) = 1-at i
 nr (a ⊕ b) = zipWith _+_ (nr a) (nr b)
 nr nil     = replicate 0
 
--- Reifying a "normal forms" to an expression
+-- Reifying a "normal representation" to an expression
 
 _⊗_ : ∀ {n} → ℕ → Expr n → Expr n
 zero  ⊗ a = ◇
-suc n ⊗ a = a ⊕ (n ⊗ a)
+suc k ⊗ a = a ⊕ (k ⊗ a)
 
-fold-zip : ∀ {n m} → Vec ℕ m → Vec (Expr n) m → Expr n
-fold-zip ks as = Vec.foldr _ _⊕_ ◇ (zipWith _⊗_ ks as)
+eval-nr : ∀ {n m} → Vec ℕ m → Vec (Expr n) m → Expr n
+eval-nr ks es = foldr _ _⊕_ ◇ (zipWith _⊗_ ks es)
 
 vars : ∀ {n} → Vec (Expr n) n
 vars = tabulate var
 
 reify : ∀ {n} → NR n → Expr n
-reify nf = fold-zip nf vars
+reify nr = eval-nr nr vars
 
 -- Normalization (to an expression)
 
