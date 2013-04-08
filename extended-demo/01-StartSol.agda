@@ -1,4 +1,4 @@
-module 01-Start where
+module 01-StartSol where
 
 -- Emacs Agda-mode cheat sheet:
 -- C-C C-L (load file)
@@ -126,7 +126,7 @@ data _≡_ {A : Set} (x : A) : A → Set where
 -- All values of the type x ≡ y have the form refl :
 
 1≡1 : suc zero ≡ suc zero
-1≡1 = {!!}
+1≡1 = refl
 
 -- Or, with implicit arguments:
 
@@ -171,9 +171,9 @@ data _≡_ {A : Set} (x : A) : A → Set where
 -- A few theorems about 0 + n.
 
 0+0≡0 : zero + zero ≡ zero
-0+0≡0 = {!!}
+0+0≡0 = refl
 
-0+1≡1 : zero + suc zero ≡ {!!}
+0+1≡1 : zero + suc zero ≡ suc zero
 0+1≡1 = refl
 
 0+n≡n : (n : ℕ) → zero + n ≡ n
@@ -194,12 +194,12 @@ data _≡_ {A : Set} (x : A) : A → Set where
 -- Symmetry
 
 sym : {A : Set} {x y : A} → x ≡ y → y ≡ x
-sym x≡y = {!-c!}
+sym refl = refl
 
 -- Transitivity
 
 trans : {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
-trans x≡y y≡z = {!-c!}
+trans refl y≡z = y≡z
 
 --
 -- Substitutivity: x ≡ y → P x → P y
@@ -207,7 +207,7 @@ trans x≡y y≡z = {!-c!}
 -- In Agda this is a theorem...
 
 subst : {A : Set} {x y : A} → (P : A → Set) → x ≡ y → P x → P y
-subst P x≡y px = {!-c!}
+subst P refl px = px
 
 --
 -- Congruence: x ≡ y → f x ≡ f y .
@@ -231,7 +231,7 @@ cong {x = x} f x≡y = subst (λ z → f x ≡ f z) x≡y refl
 
 cong′ : {A B : Set} {x y : A} (f : A → B) →
           x ≡ y → f x ≡ f y
-cong′ f x≡y = {!-c!}
+cong′ f refl = refl
 
 --
 -- ⇓ Now, using congruence, let us prove that n + zero ≡ n :
@@ -239,7 +239,7 @@ cong′ f x≡y = {!-c!}
 
 n+0≡n : (n : ℕ) → n + zero ≡ n
 n+0≡n zero = refl
-n+0≡n (suc n′) = {!!} --cong suc (n+0≡n n′)
+n+0≡n (suc n′) = cong suc (n+0≡n n′)
 
 --  ⇑ In English.
 -- Let n = zero . Then zero + zero ≡ zero by evaluation + reflexivity.
@@ -255,7 +255,7 @@ n+0≡n (suc n′) = {!!} --cong suc (n+0≡n n′)
 
 n+sm≡sn+m : (n m : ℕ) → n + suc m ≡ suc (n + m)
 n+sm≡sn+m zero m = refl
-n+sm≡sn+m (suc n′) m = {!!}
+n+sm≡sn+m (suc n′) m = cong suc (n+sm≡sn+m n′ m)
 
 --
 -- Commutativity: n + m ≡ m + n
@@ -285,7 +285,7 @@ n+sm≡sn+m (suc n′) m = {!!}
 ℕ-ind : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
            ∀ n → P n
 ℕ-ind P base step zero = base
-ℕ-ind P base step (suc n) = {!step n!}
+ℕ-ind P base step (suc n) = step n (ℕ-ind P base step n)
 
 ----------------------------------------------------------------
 -- A DSL for presenting ≡-reasoning in more human-friendly form
@@ -327,10 +327,10 @@ P→P : {P Q : Set} → (P → P)
 P→P p = p
 
 mp : {P Q : Set} → P → (P → Q) → Q
-mp p p→q = {!!}
+mp p p→q = p→q p
 
 →-trans : {P Q R : Set} → (P → Q) → (Q → R) → (P → R)
-→-trans pq qr = {!λ p → ?!}
+→-trans pq qr = λ p → qr (pq p)
 
 -- Disjunction: A ⊎ B .
 
@@ -341,13 +341,14 @@ data _⊎_ (A B : Set) : Set where
   inj₂ : (y : B) → A ⊎ B
 
 ⊎-intro₁ : {P Q : Set} → P → P ⊎ Q
-⊎-intro₁ p = {!!}
+⊎-intro₁ p = inj₁ p
 
 ⊎-intro₂ : {P Q : Set} → Q → P ⊎ Q
-⊎-intro₂ q = {!!}
+⊎-intro₂ q = inj₂ q
 
 ⊎-comm : {P Q : Set} → P ⊎ Q → Q ⊎ P
-⊎-comm p⊎q = {!-c!}
+⊎-comm (inj₁ p) = inj₂ p
+⊎-comm (inj₂ q) = inj₁ q
 
 -- Conjunction: A × B.
 
@@ -370,21 +371,21 @@ A × B = Σ A (λ _ → B)
 ∃ = Σ _
 
 ×-elim₁ : {P Q : Set} → P × Q → P
-×-elim₁ (p , q) = {!!}
+×-elim₁ (p , q) = p
 
 ×-elim₂ : {P Q : Set} → P × Q → Q
-×-elim₂ (p , q) = {!!}
+×-elim₂ (p , q) = q
 
 ×-comm : {P Q : Set} → P × Q → Q × P
-×-comm (p , q) = {!!}
+×-comm (p , q) = q , p
 
 ×⊎-distrib₁ : {P Q R : Set} → P × (Q ⊎ R) → P × Q ⊎ P × R
-×⊎-distrib₁ (p , inj₁ q) = {!!}
-×⊎-distrib₁ (p , inj₂ r) = {!!}
+×⊎-distrib₁ (p , inj₁ q) = inj₁ (p , q)
+×⊎-distrib₁ (p , inj₂ r) = inj₂ (p , r)
 
 ×⊎-distrib₂ : {P Q R : Set} → (P ⊎ Q) × R → P × R ⊎ Q × R
-×⊎-distrib₂ (inj₁ p , r) = {!!}
-×⊎-distrib₂ (inj₂ q , r) = {!!}
+×⊎-distrib₂ (inj₁ p , r) = inj₁ (p , r)
+×⊎-distrib₂ (inj₂ q , r) = inj₂ (q , r)
 
 -- Empty type ⊥
 
@@ -405,10 +406,10 @@ infix 3 ¬_
 -- Some basic facts about negation
 
 contradict : {P : Set} → ¬ (P × ¬ P)
-contradict (p , ¬p) = {!!}
+contradict (p , ¬p) = ¬p p
 
 contrapos : {P Q : Set} → (P → Q) → ¬ Q → ¬ P
-contrapos p→q ¬q p = {!!}
+contrapos p→q ¬q p = ¬q (p→q p)
 
 ⊥-elim : {Whatever : Set} → ⊥ → Whatever
 ⊥-elim ()
@@ -446,13 +447,13 @@ total-pred (suc n′) _ = n′
 open ≡-Reasoning
 
 2+1≡x : ∃ λ x → suc (suc zero) + suc zero ≡ x
-2+1≡x = {!!}
+2+1≡x = suc (suc (suc zero)) , refl
 
 m+n≡? : ∀ m n →  ∃ λ x → (m + n ≡ x)
-m+n≡? m n = {!!}
+m+n≡? m n = m + n , refl
 
 2+x≡3 : ∃ λ x → suc (suc zero) + x ≡ suc (suc (suc zero))
-2+x≡3 = {!!}
+2+x≡3 = suc zero , refl
 
 infix 4 _≤_
 
