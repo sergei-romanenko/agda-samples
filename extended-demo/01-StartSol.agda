@@ -114,6 +114,52 @@ ack zero n = suc zero
 ack (suc m) zero = ack m (suc zero)
 ack (suc m) (suc n) = ack m (ack (suc m) n)
 
+-------------------------------
+-- Curry-Howard correspondence
+-------------------------------
+
+-- The idea of "Curry-Howard correspondence":
+--
+--     type  ~ statement
+--     value ~ proof
+
+-- Any theorem has the form
+--     value : type
+-- (1) `value` inhabits `type`.
+-- (2) `value` is a proof of `type`.
+
+-- Agda's type checker is (sometimes) able to automatically check that
+--   value : type
+
+data Even : ℕ → Set where
+  even0 : Even zero
+  even2 : {n : ℕ} → Even n → Even (suc (suc n))
+
+-- A theorem: 4 is even.
+
+4-is-even : Even (suc (suc (suc (suc zero))))
+4-is-even = even2 (even2 even0)
+
+-- ⇑ In English.
+-- `even0` and `even2` are names of rules (and constructors at the same time).
+-- (1) zero is even by the rule `even-0`.
+-- (2) suc (suc zero) is even by (1) and the rule `even2`.
+-- (3) (suc (suc (suc (suc zero)))) is even by (2) and the rule `even2`.
+
+-- ⇓ The same, formally.
+
+4-is-even′ : Even (suc (suc (suc (suc zero))))
+4-is-even′ = e4
+  where
+  e0 : Even zero
+  e0 = even0
+
+  e2 : Even (suc (suc zero))
+  e2 = even2 e0
+
+  e4 : Even (suc (suc (suc (suc zero))))
+  e4  = even2 e2
+
 ------------------------------------------------------------
 -- Propositional equality (= by definition = by evaluation)
 ------------------------------------------------------------
@@ -133,40 +179,10 @@ data _≡_ {A : Set} (x : A) : A → Set where
 1≡1′ : suc zero ≡ suc zero
 1≡1′ = refl {ℕ} {suc zero}
 
-
--------------------------------
--- Curry-Howard correspondence
--------------------------------
-
 -- The above declaration+definition of 1≡1 can be read as follows:
 
 -- Theorem 1≡1. 1 ≡ 1.
 -- Proof. By reflexivity of equality.
-
--- Hence, the idea of "Curry-Howard correspondence":
---
---     type  ~ statement
---     value ~ proof
-
--- Any theorem has the form
---     value : type
--- (1) `value` inhabits `type`.
--- (2) `value` is a proof of `type`.
-
--- Agda's type checker is (sometimes) able to automatically check that
---   value : type
-
--- A theorem: 2 is a natural number.
--- (This proof looks rather strange...)
-
-2-inhabits-ℕ : ℕ
-2-inhabits-ℕ = suc (suc zero)
-
--- In English.
--- `zero` and `suc` are names of rules and constructors at the same time.
--- (1) zero inhabits ℕ by the rule `zero`
--- (2) (suc zero) inhabits ℕ by (1) and the rule `suc`.
--- (3) (suc (suc zero)) inhabits ℕ by (2) and the rule `suc`.
 
 -- A few theorems about 0 + n.
 
@@ -202,36 +218,12 @@ trans : {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
 trans refl y≡z = y≡z
 
 --
--- Substitutivity: x ≡ y → P x → P y
---
--- In Agda this is a theorem...
-
-subst : {A : Set} {x y : A} → (P : A → Set) → x ≡ y → P x → P y
-subst P refl px = px
-
---
 -- Congruence: x ≡ y → f x ≡ f y .
 --
 
--- Congruence is a consequence of substitutivity
-
 cong : {A B : Set} {x y : A} (f : A → B) →
           x ≡ y → f x ≡ f y
-cong {x = x} f x≡y = subst (λ z → f x ≡ f z) x≡y refl
-
--- ⇑ In English.
--- Let P z = f x ≡ f z.
--- f x ≡ f x  ⟨ by refl ⟩
--- Hence, P x.
--- P x → P y ⟨ by x ≡ y and subst ⟩
--- Thus P y.
--- So f x ≡ f y.
-
--- A direct proof:
-
-cong′ : {A B : Set} {x y : A} (f : A → B) →
-          x ≡ y → f x ≡ f y
-cong′ f refl = refl
+cong f refl = refl
 
 --
 -- ⇓ Now, using congruence, let us prove that n + zero ≡ n :
@@ -266,26 +258,8 @@ n+sm≡sn+m (suc n′) m = cong suc (n+sm≡sn+m n′ m)
 +-comm : (n m : ℕ) → n + m ≡ m + n
 +-comm n zero = n+0≡n n
 +-comm n (suc m′) =
-  trans (n+sm≡sn+m n m′)
-  (trans (+-comm (suc n) m′) (n+sm≡sn+m m′ n))
-
--- Another proof (by substitutivity):
-
-+-comm′ : (n m : ℕ) → n + m ≡ m + n
-+-comm′ n zero = n+0≡n n
-+-comm′ n (suc m′) =
-  subst (λ z → n + suc m′ ≡ suc z) (+-comm′ n m′) (n+sm≡sn+m n m′)
-
----------------------------------------------
--- Induction for ℕ as a general "principle"
----------------------------------------------
-
--- In Agda this is just a theorem...
-
-ℕ-ind : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
-           ∀ n → P n
-ℕ-ind P base step zero = base
-ℕ-ind P base step (suc n) = step n (ℕ-ind P base step n)
+  trans (n+sm≡sn+m n m′)         -- n + suc m′ ≡ suc (n + m′)
+        (cong suc (+-comm n m′)) -- suc (n + m′) ≡ suc (m′ + n) ≡ suc m′ + n
 
 ----------------------------------------------------------------
 -- A DSL for presenting ≡-reasoning in more human-friendly form
@@ -304,18 +278,45 @@ module ≡-Reasoning where
 
 -- Now we can rewrite the above proof of +-comm as follows:
 
-+-comm′′ : (n m : ℕ) → n + m ≡ m + n
-+-comm′′ n zero = n+0≡n n
-+-comm′′ n (suc m′) =
++-comm′ : (n m : ℕ) → n + m ≡ m + n
++-comm′ n zero = n+0≡n n
++-comm′ n (suc m′) =
    n + suc m′
      ≡⟨ n+sm≡sn+m n m′ ⟩
    suc (n + m′)
-     ≡⟨ cong suc (+-comm′′ n m′) ⟩
+     ≡⟨ cong suc (+-comm′ n m′) ⟩
    suc (m′ + n)
      ≡⟨ refl ⟩
    suc m′ + n
    ∎
    where open ≡-Reasoning
+
+---------------------------------------------
+-- Induction for ℕ as a general "principle"
+---------------------------------------------
+
+-- In Agda this is just a theorem...
+
+ℕ-ind : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
+           ∀ n → P n
+ℕ-ind P base step zero = base
+ℕ-ind P base step (suc n) = step n (ℕ-ind P base step n)
+
+---------------------------------------
+-- Substitutivity: x ≡ y → P x → P y
+---------------------------------------
+
+-- In Agda this is a theorem...
+
+subst : {A : Set} {x y : A} → (P : A → Set) → x ≡ y → P x → P y
+subst P refl px = px
+
+-- Now we can coerse Vec A (n + m) to Vec A (m + n) !
+
+infixr 5 _++′_
+
+_++′_ : ∀ {m n} {A : Set} → Vec A m → Vec A n → Vec A (n + m)
+_++′_ {m} {n} {A} xs ys = subst (Vec A) (+-comm m n) (xs ++ ys)
 
 --------------------------------------------
 -- First-order intuitionistic logic in Agda
@@ -462,8 +463,8 @@ data _≤_ : ℕ → ℕ → Set where
   s≤s : ∀ {m n} (m≤n : m ≤ n) → suc m ≤ suc n
 
 m+?≡n : {m n : ℕ} → m ≤ n →  ∃ λ x → (m + x ≡ n)
-m+?≡n {zero} {n} z≤n = n , refl
-m+?≡n (s≤s {m} {n} m≤n) with m+?≡n m≤n
+m+?≡n (z≤n {n}) = n , refl
+m+?≡n (s≤s m≤n) with m+?≡n m≤n
 ... | x , m+x≡n = x , cong suc m+x≡n
 
 --
