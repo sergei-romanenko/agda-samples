@@ -62,7 +62,7 @@ sound-zero′ {suc n} (e ∷ es) ρ =
     ⟦ ◇ ⟧ ρ
   ∎
 
-sound-zero : ∀ {n} → norm ◇ ≅  (◇ ∶ Expr n)
+sound-zero : ∀ {n} → norm ◇ ≅  (Expr n ∋ ◇)
 sound-zero ρ =
   begin
     ⟦ norm ◇ ⟧ ρ

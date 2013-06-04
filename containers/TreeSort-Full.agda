@@ -274,7 +274,7 @@ to-search-tree-lemma [] z =
     ↔⟨ _ ∎ ⟩
   Lift ⊥
     ↔⟨ _ ∎ ⟩
-  z ∈ ([] ∶ List Key) ∎
+  z ∈ (List Key ∋ []) ∎
   where open Related.EquationalReasoning
 
 to-search-tree-lemma (x ∷ xs) z =

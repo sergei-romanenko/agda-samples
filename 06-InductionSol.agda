@@ -62,8 +62,8 @@ even2n : ∀ n → Even (n + n)
 even2n zero = ev-base
 even2n (suc n) =
   subst (Even ∘ suc)
-        (sym (+s n n) ∶ suc (n + n) ≡ n + suc n)
-        (ev-step (odd-step (even2n n)) ∶ Even (suc (suc (n + n))))
+        (suc (n + n) ≡ n + suc n   ∋ sym (+s n n))
+        (Even (suc (suc (n + n)))  ∋ ev-step (odd-step (even2n n)))
 
 even2n′ : ∀ n → Even (n + n)
 even2n′ zero = ev-base

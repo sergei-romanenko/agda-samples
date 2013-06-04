@@ -42,12 +42,12 @@ ev4 = ev-ss (ev-ss ev-z)
 ev2n : ∀ n → Even (n + n)
 ev2n zero = ev-z
 ev2n (suc n) =
+  Even (suc (n + suc n)) ∋
   subst (λ e → Even e)
-        (sym (cong suc (+-comm n (suc n)))
-        ∶ suc (suc (n + n)) ≡ suc (n + suc n))
-        (ev-ss (ev2n n)
-        ∶ Even (suc (suc (n + n))))
-  ∶ Even (suc (n + suc n))
+        (suc (suc (n + n)) ≡ suc (n + suc n)
+          ∋ sym (cong suc (+-comm n (suc n))))
+        (Even (suc (suc (n + n)))
+          ∋ ev-ss (ev2n n))
 
 
 ev2n₂ : ∀ n → Even (n + n)

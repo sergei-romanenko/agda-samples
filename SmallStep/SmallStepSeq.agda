@@ -136,9 +136,7 @@ module BigStep-FnRel-Equiv where
     eval (t₁ ⊕ t₂)
       ≡⟨ refl ⟩
     eval t₁ + eval t₂
-      ≡⟨ cong (flip _+_ (eval t₂)) (rel⇒eval′′′ h₁) ⟩
-    n₁ + eval t₂
-      ≡⟨ cong (_+_ n₁) (rel⇒eval′′′ h₂) ⟩
+      ≡⟨ cong₂ _+_ (rel⇒eval′′′ h₁) (rel⇒eval′′′ h₂) ⟩
     n₁ + n₂ ∎
     where open ≡-Reasoning
 
@@ -227,9 +225,9 @@ test-step-2 = n+r v-c (n+r v-c n+n)
 n-of-value : ∀ {t} → (v : value t) → ∃ λ n → val n ≡ t
 n-of-value (v-c {n}) = n , refl
 
-_+V+_ : ∀ {t₁ t₂} → (v₁ : value t₁) → (v₂ : value t₂) →
+_∃V+V_ : ∀ {t₁ t₂} → (v₁ : value t₁) → (v₂ : value t₂) →
          ∃ λ t′ → t₁ ⊕ t₂ ⇒ t′
-v-c {n₁} +V+ v-c {n₂} = val (n₁ + n₂) , n+n
+v-c {n₁} ∃V+V v-c {n₂} = val (n₁ + n₂) , n+n
 
 -- Determinism
 
@@ -249,16 +247,16 @@ v-c {n₁} +V+ v-c {n₂} = val (n₁ + n₂) , n+n
 --
 
 strong-progress : ∀ t → value t ⊎ (∃ λ t' → t ⇒ t')
-strong-progress (val n) = inj₁ v-c
-strong-progress (t₁ ⊕ t₂) =
-  inj₂ (helper (strong-progress t₁) (strong-progress t₂))
-  where
-    helper : value t₁ ⊎ (∃ λ t' → t₁ ⇒ t') →
-             value t₂ ⊎ (∃ λ t' → t₂ ⇒ t') →
-             ∃ (λ t′ → t₁ ⊕ t₂ ⇒ t′)
-    helper (inj₁ v₁) (inj₁ v₂) = v₁ +V+ v₂
-    helper (inj₁ v₁) (inj₂ (t′₂ , t₂⇒t′₂)) = t₁ ⊕ t′₂ , n+r v₁ t₂⇒t′₂
-    helper (inj₂ (t′₁ , t₁⇒t′₁)) q = t′₁ ⊕ t₂ , r+t t₁⇒t′₁
+strong-progress (val n) =
+  inj₁ v-c
+strong-progress (t₁ ⊕ t₂) with strong-progress t₁
+strong-progress (t₁ ⊕ t₂) | inj₁ v₁ with  strong-progress t₂
+strong-progress (t₁ ⊕ t₂) | inj₁ v₁ | inj₁ v₂ =
+  inj₂ (v₁ ∃V+V v₂)
+strong-progress (t₁ ⊕ t₂) | inj₁ v₁ | inj₂ (t′₂ , t₂⇒t′₂) =
+  inj₂ (t₁ ⊕ t′₂ , n+r v₁ t₂⇒t′₂)
+strong-progress (t₁ ⊕ t₂) | inj₂ (t′₁ , t₁⇒t′₁) =
+  inj₂ (t′₁ ⊕ t₂ , r+t t₁⇒t′₁)
 
 normal-form : ∀ {ℓ} {X : Set ℓ} (R : Rel X ℓ) (t : X) → Set ℓ
 normal-form R t = ∄ (λ t' → R t t')
@@ -489,16 +487,28 @@ compile (t₁ ⊕ t₂) c = compile t₁ (compile t₂ (add ∷ c))
 open BigStepEvalFn
 
 compile-↦′ : ∀ t c σ → ⟨ compile t c , σ ⟩ ↦* ⟨ c  , eval t ∷ σ ⟩
-compile-↦′ (val n) c σ = ↦-push ◅ ε
-compile-↦′ (t₁ ⊕ t₂) c σ =
-  begin
-    ⟨ compile t₁ (compile t₂ (add ∷ c)) , σ ⟩
-      ⟶⋆⟨ compile-↦′ t₁ (compile t₂ (add ∷ c)) σ ⟩
-    ⟨ compile t₂ (add ∷ c) , eval t₁ ∷ σ ⟩
-      ⟶⋆⟨ compile-↦′ t₂ (add ∷ c) (eval t₁ ∷ σ) ⟩
-    ⟨ add ∷ c , eval t₂ ∷ eval t₁ ∷ σ ⟩
-      ⟶⟨ ↦-add ⟩
-    ⟨ c , eval t₁ + eval t₂ ∷ σ ⟩
+compile-↦′ (val n) c σ = begin
+  ⟨ compile (val n) c , σ ⟩
+    ≡⟨ refl ⟩
+  ⟨ push n ∷ c , σ ⟩
+    ⟶⟨ ↦-push ⟩
+  ⟨ c , n ∷ σ ⟩
+    ≡⟨ refl ⟩
+  ⟨ c , eval (val n) ∷ σ ⟩
+  ∎
+  where open StarReasoning _↦_
+compile-↦′ (t₁ ⊕ t₂) c σ = begin
+  ⟨ compile (t₁ ⊕ t₂) c , σ ⟩
+    ≡⟨ refl ⟩
+  ⟨ compile t₁ (compile t₂ (add ∷ c)) , σ ⟩
+    ⟶⋆⟨ compile-↦′ t₁ (compile t₂ (add ∷ c)) σ ⟩
+  ⟨ compile t₂ (add ∷ c) , eval t₁ ∷ σ ⟩
+    ⟶⋆⟨ compile-↦′ t₂ (add ∷ c) (eval t₁ ∷ σ) ⟩
+  ⟨ add ∷ c , eval t₂ ∷ eval t₁ ∷ σ ⟩
+    ⟶⟨ ↦-add ⟩
+  ⟨ c , eval t₁ + eval t₂ ∷ σ ⟩
+    ≡⟨ refl ⟩
+  ⟨ c , eval (t₁ ⊕ t₂) ∷ σ ⟩
   ∎
   where open StarReasoning _↦_
 

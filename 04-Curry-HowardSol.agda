@@ -186,7 +186,7 @@ em→peirce e P Q h with e P
 {- Universal quantification. Given a set A, and a predicate P : A → Set
    (x : A) →  P x means that P a is true (inhabited) for all a : A.
 
-   ∀ x is an abbreviation for (x ∶ _).
+   ∀ x is an abbreviation for (x : _).
 -}
 
 ∀×-lem-1 : {A : Set} {P Q : A → Set} → 
@@ -260,4 +260,5 @@ em→frobenius-dual : em → ∀ {A : Set} {P : A → Set} {Q : Set} →
 em→frobenius-dual em = em→frobenius-dual⇒ em , em→frobenius-dual⇐ em
 
 frobenius-dual→em : frobenius-dual → em
-frobenius-dual→em (f⇒ , f⇐) R = f⇒ (λ r → f⇐ (inj₁ r) (r ∶ R) ∶ R ⊎ ⊥)
+frobenius-dual→em (f⇒ , f⇐) R =
+  f⇒ (λ (r : R) → (R ⊎ ⊥ ∋ f⇐ (inj₁ r) r))

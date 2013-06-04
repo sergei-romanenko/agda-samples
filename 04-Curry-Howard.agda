@@ -180,7 +180,7 @@ em→peirce e P Q h with e P
 {- Universal quantification. Given a set A, and a predicate P : A → Set
    (x : A) →  P x means that P a is true (inhabited) for all a : A.
 
-   ∀ x is an abbreviation for (x ∶ _).
+   ∀ x is an abbreviation for (x : _).
 -}
 
 ∀×-lem-1 : {A : Set} {P Q : A → Set} → 
