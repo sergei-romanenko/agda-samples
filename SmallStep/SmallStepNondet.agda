@@ -138,7 +138,7 @@ data _↠<_>_ : Combined → Label → Combined → Set where
     t₁ ↦< Λ > t₂ → ⟪ t₁ ▷ σ ⟫ ↠< Λ > ⟪ t₂ ▷ σ ⟫
   ↠-↣ : ∀ {σ₁ σ₂ Λ} →
     σ₁ ↣< Λ > σ₂ → ⟪ σ₁ ⟫ ↠< Λ > ⟪ σ₂ ⟫
-  ↠-switch : ∀ { m c s } →
+  ↠-switch : ∀ {m c s} →
     ⟪ val m ▷ ⟨ c , s ⟩ ⟫ ↠< τ > ⟪ ⟨ c , m ∷ s ⟩ ⟫
   ↠-done : ∀ {m} →
     ⟪ ⟨ [] , m ∷ [] ⟩ ⟫ ↠< ! (◻ m) > ⟪⟫
@@ -154,37 +154,85 @@ data _⟾<_>_ : Combined → Action → Combined → Set where
   ⟾ : ∀ {x x′ y y′ α} →
     x ↠<τ>* x′ → x′ ↠< ! α > y′ → y′ ↠<τ>* y → x ⟾< α > y
 
+-- Simulation
+
+data _≲_ : Combined → Combined → Set where
+  ≲-step : ∀ {x y} →
+    (h : ∀ {x′ α} → x ⟾< α > x′ → ∃ λ y′ → y ⟾< α > y′ × ∞ (x′ ≲ y′)) →
+    x ≲ y
+
+
+≲-refl : ∀ {x} → x ≲ x
+≲-refl {x} = ≲-step (λ {x′} x⟾x′ → x′ , x⟾x′ , ♯ ≲-refl)
+
+≲-trans : ∀ {x y z} (x≲y : x ≲ y) (y≲z : y ≲ z) → x ≲ z
+≲-trans (≲-step {x} {y} h) (≲-step {.y} {z} g) = ≲-step helper
+  where
+  helper : ∀ {x′ α} → x ⟾< α > x′ →
+             Σ Combined (λ y′ → Σ (z ⟾< α > y′) (λ x₁ → ∞ (x′ ≲ y′)))
+  helper x⟾x′ with h x⟾x′
+  helper x⟾x′ | y′ , y⟾y′ , ∞x′≲y′ with g y⟾y′
+  ... | z′ , z⟾z′ , ∞y′≲z′ =
+    z′ , z⟾z′ , ♯ ≲-trans (♭ ∞x′≲y′) (♭ ∞y′≲z′)
+
 -- Bisimulation
 
-data _≈_ : Combined → Combined → Set where
-  ≈-step : ∀ {x y} →
-    (h₁ : ∀ {x′ α} → x ⟾< α > x′ → ∃ λ y′ → y ⟾< α > y′ × ∞ (x′ ≈ y′)) →
-    (h₂ : ∀ {y′ α} → y ⟾< α > y′ → ∃ λ x′ → x ⟾< α > x′ × ∞ (y′ ≈ x′)) →
-    x ≈ y
+_≈_ : Combined → Combined → Set
+x ≈ y = x ≲ y × y ≲ x
 
 ≈-refl : ∀ {x} → x ≈ x
-≈-refl {x} =
-  ≈-step (λ {x′} x⟾x′ → x′ , x⟾x′ , ♯ ≈-refl)
-         (λ {x′} x⟾x′ → x′ , x⟾x′ , ♯ ≈-refl)
-≈-sym : ∀ {x y} (x≈y : x ≈ y) → y ≈ x
-≈-sym (≈-step h₁ h₂) =
-  ≈-step h₂ h₁
+≈-refl {x} = ≲-refl , ≲-refl
 
 ≈-trans : ∀ {x y z} (x≈y : x ≈ y ) (y≈z : y ≈ z) → x ≈ z
-≈-trans (≈-step {x} {y} h₁ h₂) (≈-step {.y} {z} g₁ g₂) =
-  ≈-step helper₁ helper₂
+≈-trans (x≲y , y≲x) (y≲z , z≲y) =
+  (≲-trans x≲y y≲z) , (≲-trans z≲y y≲x)
+
+≈-sym : ∀ {x y} (x≈y : x ≈ y) → y ≈ x
+≈-sym (x≲y , y≲x) = y≲x , x≲y
+
+
+--
+-- elide-τ
+--
+
+↠<τ>∘⟾<> : ∀ {x x′ y α} → x ↠< τ > x′ → x′ ⟾< α > y → x ⟾< α > y
+↠<τ>∘⟾<> h (⟾ g₁ g₂ g₃) = ⟾ (h ◅ g₁) g₂ g₃
+
+¬↦<τ> : ∀ {t₁ t₂} → t₁ ↦< τ > t₂ → ⊥
+¬↦<τ> (r+t h) = ¬↦<τ> h
+¬↦<τ> (n+r h) = ¬↦<τ> h
+
+-- elide-τ-≲
+
+elide-τ-≲ : ∀ {x y} → x ↠< τ > y → x ≲ y
+
+elide-τ-≲ (↠-↦ {t₁} {t₂} {σ} {.τ} h) = ⊥-elim (¬↦<τ> h)
+elide-τ-≲ (↠-↣ (↣-push {c} {s} {m})) = ≲-step helper
   where
-  helper₁ : ∀ {x′ α} → x ⟾< α > x′ →
-              Σ Combined (λ y′ → Σ (z ⟾< α > y′) (λ x₁ → ∞ (x′ ≈ y′)))
-  helper₁ x⟾x′ with h₁ x⟾x′
-  ... | y′ , y⟾y′ , ∞x′≈y′ with g₁ y⟾y′
-  ... | z′ , z⟾z′ , ∞y′≈z′ =
-    z′ , z⟾z′ , ♯ ≈-trans (♭ ∞x′≈y′) (♭ ∞y′≈z′)
-  helper₂ : ∀ {y′ α} → z ⟾< α > y′ →
-              Σ Combined (λ x′ → Σ (x ⟾< α > x′) (λ x₁ → ∞ (y′ ≈ x′)))
-  helper₂ z⟾z′ with g₂ z⟾z′
-  ... | y′ , y⟾y′ , ∞z′≈y′ with h₂ y⟾y′
-  ... | x′ , x⟾x′ , ∞y′≈x′ =
-    x′ , x⟾x′ , ♯ ≈-trans (♭ ∞z′≈y′) (♭ ∞y′≈x′)
+  helper : ∀ {x′ α} → ⟪ ⟨ push m ∷ c , s ⟩ ⟫ ⟾< α > x′ →
+             ∃ (λ y′ → Σ (⟪ ⟨ c , m ∷ s ⟩ ⟫ ⟾< α > y′) (λ x → ∞ (x′ ≲ y′)))
+  helper (⟾ ε (↠-↣ ()) _)
+  helper {x′} {α} (⟾ (↠-↣ ↣-push ◅ h₁) h₂ h₃) =
+    x′ , ⟾ h₁ h₂ h₃ , ♯ ≲-refl
+elide-τ-≲ (↠-switch {m} {c} {s}) = ≲-step helper
+  where
+  helper : ∀ {x′ α} → ⟪ val m ▷ ⟨ c , s ⟩ ⟫ ⟾< α > x′ →
+             ∃ (λ y′ → Σ (⟪ ⟨ c , m ∷ s ⟩ ⟫ ⟾< α > y′) (λ x → ∞ (x′ ≲ y′)))
+  helper (⟾ ε (↠-↦ ()) _)
+  helper (⟾ (↠-↦ () ◅ h₁) h₂ h₃)
+  helper {x′} {α} (⟾ (↠-switch ◅ h₁) h₂ h₃) = x′ , ⟾ h₁ h₂ h₃ , ♯ ≲-refl
+
+-- elide-τ-≳
+
+elide-τ-≳ : ∀ {x y} → x ↠< τ > y → y ≲ x
+
+elide-τ-≳ x↠<τ>y =
+  ≲-step (λ {y′} y⟾y′ → y′ , ↠<τ>∘⟾<> x↠<τ>y y⟾y′ , ♯ ≲-refl)
+
+-- elide-τ
+
+elide-τ : ∀ {x y} → x ↠< τ > y → x ≈ y
+
+elide-τ x↠<τ>y = elide-τ-≲ x↠<τ>y , elide-τ-≳ x↠<τ>y
 
 --
