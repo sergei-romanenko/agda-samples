@@ -39,6 +39,8 @@ open import Function
 open import Function.Equivalence
   using (_⇔_; equivalence)
 
+open import Coinduction
+
 open import Relation.Nullary
 open import Relation.Binary
   using (Rel)
@@ -155,15 +157,34 @@ data _⟾<_>_ : Combined → Action → Combined → Set where
 -- Bisimulation
 
 data _≈_ : Combined → Combined → Set where
-  bisim : ∀ {x y} →
-    (∀ {x′ α} → x ⟾< α > x′ → ∃ λ y′ → y ⟾< α > y′ × x′ ≈ y′) →
-    (∀ {y′ α} → y ⟾< α > y′ → ∃ λ x′ → x ⟾< α > x′ × y′ ≈ x′) →
+  ≈-step : ∀ {x y} →
+    (h₁ : ∀ {x′ α} → x ⟾< α > x′ → ∃ λ y′ → y ⟾< α > y′ × ∞ (x′ ≈ y′)) →
+    (h₂ : ∀ {y′ α} → y ⟾< α > y′ → ∃ λ x′ → x ⟾< α > x′ × ∞ (y′ ≈ x′)) →
     x ≈ y
 
 ≈-refl : ∀ {x} → x ≈ x
--- A proof by coinduction would be easy... :-(
-≈-refl {x} = bisim {x} {x}
-       (λ {x′} {α} x⟾ → x′ , x⟾ , {!!})
-       (λ {y′} {α} y⟾ → y′ , y⟾ , {!!})
+≈-refl {x} =
+  ≈-step (λ {x′} x⟾x′ → x′ , x⟾x′ , ♯ ≈-refl)
+         (λ {x′} x⟾x′ → x′ , x⟾x′ , ♯ ≈-refl)
+≈-sym : ∀ {x y} (x≈y : x ≈ y) → y ≈ x
+≈-sym (≈-step h₁ h₂) =
+  ≈-step h₂ h₁
+
+≈-trans : ∀ {x y z} (x≈y : x ≈ y ) (y≈z : y ≈ z) → x ≈ z
+≈-trans (≈-step {x} {y} h₁ h₂) (≈-step {.y} {z} g₁ g₂) =
+  ≈-step helper₁ helper₂
+  where
+  helper₁ : ∀ {x′ α} → x ⟾< α > x′ →
+              Σ Combined (λ y′ → Σ (z ⟾< α > y′) (λ x₁ → ∞ (x′ ≈ y′)))
+  helper₁ x⟾x′ with h₁ x⟾x′
+  ... | y′ , y⟾y′ , ∞x′≈y′ with g₁ y⟾y′
+  ... | z′ , z⟾z′ , ∞y′≈z′ =
+    z′ , z⟾z′ , ♯ ≈-trans (♭ ∞x′≈y′) (♭ ∞y′≈z′)
+  helper₂ : ∀ {y′ α} → z ⟾< α > y′ →
+              Σ Combined (λ x′ → Σ (x ⟾< α > x′) (λ x₁ → ∞ (y′ ≈ x′)))
+  helper₂ z⟾z′ with g₂ z⟾z′
+  ... | y′ , y⟾y′ , ∞z′≈y′ with h₂ y⟾y′
+  ... | x′ , x⟾x′ , ∞y′≈x′ =
+    x′ , x⟾x′ , ♯ ≈-trans (♭ ∞z′≈y′) (♭ ∞y′≈x′)
 
 --
