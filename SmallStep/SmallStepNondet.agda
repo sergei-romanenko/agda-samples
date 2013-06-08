@@ -190,6 +190,27 @@ x ≈ y = x ≲ y × y ≲ x
 ≈-sym : ∀ {x y} (x≈y : x ≈ y) → y ≈ x
 ≈-sym (x≲y , y≲x) = y≲x , x≲y
 
+--
+-- ≈-Reasoning
+--
+
+open import Relation.Binary
+  using (Setoid)
+
+import Relation.Binary.EqReasoning as EqR
+
+≈-setoid : Setoid _ _
+
+≈-setoid = record
+  { Carrier = Combined
+  ; _≈_ = _≈_
+  ; isEquivalence = record
+    { refl = ≈-refl
+    ; sym = ≈-sym
+    ; trans = ≈-trans } }
+
+module ≈-Reasoning = EqR ≈-setoid
+
 
 --
 -- elide-τ
@@ -234,5 +255,47 @@ elide-τ-≳ x↠<τ>y =
 elide-τ : ∀ {x y} → x ↠< τ > y → x ≈ y
 
 elide-τ x↠<τ>y = elide-τ-≲ x↠<τ>y , elide-τ-≳ x↠<τ>y
+
+postulate
+
+  eval-left : ∀ {a b c σ} →
+    ⟪ a ▷ ⟨ compile b (add ∷ c) , σ ⟩ ⟫ ≈ ⟪ a ⊕ b ▷ ⟨ c , σ ⟩ ⟫
+
+  eval-right : ∀ {m b c σ} →
+    ⟪ b ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫ ≈ ⟪ val m ⊕ b ▷ ⟨ c , σ ⟩ ⟫
+
+  add≈m⊕n : ∀ {m n c σ} →
+    ⟪ val n ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫ ≈ ⟪ val m ⊕ val n ▷ ⟨ c , σ ⟩ ⟫
+
+
+--
+-- correctness
+--
+
+correctness : ∀ {a c σ} →
+  ⟪ ⟨ compile a c , σ ⟩ ⟫ ≈ ⟪ a ▷ ⟨ c , σ ⟩ ⟫
+
+correctness {val n} {c} {σ} = begin
+  ⟪ ⟨ compile (val n) c , σ ⟩ ⟫
+    ≡⟨⟩
+  ⟪ ⟨ push n ∷ c , σ ⟩ ⟫
+    ≈⟨ elide-τ (↠-↣ ↣-push) ⟩
+  ⟪ ⟨ c , n ∷ σ ⟩ ⟫
+    ≈⟨ ≈-sym (elide-τ ↠-switch)  ⟩
+  ⟪ val n ▷ ⟨ c , σ ⟩ ⟫
+  ∎
+  where open ≈-Reasoning
+
+
+correctness {a ⊕ b} {c} {σ} = begin
+  ⟪ ⟨ compile (a ⊕ b) c , σ ⟩ ⟫
+    ≡⟨⟩
+  ⟪ ⟨ compile a (compile b (add ∷ c)) , σ ⟩ ⟫
+    ≈⟨ correctness ⟩
+  ⟪ a ▷ ⟨ compile b (add ∷ c) , σ ⟩ ⟫
+    ≈⟨ eval-left ⟩
+  ⟪ a ⊕ b ▷ ⟨ c , σ ⟩ ⟫
+  ∎
+  where open ≈-Reasoning
 
 --
