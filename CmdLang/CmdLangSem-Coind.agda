@@ -186,7 +186,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
       seq-comp : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≈ now σ′′
       seq-comp = Equivalence.trans P.trans (≅⇒ bind-hom) h
-      -- For some misterious reason this "piece of reasoning" doesn't work!
+      -- For some mysterious reason this "piece of reasoning" doesn't work!
       {-
       seq-comp =
         (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧)

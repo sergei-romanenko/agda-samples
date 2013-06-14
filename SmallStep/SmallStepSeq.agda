@@ -16,7 +16,14 @@
     Trends in Functional Programming volume 10 (Zoltan Horvath and
     Viktoria Zsok, editors), Intellect, September 2010.
     Selected papers from the Tenth Symposium on Trends in Functional
-    Programming, Komarno, Slovakia, June 2009. 
+    Programming, Komarno, Slovakia, June 2009.
+
+  and
+
+    Liyang Hu. 2012. Compiling Concurrency Correctly:
+    Verifying Software Transactional Memory.
+    A Thesis submitted for the degree of Doctor of Philosophy.
+    http://www.cs.nott.ac.uk/~gmh/hu-thesis.pdf
 -}
 
 module SmallStepSeq where
@@ -51,15 +58,15 @@ open import Relation.Binary.PropositionalEquality
 infixl 6 _⊕_
 
 data Tm : Set where
-  val : (n : ℕ) → Tm
-  _⊕_  : (t₁ t₂ : Tm) → Tm
+  #   : (n : ℕ) → Tm
+  _⊕_ : (t₁ t₂ : Tm) → Tm
 
 module BigStepEvalFn where
 
   -- Big-step evaluator
 
   eval : (t : Tm) → ℕ
-  eval (val n) = n
+  eval (# n) = n
   eval (t₁ ⊕ t₂) = eval t₁ + eval t₂
 
 module BigStepEvalRel where
@@ -70,7 +77,7 @@ module BigStepEvalRel where
 
   data _⇓_ : Tm → ℕ → Set where
     e-const : ∀ {n} →
-      val n ⇓ n
+      # n ⇓ n
     e-plus : ∀ {t₁ t₂ n₁ n₂} →
       t₁ ⇓ n₁ →
       t₂ ⇓ n₂ →
@@ -83,60 +90,60 @@ module BigStep-FnRel-Equiv where
   -- Equivalence of the two big-step semantics
 
   fn⇒rel : ∀ {t n} → eval t ≡ n  → t ⇓ n
-  fn⇒rel {val n} refl = e-const
+  fn⇒rel {# n} refl = e-const
   fn⇒rel {t₁ ⊕ t₂} refl =
     e-plus (fn⇒rel refl) (fn⇒rel refl)
 
-  rel⇒eval : ∀ {t n} → t ⇓ n → eval t ≡ n
-  rel⇒eval e-const = refl
-  rel⇒eval (e-plus h₁ h₂)
-    rewrite rel⇒eval h₁ | rel⇒eval h₂
+  rel⇒fn : ∀ {t n} → t ⇓ n → eval t ≡ n
+  rel⇒fn e-const = refl
+  rel⇒fn (e-plus h₁ h₂)
+    rewrite rel⇒fn h₁ | rel⇒fn h₂
     = refl
 
   fn⇔rel : ∀ {t n} → (eval t ≡ n) ⇔ (t ⇓ n)
-  fn⇔rel {t} = equivalence fn⇒rel rel⇒eval
+  fn⇔rel {t} = equivalence fn⇒rel rel⇒fn
 
   -- fn⇒rel without `refl`
 
   fn⇒rel′ : ∀ t → t ⇓ (eval t)
-  fn⇒rel′ (val n) = e-const
+  fn⇒rel′ (# n) = e-const
   fn⇒rel′ (t₁ ⊕ t₂) = e-plus (fn⇒rel′ t₁) (fn⇒rel′ t₂)
 
   fn⇒rel′′ : ∀ {t n} → (eval t ≡ n) → (t ⇓ n)
   fn⇒rel′′ {t} {n} = λ et≡n → subst (λ m → t ⇓ m) et≡n (fn⇒rel′ t)
 
-  -- rel⇒eval without `rewrite`
+  -- rel⇒fn without `rewrite`
 
-  rel⇒eval′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
-  rel⇒eval′ e-const = refl
-  rel⇒eval′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
-    with rel⇒eval′ h₁ | rel⇒eval′ h₂
+  rel⇒fn′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
+  rel⇒fn′ e-const = refl
+  rel⇒fn′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
+    with rel⇒fn′ h₁ | rel⇒fn′ h₂
   ... | et₁≡n₁ | et₂≡n₂ =
     subst₂ (λ x y → x + y ≡ n₁ + n₂) (sym et₁≡n₁) (sym et₂≡n₂)
            refl
 
-  -- rel⇒eval without `subst₂`
+  -- rel⇒fn without `subst₂`
 
-  rel⇒eval′′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
-  rel⇒eval′′ e-const = refl
-  rel⇒eval′′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
-    with eval t₁ | rel⇒eval′′ h₁ | eval t₂ | rel⇒eval′′ h₂
+  rel⇒fn′′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
+  rel⇒fn′′ e-const = refl
+  rel⇒fn′′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
+    with eval t₁ | rel⇒fn′′ h₁ | eval t₂ | rel⇒fn′′ h₂
   ...  | .n₁     | refl          | .n₂     | refl
     = refl
 
-  -- rel⇒eval by means of ≡-Reasoning
+  -- rel⇒fn by means of ≡-Reasoning
 
-  rel⇒eval′′′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
-  rel⇒eval′′′ (e-const {n}) = begin
-    eval (val n)
+  rel⇒fn′′′ : ∀ {t n} → t ⇓ n  → eval t ≡ n
+  rel⇒fn′′′ (e-const {n}) = begin
+    eval (# n)
       ≡⟨ refl ⟩
     n ∎
     where open ≡-Reasoning
-  rel⇒eval′′′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂) = begin
+  rel⇒fn′′′ (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂) = begin
     eval (t₁ ⊕ t₂)
       ≡⟨ refl ⟩
     eval t₁ + eval t₂
-      ≡⟨ cong₂ _+_ (rel⇒eval′′′ h₁) (rel⇒eval′′′ h₂) ⟩
+      ≡⟨ cong₂ _+_ (rel⇒fn′′′ h₁) (rel⇒fn′′′ h₂) ⟩
     n₁ + n₂ ∎
     where open ≡-Reasoning
 
@@ -148,11 +155,11 @@ module BigStepEvalRel-Val where
 
   data _⇓_ : Tm → Tm → Set where
     e-const : ∀ {n} →
-      val n ⇓ val n
+      # n ⇓ # n
     e-plus : ∀ {t₁ t₂ n₁ n₂} →
-      (h₂ : t₁ ⇓ val n₁) →
-      (h₂ : t₂ ⇓ val n₂) →
-      t₁ ⊕ t₂ ⇓ val (n₁ + n₂)
+      (h₂ : t₁ ⇓ # n₁) →
+      (h₂ : t₂ ⇓ # n₂) →
+      t₁ ⊕ t₂ ⇓ # (n₁ + n₂)
 
 module SmallStepEvalRel-Version1 where
 
@@ -162,25 +169,25 @@ module SmallStepEvalRel-Version1 where
 
   data _⇒_ : Tm → Tm → Set where
     n+n : ∀ {n₁ n₂} →
-      val n₁ ⊕ val n₂ ⇒ val (n₁ + n₂)
+      # n₁ ⊕ # n₂ ⇒ # (n₁ + n₂)
     r+t : ∀ {t₁ t′₁ t₂} →
       (t₁⇒ : t₁ ⇒ t′₁) →
       t₁ ⊕ t₂ ⇒ t′₁ ⊕ t₂
     n+r : ∀ {n₁ t₂ t′₂} →
       (t₂⇒ : t₂ ⇒ t′₂) →
-      val n₁ ⊕ t₂ ⇒ val n₁ ⊕ t′₂
+      # n₁ ⊕ t₂ ⇒ # n₁ ⊕ t′₂
 
   test-step-1 :
-    (val 0 ⊕ val 3) ⊕ (val 2 ⊕ val 4)
+    (# 0 ⊕ # 3) ⊕ (# 2 ⊕ # 4)
       ⇒
-    val (0 + 3) ⊕ (val 2 ⊕ val 4)
+    # (0 + 3) ⊕ (# 2 ⊕ # 4)
 
   test-step-1 = r+t n+n
 
   test-step-2 :
-    val 0 ⊕ (val 2 ⊕ (val 0 ⊕ val 3))
+    # 0 ⊕ (# 2 ⊕ (# 0 ⊕ # 3))
       ⇒
-    (val 0) ⊕ (val 2 ⊕ val (0 + 3))
+    (# 0) ⊕ (# 2 ⊕ # (0 + 3))
   test-step-2 = n+r (n+r n+n)
 
   -- ⇒ is deterministic
@@ -201,13 +208,13 @@ module SmallStepEvalRel-Version1 where
 --
 
 data value : Tm → Set where
-  v-c : ∀ {n} → value (val n)
+  v-c : ∀ {n} → value (# n)
 
 infix 3 _⇒_
 
 data _⇒_ : Tm → Tm → Set where
   n+n : ∀ {n₁ n₂} →
-    val n₁ ⊕ val n₂ ⇒ val (n₁ + n₂)
+    # n₁ ⊕ # n₂ ⇒ # (n₁ + n₂)
   r+t : ∀ {t₁ t′₁ t₂} →
     (t₁⇒ : t₁ ⇒ t′₁) →
     t₁ ⊕ t₂ ⇒ t′₁ ⊕ t₂
@@ -217,17 +224,17 @@ data _⇒_ : Tm → Tm → Set where
     t₁ ⊕ t₂ ⇒ t₁ ⊕ t′₂
 
 test-step-2 :
-  val 0 ⊕ (val 2 ⊕ (val 0 ⊕ val 3))
+  # 0 ⊕ (# 2 ⊕ (# 0 ⊕ # 3))
     ⇒
-  val 0 ⊕ (val 2 ⊕ (val (0 + 3)))
+  # 0 ⊕ (# 2 ⊕ (# (0 + 3)))
 test-step-2 = n+r v-c (n+r v-c n+n)
 
-n-of-value : ∀ {t} → (v : value t) → ∃ λ n → val n ≡ t
+n-of-value : ∀ {t} → (v : value t) → ∃ λ n → # n ≡ t
 n-of-value (v-c {n}) = n , refl
 
 _∃V+V_ : ∀ {t₁ t₂} → (v₁ : value t₁) → (v₂ : value t₂) →
          ∃ λ t′ → t₁ ⊕ t₂ ⇒ t′
-v-c {n₁} ∃V+V v-c {n₂} = val (n₁ + n₂) , n+n
+v-c {n₁} ∃V+V v-c {n₂} = # (n₁ + n₂) , n+n
 
 -- Determinism
 
@@ -247,7 +254,7 @@ v-c {n₁} ∃V+V v-c {n₂} = val (n₁ + n₂) , n+n
 --
 
 strong-progress : ∀ t → value t ⊎ (∃ λ t' → t ⇒ t')
-strong-progress (val n) =
+strong-progress (# n) =
   inj₁ v-c
 strong-progress (t₁ ⊕ t₂) with strong-progress t₁
 strong-progress (t₁ ⊕ t₂) | inj₁ v₁ with  strong-progress t₂
@@ -262,7 +269,7 @@ normal-form : ∀ {ℓ} {X : Set ℓ} (R : Rel X ℓ) (t : X) → Set ℓ
 normal-form R t = ∄ (λ t' → R t t')
 
 value-is-nf : ∀ t → value t → normal-form _⇒_ t
-value-is-nf .(val n) (v-c {n}) (t′ , ())
+value-is-nf .(# n) (v-c {n}) (t′ , ())
 
 nf-is-value : ∀ t → normal-form _⇒_ t → value t
 nf-is-value t ¬t⇒t′ with strong-progress t
@@ -282,25 +289,25 @@ _⇒*_ : (t t′ : Tm) → Set
 _⇒*_ = Star _⇒_
 
 test-⇒*-1 :
-  (val 0 ⊕ val 3) ⊕ (val 2 ⊕ val 4)
+  (# 0 ⊕ # 3) ⊕ (# 2 ⊕ # 4)
     ⇒*
-  val ((0 + 3) + (2 + 4))
+  # ((0 + 3) + (2 + 4))
 test-⇒*-1 = r+t n+n ◅ n+r v-c n+n ◅ n+n ◅ ε
 
 test-⇒*-2 :
-  val 3 ⇒* val 3
+  # 3 ⇒* # 3
 test-⇒*-2 = ε
 
 test-⇒*-3 :
-  val 0 ⊕ val 3
+  # 0 ⊕ # 3
     ⇒*
-  val 0 ⊕ val 3
+  # 0 ⊕ # 3
 test-⇒*-3 = ε
 
 test-⇒*-4 :
-  val 0 ⊕ (val 2 ⊕ (val 0 ⊕ val 3))
+  # 0 ⊕ (# 2 ⊕ (# 0 ⊕ # 3))
     ⇒*
-  val 0 ⊕ (val (2 + (0 + 3)))
+  # 0 ⊕ (# (2 + (0 + 3)))
 test-⇒*-4 = n+r v-c (n+r v-c n+n) ◅ n+r v-c n+n ◅ ε
 
 --
@@ -348,27 +355,27 @@ normalizing {X} R =
              t₂ ⇒* u →
              t₁ ⊕ t₂ ⇒* t₁ ⊕ u
 ⇒*-congʳ v-c ε = ε
-⇒*-congʳ {val n} {t₂} {u} v-c (t₂⇒ ◅ ⇒*u) =
+⇒*-congʳ {# n} {t₂} {u} v-c (t₂⇒ ◅ ⇒*u) =
   begin
-    val n ⊕ t₂
+    # n ⊕ t₂
       ⟶⟨ n+r v-c t₂⇒ ⟩
-    val n ⊕ _
+    # n ⊕ _
       ⟶⋆⟨ ⇒*-congʳ v-c ⇒*u ⟩
-    val n ⊕ u
+    # n ⊕ u
   ∎
   where open StarReasoning _⇒_
 
 ⇒-normalizing : normalizing _⇒_
 -- ∀ t → ∃ λ u → (t ⇒* u) × ∄ (λ u′ → u ⇒ u′)
-⇒-normalizing (val n) =
-  (val n) , ε , value-is-nf (val n) v-c
+⇒-normalizing (# n) =
+  (# n) , ε , value-is-nf (# n) v-c
 ⇒-normalizing (t₁ ⊕ t₂) with ⇒-normalizing t₁ | ⇒-normalizing t₂
 ... | u₁ , t₁⇒*u₁ , ¬u₁⇒ | u₂ , t₂⇒*u₂ , ¬u₂⇒
   with n-of-value (nf-is-value u₁ ¬u₁⇒) | n-of-value (nf-is-value u₂ ¬u₂⇒)
 ... | n₁ , t-n₁≡u₁ | n₂ , t-n₂≡u₂ =
   u , t⇒*u , value-is-nf u v-c
   where
-    u = val (n₁ + n₂)
+    u = # (n₁ + n₂)
 
     t⇒*u₁u₂ : t₁ ⊕ t₂ ⇒* u₁ ⊕ u₂
     t⇒*u₁u₂ =
@@ -381,15 +388,15 @@ normalizing {X} R =
       ∎
       where open StarReasoning _⇒_
 
-    u₁u₂⇒u : u₁ ⊕ u₂ ⇒ val (n₁ + n₂)
+    u₁u₂⇒u : u₁ ⊕ u₂ ⇒ # (n₁ + n₂)
     u₁u₂⇒u = subst₂
-      (λ x y → x ⊕ y ⇒ (val (n₁ + n₂)))
+      (λ x y → x ⊕ y ⇒ (# (n₁ + n₂)))
       t-n₁≡u₁ t-n₂≡u₂
       n+n
 
-    t⇒*u : t₁ ⊕ t₂ ⇒* val (n₁ + n₂)
+    t⇒*u : t₁ ⊕ t₂ ⇒* # (n₁ + n₂)
     t⇒*u = begin
-      t₁ ⊕ t₂ ⟶⋆⟨ t⇒*u₁u₂ ⟩ u₁ ⊕ u₂ ⟶⟨ u₁u₂⇒u ⟩ val (n₁ + n₂) ∎
+      t₁ ⊕ t₂ ⟶⋆⟨ t⇒*u₁u₂ ⟩ u₁ ⊕ u₂ ⟶⟨ u₁u₂⇒u ⟩ # (n₁ + n₂) ∎
       where open StarReasoning _⇒_
 
 --
@@ -410,11 +417,11 @@ big⇒small* (e-plus {t₁} {t₂} {n₁} {n₂} h₁ h₂)
   begin
     t₁ ⊕ t₂
       ⟶⋆⟨ ⇒*-congˡ t₁⇒*v₁ ⟩
-    val n₁ ⊕ t₂
+    # n₁ ⊕ t₂
       ⟶⋆⟨ ⇒*-congʳ v-c t₂⇒*v₂ ⟩
-    val n₁ ⊕ val n₂
+    # n₁ ⊕ # n₂
       ⟶⟨ n+n ⟩
-    val (n₁ + n₂)
+    # (n₁ + n₂)
   ∎
   where open StarReasoning _⇒_
 
@@ -479,7 +486,7 @@ _↦*_ = Star _↦_
 -- Compiler
 
 compile : Tm → Program → Program
-compile (val n) c = push n ∷ c
+compile (# n) c = push n ∷ c
 compile (t₁ ⊕ t₂) c = compile t₁ (compile t₂ (add ∷ c))
 
 -- Correctness
@@ -487,14 +494,14 @@ compile (t₁ ⊕ t₂) c = compile t₁ (compile t₂ (add ∷ c))
 open BigStepEvalFn
 
 compile-↦′ : ∀ t c σ → ⟨ compile t c , σ ⟩ ↦* ⟨ c  , eval t ∷ σ ⟩
-compile-↦′ (val n) c σ = begin
-  ⟨ compile (val n) c , σ ⟩
+compile-↦′ (# n) c σ = begin
+  ⟨ compile (# n) c , σ ⟩
     ≡⟨ refl ⟩
   ⟨ push n ∷ c , σ ⟩
     ⟶⟨ ↦-push ⟩
   ⟨ c , n ∷ σ ⟩
     ≡⟨ refl ⟩
-  ⟨ c , eval (val n) ∷ σ ⟩
+  ⟨ c , eval (# n) ∷ σ ⟩
   ∎
   where open StarReasoning _↦_
 compile-↦′ (t₁ ⊕ t₂) c σ = begin
@@ -526,7 +533,7 @@ exec (add ∷ c) σ = nothing
 -- Correctness
 
 compile-exec′ : ∀ t c σ → exec (compile t c) σ ≡ exec c (eval t ∷ σ)
-compile-exec′ (val n) c σ = refl
+compile-exec′ (# n) c σ = refl
 compile-exec′ (t₁ ⊕ t₂) c σ =
   begin
     exec (compile (t₁ ⊕ t₂) c) σ
