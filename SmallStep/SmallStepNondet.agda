@@ -278,20 +278,21 @@ elide-τ* (x↠z ◅ z↠*y) =
   ≈-trans (elide-τ x↠y) (elide-τ* y↠*z)
 -}
 
+{-
 sym-elide-τ* : Sym _↠<τ>*_ _≈_
 sym-elide-τ* = ≈-sym ∘ elide-τ*
-
+-}
 
 postulate
 
-  eval-left′ : ∀ {a b c σ} →
-    ⟪ a ▷ ⟨ compile b (add ∷ c) , σ ⟩ ⟫ ≈ ⟪ a ⊕ b ▷ ⟨ c , σ ⟩ ⟫
+  eval-left′ : ∀ a b c σ →
+    ⟪ a ⊕ b ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ a ▷ ⟨ compile b (add ∷ c) , σ ⟩ ⟫
 
-  eval-right′ : ∀ {m b c σ} →
-    ⟪ b ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫ ≈ ⟪ # m ⊕ b ▷ ⟨ c , σ ⟩ ⟫
+  eval-right′ : ∀ m t c σ →
+    ⟪ # m ⊕ t ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ t ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
 
-  add≈m⊕n′ : ∀ {m n c σ} →
-    ⟪ # n ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫ ≈ ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫
+  add≈m⊕n′ : ∀ m n c σ →
+    ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ # n ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
 
 
 --
@@ -300,29 +301,68 @@ postulate
 
 mutual
 
-  correctness : ∀ {a c σ} →
-    ⟪ ⟨ compile a c , σ ⟩ ⟫ ≈ ⟪ a ▷ ⟨ c , σ ⟩ ⟫
+  eval-left : ∀ t₁ t₂ c σ →
+    ⟪ t₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ t₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫
 
-  correctness {# n} {c} {σ} = begin
-    ⟪ ⟨ compile (# n) c , σ ⟩ ⟫
-      ≡⟨⟩
-    ⟪ ⟨ push n ∷ c , σ ⟩ ⟫
-      ≈⟨ elide-τ (↠-↣ ↣-push) ⟩
-    ⟪ ⟨ c , n ∷ σ ⟩ ⟫
-      ≈⟨ ≈-sym (elide-τ ↠-switch)  ⟩
+  eval-left (# m) t₂ c σ = begin
+    ⟪ # m ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫
+      ≈⟨ eval-right′ m t₂ c σ ⟩
+    ⟪ t₂ ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
+      ≈⟨ correctness t₂ (add ∷ c) (m ∷ σ) ⟩
+    ⟪ ⟨ compile t₂ (add ∷ c) , m ∷ σ ⟩ ⟫
+      ≈⟨ ≈-sym $ elide-τ ↠-switch ⟩
+    ⟪ # m ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫
+    ∎
+    where open ≈-Reasoning
+
+  eval-left (t′ ⊕ t′′) t₂ c σ = ♯ x≼y & ♯ y≼x
+    where
+    t₁ = t′ ⊕ t′′
+
+    x≼y : ⟪ t₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫ ≼ ⟪ t₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫
+
+    x≼y ._ (⤇ ε (↠-↦ (r+t {t′₁ = t′₁} t₁↦)) ε) =
+      ⟪ t′₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫ ,
+        ⤇ ε (↠-↦ t₁↦) ε , ≈⇒≈′ (eval-left t′₁ t₂ c σ)
+    x≼y x′ (⤇ ε (↠-↦ (r+t t₁↦)) (↠-↦ t′₁⊕t₂↦<τ> ◅ _)) =
+      ⊥-elim (¬↦<τ> t′₁⊕t₂↦<τ>)
+    x≼y x′ (⤇ (↠-↦ t′₁⊕t₂↦<τ> ◅ _) _ _) =
+      ⊥-elim (¬↦<τ> t′₁⊕t₂↦<τ>)
+
+    y≼x : ⟪ t₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫ ≼ ⟪ t₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫
+
+    y≼x y′ (⤇ ε (↠-↦ {t₂ = t′₁} t₁↦) h) =
+      ⟪ t′₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫ ,
+        ⤇ ε (↠-↦ (r+t t₁↦)) ε ,
+          ≈′-trans (≈⇒≈′ (≈-sym (elide-τ* h)))
+                   (≈′-sym (≈⇒≈′ (eval-left t′₁ t₂ c σ)))
+    y≼x y′ (⤇ (↠-↦ t₁↦<τ> ◅ _) _ _) =
+      ⊥-elim (¬↦<τ> t₁↦<τ>)
+
+
+  correctness : ∀ t c σ →
+    ⟪ t ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ ⟨ compile t c , σ ⟩ ⟫
+
+  correctness (# n) c σ = begin
     ⟪ # n ▷ ⟨ c , σ ⟩ ⟫
+      ≈⟨ elide-τ ↠-switch  ⟩
+    ⟪ ⟨ c , n ∷ σ ⟩ ⟫
+      ≈⟨ ≈-sym $ elide-τ (↠-↣ ↣-push) ⟩
+    ⟪ ⟨ push n ∷ c , σ ⟩ ⟫
+      ≡⟨⟩
+    ⟪ ⟨ compile (# n) c , σ ⟩ ⟫
     ∎
     where open ≈-Reasoning
 
 
-  correctness {a ⊕ b} {c} {σ} = begin
-    ⟪ ⟨ compile (a ⊕ b) c , σ ⟩ ⟫
+  correctness (t₁ ⊕ t₂) c σ = begin
+    ⟪ t₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫
+      ≈⟨ eval-left t₁ t₂ c σ ⟩
+    ⟪ t₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫
+      ≈⟨ correctness t₁ (compile t₂ (add ∷ c)) σ ⟩
+    ⟪ ⟨ compile t₁ (compile t₂ (add ∷ c)) , σ ⟩ ⟫
       ≡⟨⟩
-    ⟪ ⟨ compile a (compile b (add ∷ c)) , σ ⟩ ⟫
-      ≈⟨ correctness ⟩
-    ⟪ a ▷ ⟨ compile b (add ∷ c) , σ ⟩ ⟫
-      ≈⟨ eval-left′ ⟩
-    ⟪ a ⊕ b ▷ ⟨ c , σ ⟩ ⟫
+    ⟪ ⟨ compile (t₁ ⊕ t₂) c , σ ⟩ ⟫
     ∎
     where open ≈-Reasoning
 
