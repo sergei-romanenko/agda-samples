@@ -122,12 +122,12 @@ data State : Set where
 infix 3 _↣<_>_ -- _↣*_
 
 data _↣<_>_ : LTS Label State where
-  ↣-push : ∀ {c s m} →
-    ⟨ push m ∷ c , s ⟩ ↣< τ >  ⟨ c , m ∷ s ⟩
-  ↣-add  : ∀ {c s m n} →
-    ⟨ add ∷ c , n ∷ m ∷ s ⟩ ↣< ! ⊞ > ⟨ c , m + n ∷ s ⟩ 
-  ↣-zap  : ∀ {c s m n} →
-    ⟨ add ∷ c , n ∷ m ∷ s ⟩ ↣< ! ↯ > ⟨ c , 0 ∷ s ⟩ 
+  ↣-push : ∀ {c σ m} →
+    ⟨ push m ∷ c , σ ⟩ ↣< τ >  ⟨ c , m ∷ σ ⟩
+  ↣-add  : ∀ {c σ m n} →
+    ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ↣< ! ⊞ > ⟨ c , m + n ∷ σ ⟩ 
+  ↣-zap  : ∀ {c σ m n} →
+    ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ↣< ! ↯ > ⟨ c , 0 ∷ σ ⟩ 
 
 -- Compiler
 
@@ -176,7 +176,7 @@ data _⤇<_>_ : LTS Action Combined where
 mutual
 
   data _≈′_ : Rel Combined _ where
-    ≈⇒≈′    : _≈_ ⇒ _≈′_
+    ≈′⇐≈    : _≈_ ⇒ _≈′_
     ≈′-sym   : Symmetric _≈′_
     ≈′-trans : Transitive _≈′_
 
@@ -190,7 +190,7 @@ mutual
 mutual
 
   ≼-refl : Reflexive _≼_
-  ≼-refl x′ x⤇x′ = x′ , x⤇x′ , ≈⇒≈′ ≈-refl
+  ≼-refl x′ x⤇x′ = x′ , x⤇x′ , ≈′⇐≈ ≈-refl
 
   ≈-refl : Reflexive _≈_
   ≈-refl {x} = ♯ ≼-refl & ♯ ≼-refl
@@ -213,12 +213,12 @@ mutual
 
 ≈′⇒≈ : _≈′_ ⇒ _≈_
 
-≈′⇒≈ (≈⇒≈′ x≈y) = x≈y
+≈′⇒≈ (≈′⇐≈ x≈y) = x≈y
 ≈′⇒≈ (≈′-sym x≈′y) = ≈-sym (≈′⇒≈ x≈′y)
 ≈′⇒≈ {x} {y} (≈′-trans x≈′z z≈′y) = ≈-trans (≈′⇒≈ x≈′z) (≈′⇒≈ z≈′y)
 
 ≈⇔≈′ : ∀ {x y} → x ≈ y ⇔ x ≈′ y
-≈⇔≈′ = equivalence ≈⇒≈′ ≈′⇒≈
+≈⇔≈′ = equivalence ≈′⇐≈ ≈′⇒≈
 
 
 --
@@ -240,13 +240,18 @@ import Relation.Binary.EqReasoning as EqR
 module ≈-Reasoning = EqR ≈-setoid
 
 
+-- ¬↦<τ>
+
 ¬↦<τ> : ∀ {t₁ t₂} → t₁ ↦< τ > t₂ → ⊥
+
 ¬↦<τ> (r+t h) = ⊥-elim (¬↦<τ> h)
 ¬↦<τ> (n+r h) = ⊥-elim (¬↦<τ> h)
 
+-- unique-τ
+
 unique-τ : ∀ {x y Λ y′} → x ↠<τ> y → x ↠< Λ > y′ → Λ ≡ τ × y′ ≡ y
 
-unique-τ (↠-↦ t₁↦<τ>t₂) q = ⊥-elim (¬↦<τ> t₁↦<τ>t₂)
+unique-τ (↠-↦ t₁↦<τ>t₂) _ = ⊥-elim (¬↦<τ> t₁↦<τ>t₂)
 unique-τ (↠-↣ ↣-push) (↠-↣ ↣-push) = refl , refl
 unique-τ ↠-switch (↠-↦ ())
 unique-τ ↠-switch ↠-switch = refl , refl
@@ -264,36 +269,22 @@ elide-τ {x} {y} x↠<τ>y = ♯ x≼y & ♯ y≼x
   x≼y x′ (⤇ ε x↠y′ h₃) | () , _
   x≼y x′ (⤇ (x↠z ◅ z↠x′) x′↠y′ h) with unique-τ x↠<τ>y x↠z
   x≼y x′ (⤇ (x↠z ◅ z↠x′) x′↠y′ h) | refl , refl =
-    x′ , ⤇ z↠x′ x′↠y′ h , ≈⇒≈′ ≈-refl
+    x′ , ⤇ z↠x′ x′↠y′ h , ≈′⇐≈ ≈-refl
   y≼x : y ≼ x
-  y≼x y′ (⤇ h₁ h₂ h₃) = y′ , ⤇ (x↠<τ>y ◅ h₁) h₂ h₃ , ≈⇒≈′ ≈-refl
+  y≼x y′ (⤇ h₁ h₂ h₃) = y′ , ⤇ (x↠<τ>y ◅ h₁) h₂ h₃ , ≈′⇐≈ ≈-refl
 
 
 elide-τ* : _↠<τ>*_ ⇒ _≈_
-elide-τ* = (Star.fold _≈_ ≈-trans ≈-refl) ∘ Star.map elide-τ
-
-{-
+--elide-τ* = (Star.fold _≈_ ≈-trans ≈-refl) ∘ Star.map elide-τ
 elide-τ* ε = ≈-refl
 elide-τ* (x↠z ◅ z↠*y) =
-  ≈-trans (elide-τ x↠y) (elide-τ* y↠*z)
--}
+  ≈-trans (elide-τ x↠z) (elide-τ* z↠*y)
 
-{-
-sym-elide-τ* : Sym _↠<τ>*_ _≈_
-sym-elide-τ* = ≈-sym ∘ elide-τ*
--}
+elide-τ′ : _↠<τ>_ ⇒ _≈′_
+elide-τ′ x↠<τ>y = ≈′⇐≈ (elide-τ x↠<τ>y)
 
-postulate
-
-  eval-left′ : ∀ a b c σ →
-    ⟪ a ⊕ b ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ a ▷ ⟨ compile b (add ∷ c) , σ ⟩ ⟫
-
-  eval-right′ : ∀ m t c σ →
-    ⟪ # m ⊕ t ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ t ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
-
-  add≈m⊕n′ : ∀ m n c σ →
-    ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ # n ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
-
+elide-τ*′ : _↠<τ>*_ ⇒ _≈′_
+elide-τ*′ x↠<τ>*y = ≈′⇐≈ (elide-τ* x↠<τ>*y)
 
 --
 -- correctness
@@ -301,12 +292,14 @@ postulate
 
 mutual
 
+  -- eval-left
+
   eval-left : ∀ t₁ t₂ c σ →
     ⟪ t₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ t₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫
 
   eval-left (# m) t₂ c σ = begin
     ⟪ # m ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫
-      ≈⟨ eval-right′ m t₂ c σ ⟩
+      ≈⟨ eval-right m t₂ c σ ⟩
     ⟪ t₂ ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
       ≈⟨ correctness t₂ (add ∷ c) (m ∷ σ) ⟩
     ⟪ ⟨ compile t₂ (add ∷ c) , m ∷ σ ⟩ ⟫
@@ -323,7 +316,7 @@ mutual
 
     x≼y ._ (⤇ ε (↠-↦ (r+t {t′₁ = t′₁} t₁↦)) ε) =
       ⟪ t′₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫ ,
-        ⤇ ε (↠-↦ t₁↦) ε , ≈⇒≈′ (eval-left t′₁ t₂ c σ)
+        ⤇ ε (↠-↦ t₁↦) ε , ≈′⇐≈ (eval-left t′₁ t₂ c σ)
     x≼y x′ (⤇ ε (↠-↦ (r+t t₁↦)) (↠-↦ t′₁⊕t₂↦<τ> ◅ _)) =
       ⊥-elim (¬↦<τ> t′₁⊕t₂↦<τ>)
     x≼y x′ (⤇ (↠-↦ t′₁⊕t₂↦<τ> ◅ _) _ _) =
@@ -334,11 +327,79 @@ mutual
     y≼x y′ (⤇ ε (↠-↦ {t₂ = t′₁} t₁↦) h) =
       ⟪ t′₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫ ,
         ⤇ ε (↠-↦ (r+t t₁↦)) ε ,
-          ≈′-trans (≈⇒≈′ (≈-sym (elide-τ* h)))
-                   (≈′-sym (≈⇒≈′ (eval-left t′₁ t₂ c σ)))
+          ≈′-sym (≈′-trans (≈′⇐≈ (eval-left t′₁ t₂ c σ)) (elide-τ*′ h))
     y≼x y′ (⤇ (↠-↦ t₁↦<τ> ◅ _) _ _) =
       ⊥-elim (¬↦<τ> t₁↦<τ>)
 
+  -- eval-right
+
+  eval-right : ∀ m t c σ →
+    ⟪ # m ⊕ t ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ t ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
+
+  eval-right m (# n) c σ = begin
+    ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫
+      ≈⟨ ⊕≈add m n c σ ⟩
+    ⟪ ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ⟫
+      ≈⟨ ≈-sym $ elide-τ ↠-switch ⟩
+    ⟪ # n ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
+    ∎
+    where open ≈-Reasoning
+
+  eval-right m (t′ ⊕ t′′) c σ = ♯ x≼y & ♯ y≼x
+    where
+    t = t′ ⊕ t′′
+
+    x≼y : ⟪ # m ⊕ t ▷ ⟨ c , σ ⟩ ⟫ ≼ ⟪ t ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
+
+    x≼y x′ (⤇ ε (↠-↦ (r+t ())) _)
+    x≼y ._ (⤇ ε (↠-↦ (n+r {t′₂ = t′₂} t↦)) ε) =
+      ⟪ t′₂ ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫ , ⤇ ε (↠-↦ t↦) ε ,
+        ≈′⇐≈ (eval-right m t′₂ c σ)
+    x≼y x′ (⤇ ε (↠-↦ (n+r t↦)) (↠-↦ m⊕t′₂↦<τ> ◅ _)) =
+      ⊥-elim (¬↦<τ> m⊕t′₂↦<τ>)
+    x≼y x′ (⤇ (↠-↦ m⊕t↦<τ> ◅ _) _ _) = ⊥-elim (¬↦<τ> m⊕t↦<τ>)
+
+    y≼x : ⟪ t ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫ ≼ ⟪ # m ⊕ t ▷ ⟨ c , σ ⟩ ⟫
+
+    y≼x y′ (⤇ ε (↠-↦ {t₂ = t′} t↦) h) =
+      ⟪ # m ⊕ t′ ▷ ⟨ c , σ ⟩ ⟫ , ⤇ ε (↠-↦ (n+r t↦)) ε ,
+        ≈′-sym (≈′-trans (≈′⇐≈ (eval-right m t′ c σ)) (elide-τ*′ h))
+      
+    y≼x y′ (⤇ (↠-↦ t↦<τ> ◅ _) _ _) =
+      ⊥-elim (¬↦<τ> t↦<τ>)
+
+  -- ⊕≈add
+
+  ⊕≈add : ∀ m n c σ →
+    ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ⟫
+
+  ⊕≈add m n c σ = ♯ x≼y & ♯ y≼x
+    where
+    x≼y : ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫ ≼ ⟪ ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ⟫
+
+    x≼y x′ (⤇ ε (↠-↦ n+n) h) =
+      ⟪ ⟨ c , m + n ∷ σ ⟩ ⟫ , ⤇ ε (↠-↣ ↣-add) ε ,
+        (x′ ≈′ ⟪ ⟨ c , m + n ∷ σ ⟩ ⟫ ∋
+          ≈′-trans (≈′-sym (elide-τ*′ h)) (elide-τ′ ↠-switch))
+    x≼y x′ (⤇ ε (↠-↦ n↯n) h) =
+      ⟪ ⟨ c , 0 ∷ σ ⟩ ⟫ , ⤇ ε (↠-↣ ↣-zap) ε ,
+        ≈′-trans (≈′-sym (elide-τ*′ h)) (elide-τ′ ↠-switch)
+    x≼y x′ (⤇ ε (↠-↦ (r+t ())) _)
+    x≼y x′ (⤇ ε (↠-↦ (n+r ())) _)
+    x≼y x′ (⤇ (↠-↦ m⊕n↦<τ> ◅ _) _ _) =
+      ⊥-elim (¬↦<τ> m⊕n↦<τ>)
+
+    y≼x : ⟪ ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ⟫ ≼ ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫
+
+    y≼x y′ (⤇ ε (↠-↣ ↣-add) h) =
+      ⟪ ⟨ c , m + n ∷ σ ⟩ ⟫ , ⤇ ε (↠-↦ n+n) (↠-switch ◅ ε) ,
+        ≈′-sym (elide-τ*′ h)
+    y≼x y′ (⤇ ε (↠-↣ ↣-zap) h) =
+      ⟪ ⟨ c , 0 ∷ σ ⟩ ⟫ , ⤇ ε (↠-↦ n↯n) (↠-switch ◅ ε) ,
+        ≈′-sym (elide-τ*′ h)
+    y≼x y′ (⤇ (↠-↣ () ◅ _) _ _)
+
+  -- correctness
 
   correctness : ∀ t c σ →
     ⟪ t ▷ ⟨ c , σ ⟩ ⟫ ≈ ⟪ ⟨ compile t c , σ ⟩ ⟫
@@ -353,7 +414,6 @@ mutual
     ⟪ ⟨ compile (# n) c , σ ⟩ ⟫
     ∎
     where open ≈-Reasoning
-
 
   correctness (t₁ ⊕ t₂) c σ = begin
     ⟪ t₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫
