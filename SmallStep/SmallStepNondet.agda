@@ -84,17 +84,17 @@ LTS L X = X → L → X → Set
 
 infix 3 _↦<_>_
 
-data _↦<_>_ : LTS Label Tm where
+data _↦<_>_ : LTS Action Tm where
   n+n : ∀ {n₁ n₂} →
-    # n₁ ⊕ # n₂ ↦< ! ⊞ > # (n₁ + n₂)
+    # n₁ ⊕ # n₂ ↦< ⊞ > # (n₁ + n₂)
   n↯n : ∀ {n₁ n₂} →
-    # n₁ ⊕ # n₂ ↦< ! ↯ > # 0
-  r+t : ∀ {t₁ t′₁ t₂ Λ} →
-    (t₁↦ : t₁ ↦< Λ > t′₁) →
-    t₁ ⊕ t₂ ↦< Λ > t′₁ ⊕ t₂
-  n+r : ∀ {n₁ t₂ t′₂ Λ} →
-    (t₂↦ : t₂ ↦< Λ > t′₂) →
-    # n₁ ⊕ t₂ ↦< Λ > # n₁ ⊕ t′₂
+    # n₁ ⊕ # n₂ ↦< ↯ > # 0
+  r+t : ∀ {t₁ t′₁ t₂ α} →
+    (t₁↦ : t₁ ↦< α > t′₁) →
+    t₁ ⊕ t₂ ↦< α > t′₁ ⊕ t₂
+  n+r : ∀ {n₁ t₂ t′₂ α} →
+    (t₂↦ : t₂ ↦< α > t′₂) →
+    # n₁ ⊕ t₂ ↦< α > # n₁ ⊕ t′₂
 
 --
 -- Virtual machine
@@ -147,8 +147,8 @@ data Combined : Set where
   ⟪⟫     : Combined
 
 data _↠<_>_ : LTS Label Combined where
-  ↠-↦ : ∀ {t₁ t₂ σ Λ} →
-    t₁ ↦< Λ > t₂ → ⟪ t₁ ▷ σ ⟫ ↠< Λ > ⟪ t₂ ▷ σ ⟫
+  ↠-↦ : ∀ {t₁ t₂ σ α} →
+    t₁ ↦< α > t₂ → ⟪ t₁ ▷ σ ⟫ ↠< ! α > ⟪ t₂ ▷ σ ⟫
   ↠-↣ : ∀ {σ₁ σ₂ Λ} →
     σ₁ ↣< Λ > σ₂ → ⟪ σ₁ ⟫ ↠< Λ > ⟪ σ₂ ⟫
   ↠-switch : ∀ {m c s} →
@@ -240,18 +240,10 @@ import Relation.Binary.EqReasoning as EqR
 module ≈-Reasoning = EqR ≈-setoid
 
 
--- ¬↦<τ>
-
-¬↦<τ> : ∀ {t₁ t₂} → t₁ ↦< τ > t₂ → ⊥
-
-¬↦<τ> (r+t h) = ⊥-elim (¬↦<τ> h)
-¬↦<τ> (n+r h) = ⊥-elim (¬↦<τ> h)
-
 -- unique-τ
 
 unique-τ : ∀ {x y Λ y′} → x ↠<τ> y → x ↠< Λ > y′ → Λ ≡ τ × y′ ≡ y
 
-unique-τ (↠-↦ t₁↦<τ>t₂) _ = ⊥-elim (¬↦<τ> t₁↦<τ>t₂)
 unique-τ (↠-↣ ↣-push) (↠-↣ ↣-push) = refl , refl
 unique-τ ↠-switch (↠-↦ ())
 unique-τ ↠-switch ↠-switch = refl , refl
@@ -314,13 +306,11 @@ mutual
 
     x≼y : ⟪ t₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫ ≼ ⟪ t₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫
 
-    x≼y ._ (⤇ ε (↠-↦ (r+t {t′₁ = t′₁} t₁↦)) ε) =
+    x≼y .(⟪ t′₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫) (⤇ ε (↠-↦ (r+t {t′₁ = t′₁} t₁↦)) ε) =
       ⟪ t′₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫ ,
         ⤇ ε (↠-↦ t₁↦) ε , ≈′⇐≈ (eval-left t′₁ t₂ c σ)
-    x≼y x′ (⤇ ε (↠-↦ (r+t t₁↦)) (↠-↦ t′₁⊕t₂↦<τ> ◅ _)) =
-      ⊥-elim (¬↦<τ> t′₁⊕t₂↦<τ>)
-    x≼y x′ (⤇ (↠-↦ t′₁⊕t₂↦<τ> ◅ _) _ _) =
-      ⊥-elim (¬↦<τ> t′₁⊕t₂↦<τ>)
+    x≼y x′ (⤇ ε (↠-↦ (r+t t₁↦)) (() ◅ h))
+    x≼y x′ (⤇ (() ◅ _) _ _)
 
     y≼x : ⟪ t₁ ▷ ⟨ compile t₂ (add ∷ c) , σ ⟩ ⟫ ≼ ⟪ t₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫
 
@@ -328,8 +318,7 @@ mutual
       ⟪ t′₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫ ,
         ⤇ ε (↠-↦ (r+t t₁↦)) ε ,
           ≈′-sym (≈′-trans (≈′⇐≈ (eval-left t′₁ t₂ c σ)) (elide-τ*′ h))
-    y≼x y′ (⤇ (↠-↦ t₁↦<τ> ◅ _) _ _) =
-      ⊥-elim (¬↦<τ> t₁↦<τ>)
+    y≼x y′ (⤇ (() ◅ h₁) h₂ h)
 
   -- eval-right
 
@@ -351,22 +340,19 @@ mutual
 
     x≼y : ⟪ # m ⊕ t ▷ ⟨ c , σ ⟩ ⟫ ≼ ⟪ t ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫
 
-    x≼y x′ (⤇ ε (↠-↦ (r+t ())) _)
+    x≼y x′ (⤇ ε (↠-↦ (r+t ())) h)
     x≼y ._ (⤇ ε (↠-↦ (n+r {t′₂ = t′₂} t↦)) ε) =
       ⟪ t′₂ ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫ , ⤇ ε (↠-↦ t↦) ε ,
         ≈′⇐≈ (eval-right m t′₂ c σ)
-    x≼y x′ (⤇ ε (↠-↦ (n+r t↦)) (↠-↦ m⊕t′₂↦<τ> ◅ _)) =
-      ⊥-elim (¬↦<τ> m⊕t′₂↦<τ>)
-    x≼y x′ (⤇ (↠-↦ m⊕t↦<τ> ◅ _) _ _) = ⊥-elim (¬↦<τ> m⊕t↦<τ>)
+    x≼y x′ (⤇ ε (↠-↦ (n+r t↦)) (() ◅ h))
+    x≼y x′ (⤇ (() ◅ _) _ _)
 
     y≼x : ⟪ t ▷ ⟨ add ∷ c , m ∷ σ ⟩ ⟫ ≼ ⟪ # m ⊕ t ▷ ⟨ c , σ ⟩ ⟫
 
-    y≼x y′ (⤇ ε (↠-↦ {t₂ = t′} t↦) h) =
+    y≼x y′ (⤇ ε (↠-↦  {t₂ = t′} t↦) h) =
       ⟪ # m ⊕ t′ ▷ ⟨ c , σ ⟩ ⟫ , ⤇ ε (↠-↦ (n+r t↦)) ε ,
         ≈′-sym (≈′-trans (≈′⇐≈ (eval-right m t′ c σ)) (elide-τ*′ h))
-      
-    y≼x y′ (⤇ (↠-↦ t↦<τ> ◅ _) _ _) =
-      ⊥-elim (¬↦<τ> t↦<τ>)
+    y≼x y′ (⤇ (() ◅ _) _ _)
 
   -- ⊕≈add
 
@@ -377,17 +363,16 @@ mutual
     where
     x≼y : ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫ ≼ ⟪ ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ⟫
 
-    x≼y x′ (⤇ ε (↠-↦ n+n) h) =
+    x≼y x (⤇ ε (↠-↦ n+n) h) =
       ⟪ ⟨ c , m + n ∷ σ ⟩ ⟫ , ⤇ ε (↠-↣ ↣-add) ε ,
-        (x′ ≈′ ⟪ ⟨ c , m + n ∷ σ ⟩ ⟫ ∋
+        (x ≈′ ⟪ ⟨ c , m + n ∷ σ ⟩ ⟫ ∋
           ≈′-trans (≈′-sym (elide-τ*′ h)) (elide-τ′ ↠-switch))
-    x≼y x′ (⤇ ε (↠-↦ n↯n) h) =
+    x≼y x (⤇ ε (↠-↦ n↯n) h) =
       ⟪ ⟨ c , 0 ∷ σ ⟩ ⟫ , ⤇ ε (↠-↣ ↣-zap) ε ,
         ≈′-trans (≈′-sym (elide-τ*′ h)) (elide-τ′ ↠-switch)
-    x≼y x′ (⤇ ε (↠-↦ (r+t ())) _)
-    x≼y x′ (⤇ ε (↠-↦ (n+r ())) _)
-    x≼y x′ (⤇ (↠-↦ m⊕n↦<τ> ◅ _) _ _) =
-      ⊥-elim (¬↦<τ> m⊕n↦<τ>)
+    x≼y x (⤇ ε (↠-↦ (r+t ())) h)
+    x≼y x (⤇ ε (↠-↦ (n+r ())) h)
+    x≼y x (⤇ (() ◅ _) _ _)
 
     y≼x : ⟪ ⟨ add ∷ c , n ∷ m ∷ σ ⟩ ⟫ ≼ ⟪ # m ⊕ # n ▷ ⟨ c , σ ⟩ ⟫
 
