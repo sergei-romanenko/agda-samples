@@ -210,6 +210,7 @@ mutual
     ♯ ≼-trans (♭ x≼y) (♭ y≼z) &
     ♯ ≼-trans (♭ z≼y) (♭ y≼x)
 
+-- ≈′⇒≈
 
 ≈′⇒≈ : _≈′_ ⇒ _≈_
 
@@ -217,8 +218,21 @@ mutual
 ≈′⇒≈ (≈′-sym x≈′y) = ≈-sym (≈′⇒≈ x≈′y)
 ≈′⇒≈ {x} {y} (≈′-trans x≈′z z≈′y) = ≈-trans (≈′⇒≈ x≈′z) (≈′⇒≈ z≈′y)
 
+-- ≈⇔≈′
+
 ≈⇔≈′ : ∀ {x y} → x ≈ y ⇔ x ≈′ y
 ≈⇔≈′ = equivalence ≈′⇐≈ ≈′⇒≈
+
+-- ≈′-refl
+
+≈′-refl : Reflexive _≈′_
+≈′-refl = ≈′⇐≈ ≈-refl
+
+
+-- ≡⇒≈′
+
+≡⇒≈′ : _≡_ ⇒ _≈′_
+≡⇒≈′ refl = ≈′⇐≈ ≈-refl
 
 
 --
@@ -239,7 +253,6 @@ import Relation.Binary.EqReasoning as EqR
 
 module ≈-Reasoning = EqR ≈-setoid
 
-
 -- unique-τ
 
 unique-τ : ∀ {x y Λ y′} → x ↠<τ> y → x ↠< Λ > y′ → Λ ≡ τ × y′ ≡ y
@@ -257,12 +270,15 @@ elide-τ : _↠<τ>_ ⇒ _≈_
 elide-τ {x} {y} x↠<τ>y = ♯ x≼y & ♯ y≼x
   where
   x≼y : x ≼ y
+
   x≼y x′ (⤇ ε x↠y′ h₃) with unique-τ x↠<τ>y x↠y′
   x≼y x′ (⤇ ε x↠y′ h₃) | () , _
   x≼y x′ (⤇ (x↠z ◅ z↠x′) x′↠y′ h) with unique-τ x↠<τ>y x↠z
   x≼y x′ (⤇ (x↠z ◅ z↠x′) x′↠y′ h) | refl , refl =
     x′ , ⤇ z↠x′ x′↠y′ h , ≈′⇐≈ ≈-refl
+
   y≼x : y ≼ x
+
   y≼x y′ (⤇ h₁ h₂ h₃) = y′ , ⤇ (x↠<τ>y ◅ h₁) h₂ h₃ , ≈′⇐≈ ≈-refl
 
 
@@ -318,6 +334,7 @@ mutual
       ⟪ t′₁ ⊕ t₂ ▷ ⟨ c , σ ⟩ ⟫ ,
         ⤇ ε (↠-↦ (r+t t₁↦)) ε ,
           ≈′-sym (≈′-trans (≈′⇐≈ (eval-left t′₁ t₂ c σ)) (elide-τ*′ h))
+        
     y≼x y′ (⤇ (() ◅ h₁) h₂ h)
 
   -- eval-right
