@@ -218,6 +218,50 @@ module log2-good-<-Rec where
         suc (rec (suc n′) (s≤′s (s≤′s (⌊n/2⌋≤′n n))))
         where n′ = ⌊ n /2⌋
 
+-- We can separate the computational part from the proofs
+-- related to ensuring the termination. See the papers:
+--
+-- Ana Bove. 2001. Simple general recursion in type theory.
+-- Nordic J. of Computing 8, 1 (March 2001), 22-42.
+--
+-- Ana Bove and Venanzio Capretta. 2005.
+-- Modelling general recursion in type theory.
+-- Mathematical. Structures in Comp. Sci. 15, 4 (August 2005), 671-708.
+-- DOI=10.1017/S0960129505004822 http://dx.doi.org/10.1017/S0960129505004822 
+
+module log2-good-special-acc where
+
+  open Induction.WellFounded
+  open Induction.Nat
+
+  data Log2 : ℕ → Set where
+    stop0 : Log2 zero
+    stop1 : Log2 (suc zero)
+    step  : {n : ℕ} → Log2 (suc ⌊ n /2⌋) → Log2 (suc (suc n))
+
+  log2′ : (n : ℕ) → (a : Log2 n) → ℕ
+
+  log2′ zero _ = zero
+  log2′ (suc zero) _ = zero
+  log2′ (suc (suc n)) (step a) = suc (log2′ (suc ⌊ n /2⌋) a)
+
+  ∀Log2 : (n : ℕ) → Log2 n
+  ∀Log2′ : (n : ℕ) → Acc _<′_ n → Log2 n
+
+  ∀Log2 n = ∀Log2′ n (<-well-founded n)
+
+  ∀Log2′ zero a = stop0
+  ∀Log2′ (suc zero) a = stop1
+  ∀Log2′ (suc (suc n)) (acc rs) =
+    step (∀Log2′ (suc n′) (rs (suc n′) (s≤′s (s≤′s (⌊n/2⌋≤′n n)))))
+    where n′ = ⌊ n /2⌋
+
+  log2 : ℕ → ℕ
+  log2 n = log2′ n (∀Log2 n)
+
+  log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
+  log2-test = refl
+
 --
 -- Quicksort
 --
