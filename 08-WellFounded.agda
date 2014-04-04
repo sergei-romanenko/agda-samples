@@ -121,12 +121,15 @@ branch+branch = refl
 -- But in some cases all the above is not sufficient.
 --
 
+-- Division by 2, rounded downwards.
+-- ⌊_/2⌋ : ℕ → ℕ
+
+-- ⌊n/2⌋≤′n : ∀ n → ⌊ n /2⌋ ≤′ n
+
+log2<′ : (n : ℕ) → suc ⌊ n /2⌋ <′ suc (suc n)
+log2<′ n = s≤′s (s≤′s (⌊n/2⌋≤′n n))
+
 module log2-bad where
-
-  -- Division by 2, rounded downwards.
-  -- ⌊_/2⌋ : ℕ → ℕ
-
-  -- ⌊n/2⌋≤′n : ∀ n → ⌊ n /2⌋ ≤′ n
 
   log2 : ℕ → ℕ
 
@@ -178,7 +181,7 @@ module log2-good-wf-ind where
   log2′ zero a = zero
   log2′ (suc zero) a = zero
   log2′ (suc (suc n)) (acc rs) =
-    suc (log2′ (suc n′) (rs (suc n′) (s≤′s (s≤′s (⌊n/2⌋≤′n n)))))
+    suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
     where n′ = ⌊ n /2⌋
 
   log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
@@ -197,7 +200,7 @@ module log2-good-lib where
   log2′ zero a = zero
   log2′ (suc zero) a = zero
   log2′ (suc (suc n)) (acc rs) =
-    suc (log2′ (suc n′) (rs (suc n′) (s≤′s (s≤′s (⌊n/2⌋≤′n n)))))
+    suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
     where n′ = ⌊ n /2⌋
 
   log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
@@ -215,8 +218,7 @@ module log2-good-<-Rec where
       log2′ zero rec = zero
       log2′ (suc zero) rec = zero
       log2′ (suc (suc n)) rec =
-        suc (rec (suc n′) (s≤′s (s≤′s (⌊n/2⌋≤′n n))))
-        where n′ = ⌊ n /2⌋
+        suc (rec (suc ⌊ n /2⌋) (log2<′ n))
 
 -- We can separate the computational part from the proofs
 -- related to ensuring the termination. See the papers:
@@ -253,7 +255,7 @@ module log2-good-special-acc where
   ∀Log2′ zero a = stop0
   ∀Log2′ (suc zero) a = stop1
   ∀Log2′ (suc (suc n)) (acc rs) =
-    step (∀Log2′ (suc n′) (rs (suc n′) (s≤′s (s≤′s (⌊n/2⌋≤′n n)))))
+    step (∀Log2′ (suc n′) (rs (suc n′) (log2<′ n)))
     where n′ = ⌊ n /2⌋
 
   log2 : ℕ → ℕ
