@@ -306,7 +306,7 @@ module Quicksort-good where
 
   open PartitionSize
 
-  quicksort′ : {A : Set} (p : A → A → Bool) → (xs : List A) →
+  quicksort′ : {A : Set} (p : A → A → Bool) (xs : List A) →
                  Acc _<′_ (length xs) → List A
   quicksort′ p [] _ = []
   quicksort′ p (x ∷ xs) (acc g)
@@ -316,7 +316,7 @@ module Quicksort-good where
       small′ = quicksort′ p small (g (length small) (s≤′s small≼xs))
       big′   = quicksort′ p big   (g (length big)   (s≤′s big≼xs))
 
-  quicksort : {A : Set} (p : A → A → Bool) → (xs : List A) → List A
+  quicksort : {A : Set} (p : A → A → Bool) (xs : List A) → List A
   quicksort p xs = quicksort′ p xs (<-well-founded (length xs))
 
 module Quicksort-good-with-Inverse-image where
@@ -344,7 +344,53 @@ module Quicksort-good-with-Inverse-image where
       small′ = quicksort′ p small (g small (s≤′s small≼xs))
       big′   = quicksort′ p big   (g big   (s≤′s big≼xs))
 
-  quicksort : {A : Set} (p : A → A → Bool) → (xs : List A) → List A
+  quicksort : {A : Set} (p : A → A → Bool) (xs : List A) → List A
   quicksort p xs = quicksort′ p xs (wf-ll xs)
-  
+
+module Quicksort-good-special-acc where
+
+  data Quicksort {A : Set} (p : A → A → Bool) : List A → Set where
+    stop : Quicksort p []
+    step : {x : A} {xs : List A} →
+      Quicksort p (proj₁ (partition (p x) xs)) →
+      Quicksort p (proj₂ (partition (p x) xs))→
+      Quicksort p (x ∷ xs)
+
+  quicksort : {A : Set} (p : A → A → Bool) → List A → List A
+  quicksort′ : {A : Set} (p : A → A → Bool) (xs : List A) →
+    Quicksort p xs → List A
+  ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
+    Quicksort p xs
+
+  quicksort′ p [] a = []
+  quicksort′ p (x ∷ xs) (step a₁ a₂) with partition (p x) xs
+  ... | (small , big) = small′ ++ [ x ] ++ big′
+    where
+      small′ = quicksort′ p small a₁
+      big′   = quicksort′ p big a₂
+
+  quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
+
+  open Induction.WellFounded
+  open Induction.Nat
+
+  open PartitionSize
+
+  ∀Quicksort′ : {A : Set} (p : A → A → Bool) (xs : List A) →
+    Acc _<′_ (length xs) → Quicksort p xs
+
+  ∀Quicksort′ p [] a = stop
+  ∀Quicksort′ p (x ∷ xs) (acc g) =
+    step (∀Quicksort′ p small (g (length small) (s≤′s small≼xs)))
+         (∀Quicksort′ p big (g (length big) (s≤′s big≼xs)))
+    where
+      sb = partition (p x) xs
+      small = proj₁ sb
+      big   = proj₂ sb
+      ≼≼ = partition-size (p x) xs
+      small≼xs = proj₁ ≼≼
+      big≼xs   = proj₂ ≼≼
+
+  ∀Quicksort p xs = ∀Quicksort′ p xs (<-well-founded (length xs))
+
 --
