@@ -1,5 +1,24 @@
 {-# OPTIONS --copatterns --sized-types #-}
 
+{-
+See the papers
+
+* Andreas Abel, Brigitte Pientka, David Thibodeau, and Anton Setzer. 2013.
+  Copatterns: programming infinite structures by observations.
+  In Proceedings of the 40th annual ACM SIGPLAN-SIGACT symposium
+  on Principles of programming languages (POPL '13).
+  ACM, New York, NY, USA, 27-38. DOI=10.1145/2429069.2429075
+  http://doi.acm.org/10.1145/2429069.2429075
+
+* Andreas M. Abel and Brigitte Pientka. 2013.
+  Wellfounded recursion with copatterns: a unified approach to termination
+  and productivity.
+  In Proceedings of the 18th ACM SIGPLAN international conference
+  on Functional programming (ICFP '13).
+  ACM, New York, NY, USA, 185-196. DOI=10.1145/2500365.2500591
+  http://doi.acm.org/10.1145/2500365.2500591
+-}
+
 module 12-Copatterns where
 
 open import Level public
@@ -7,7 +26,8 @@ open import Level public
 open import Size
 open import Function
 open import Data.Nat
-open import Data.List using (List; module List; []; _∷_)
+open import Data.Bool using (Bool; true; false)
+open import Data.List as List using (List; module List; []; _∷_)
 open import Relation.Binary.PropositionalEquality
 
 open import Relation.Binary using (Setoid; module Setoid)
@@ -295,5 +315,112 @@ ones′∼1∷ones′₂ = begin
   1 ∷ ones′
   ∎
   where open ∼-Reasoning
+
+--
+-- Colists
+--
+
+mutual
+
+  data Colist {i : Size} (A : Set) : Set where
+    [] : Colist {i} A
+    _∷_ : (x : A) (xs : ∞Colist {i} A) → Colist {i} A
+
+  record ∞Colist {i : Size} (A : Set) : Set where
+    coinductive
+    field
+      colist♭ : {j : Size< i} → Colist {j} A
+
+open ∞Colist
+
+mutual
+
+  mapColist : ∀ {i A B} (f : A → B) (xs : Colist {i} A) → Colist {i} B
+
+  mapColist f [] = []
+  mapColist f (x ∷ xs) = (f x) ∷ mapColist♯ f xs
+
+  mapColist♯ : ∀ {i A B} (f : A → B) (xs : ∞Colist {i} A) → ∞Colist {i} B
+
+  colist♭ (mapColist♯ f xs) = mapColist f (colist♭ xs)
+
+append : ∀ {i A} → List A → ∞Colist {i} A → ∞Colist {i} A
+
+colist♭ (append [] ys) = colist♭ ys
+colist♭ (append (x ∷ xs) ys) = x ∷ append xs ys
+
+-- Trees
+
+module Trees where
+
+  record Tree {i : Size} (A : Set) : Set where
+    coinductive
+    field
+      label : A
+      children : {j : Size< i} → List (Tree {j} A)
+  open Tree
+
+  -- Breadth-first traversal
+
+  bf : ∀ {i A} → List (Tree {i} A) → ∞Colist {i} A
+
+  colist♭ (bf []) = []
+  colist♭ (bf {i} (t ∷ ts)) {j} =
+    label t ∷ append (List.map label ts)
+                     (bf {j} (List.concatMap (λ t′ → children t′ {j}) (t ∷ ts)))
+
+--
+-- Binary trees
+--
+
+module BTrees where
+
+  record TreeC (A : Set) : Set where
+    coinductive
+    field 
+      labelC : A
+      childL : TreeC A
+      childR : TreeC A
+  open TreeC
+
+  repeatC : ∀ {A} (a : A) → TreeC A
+  labelC (repeatC a) = a
+  childL (repeatC a) = repeatC a
+  childR (repeatC a) = repeatC a
+
+  collectC : ∀ {A} → List Bool → TreeC A → List A
+  collectC []       t = []
+  collectC (true  ∷ bs) t = labelC t ∷ collectC bs (childL t)
+  collectC (false ∷ bs) t = labelC t ∷ collectC bs (childR t)
+
+  swapC : ∀ {A} → TreeC A → TreeC A
+  labelC (swapC t) = labelC t
+  childL (swapC t) = swapC (childR t)
+  childR (swapC t) = swapC (childL t)
+  
+  mapC : ∀ {A B} → (f : A → B) → TreeC A → TreeC B
+  labelC (mapC f t) = f (labelC t)
+  childL (mapC f t) = mapC f (childL t)
+  childR (mapC f t) = mapC f (childR t)
+
+  record TreeB (A : Set) : Set where
+    coinductive
+    field 
+      label : A
+      child : Bool -> TreeB A
+  open TreeB
+
+  collect : ∀ {A} → List Bool → TreeB A → List A
+  collect []       t = []
+  collect (b ∷ bs) t = label t ∷ collect bs (child t b)
+
+  swap : ∀ {A} → TreeB A → TreeB A
+  label (swap t) = label t
+  child (swap t) true  = swap (child t false)
+  child (swap t) false = swap (child t true)
+
+  alternate : {A : Set} (x y : A) → TreeB A
+  label (alternate x y) = x
+  child (alternate x y) b = alternate y x
 
 --
