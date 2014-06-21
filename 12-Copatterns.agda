@@ -80,6 +80,21 @@ div′ : (i : Size) → ℕ′ i → ℕ′ ∞ → ℕ′ i
 div′ .(↑ i) (zero i) n = zero i
 div′ .(↑ i) (suc i m) n = suc i (div′ i (sub′ i m n) n)
 
+data ℕ′′ (i : Size) : Set where
+  zero : (j : Size< i) → ℕ′′ i 
+  suc  : (j : Size< i) → ℕ′′ j → ℕ′′ i
+
+pred′′ : (i : Size) → ℕ′′ i → ℕ′′ i
+
+pred′′ i (zero j) = zero j
+pred′′ i (suc j n) = n
+
+sub′′ : (i : Size) → ℕ′′ i → ℕ′′ ∞ → ℕ′′ i
+
+sub′′ i (zero j) n = zero j
+sub′′ i (suc j m) (zero ∞) = suc j m
+sub′′ i (suc j m) (suc ∞ n) = sub′′ j m n
+
 --
 -- Streams
 --

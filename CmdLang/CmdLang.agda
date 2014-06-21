@@ -82,7 +82,7 @@ record AbsCmdLang (memory : Memory) : Set₁ where
       ∀ {σ σ′ σ′′ b c} → (b≡t : B⟦ b ⟧ σ ≡ true) →
         c / σ ⇩ σ′ → while b c / σ′ ⇩ σ′′ → while b c / σ ⇩ σ′′
     ⇩-while-false :
-      ∀ {σ b c} → B⟦ b ⟧ σ ≡ false →
+      ∀ {σ b c} → (b≡f : B⟦ b ⟧ σ ≡ false) →
         while b c / σ ⇩ σ
 
   --
