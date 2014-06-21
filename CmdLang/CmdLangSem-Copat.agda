@@ -74,57 +74,58 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- C⇒⇩
   --
 
-  C⇒⇩ : (i : Size) (c : Cmd) (σ σ′ : State) → C⟦ c ⟧ σ ⇓⟨ i ⟩ σ′ → c / σ ⇩ σ′
+  C⇒⇩ : (i : Size) (c : Cmd) {σ σ′ : State} →
+    C⟦ c ⟧ σ ⇓⟨ i ⟩ σ′ → c / σ ⇩ σ′
 
-  C⇒⇩ i skip σ .σ now⇓ =
+  C⇒⇩ i skip now⇓ =
     ⇩-skip
 
-  C⇒⇩ i (assign v a) σ ._ now⇓ =
+  C⇒⇩ i (assign v a) now⇓ =
     ⇩-assign
 
-  C⇒⇩ i (seq c₁ c₂) σ σ′′ (later⇓ {j} h) =
+  C⇒⇩ i (seq c₁ c₂) (later⇓ {j} h) =
     let σ′ , h₁ , h₂ = bind⇓-inv j C⟦ c₂ ⟧ h
-    in ⇩-seq (C⇒⇩ j c₁ σ σ′ h₁) (C⇒⇩ j c₂ σ′ σ′′ h₂)
+    in ⇩-seq (C⇒⇩ j c₁ h₁) (C⇒⇩ j c₂ h₂)
 
-  C⇒⇩ i (if b c₁ c₂) σ σ′′ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
-  C⇒⇩ i (if b c₁ c₂) σ σ′′ (later⇓ {j} h) | true  | ≡[ b≡t ] =
-    ⇩-if-true b≡t (C⇒⇩ j c₁ σ σ′′ h)
-  C⇒⇩ i (if b c₁ c₂) σ σ′′ (later⇓ {j} h) | false | ≡[ b≡f ] =
-    ⇩-if-false b≡f (C⇒⇩ j c₂ σ σ′′ h)
+  C⇒⇩ i (if b c₁ c₂) {σ} h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+  C⇒⇩ i (if b c₁ c₂) (later⇓ {j} h) | true  | ≡[ b≡t ] =
+    ⇩-if-true b≡t (C⇒⇩ j c₁ h)
+  C⇒⇩ i (if b c₁ c₂) (later⇓ {j} h) | false | ≡[ b≡f ] =
+    ⇩-if-false b≡f (C⇒⇩ j c₂ h)
 
-  C⇒⇩ i (while b c) σ σ′′ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
-  C⇒⇩ i (while b c) σ σ′′ (later⇓ {j} h) | true | ≡[ b≡t ] =
+  C⇒⇩ i (while b c) {σ} h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+  C⇒⇩ i (while b c) (later⇓ {j} h) | true | ≡[ b≡t ] =
     let σ′ , h₁ , h₂ = bind⇓-inv j C⟦ while b c ⟧ h
-    in ⇩-while-true b≡t (C⇒⇩ j c σ σ′ h₁) (C⇒⇩ j (while b c) σ′ σ′′ h₂)
-  C⇒⇩ i (while b c) σ .σ now⇓ | false | ≡[ b≡f ] =
+    in ⇩-while-true b≡t (C⇒⇩ j c h₁) (C⇒⇩ j (while b c) h₂)
+  C⇒⇩ i (while b c) now⇓ | false | ≡[ b≡f ] =
     ⇩-while-false b≡f
 
   --
   -- ⇩⇒C
   --
 
-  ⇩⇒C : {c : Cmd} (σ σ′ : State) →
+  ⇩⇒C : {c : Cmd} {σ σ′ : State} →
       c / σ ⇩ σ′ → C⟦ c ⟧ σ ⇓ σ′
 
-  ⇩⇒C σ .σ ⇩-skip =
+  ⇩⇒C ⇩-skip =
     now⇓
 
-  ⇩⇒C σ ._ ⇩-assign =
+  ⇩⇒C ⇩-assign =
     now⇓
 
-  ⇩⇒C {seq c₁ c₂} σ σ′′ (⇩-seq {σ′ = σ′} h₁ h₂) =
-    later⇓ (bind⇓ C⟦ c₂ ⟧ (⇩⇒C σ σ′ h₁) (⇩⇒C σ′ σ′′ h₂))
+  ⇩⇒C {seq c₁ c₂} (⇩-seq h₁ h₂) =
+    later⇓ (bind⇓ C⟦ c₂ ⟧ (⇩⇒C h₁) (⇩⇒C h₂))
 
-  ⇩⇒C σ σ′ (⇩-if-true b≡t h) rewrite b≡t =
-    later⇓ (⇩⇒C σ σ′ h)
+  ⇩⇒C (⇩-if-true b≡t h) rewrite b≡t =
+    later⇓ (⇩⇒C h)
 
-  ⇩⇒C σ σ′ (⇩-if-false b≡f h) rewrite b≡f =
-    later⇓ (⇩⇒C σ σ′ h)
+  ⇩⇒C (⇩-if-false b≡f h) rewrite b≡f =
+    later⇓ (⇩⇒C h)
 
-  ⇩⇒C {while b c} σ σ′′ (⇩-while-true {σ′ = σ′} b≡t h₁ h₂) rewrite b≡t =
-    later⇓ (bind⇓ C⟦ while b c ⟧ (⇩⇒C σ σ′ h₁) (⇩⇒C σ′ σ′′ h₂))
+  ⇩⇒C {while b c} (⇩-while-true b≡t h₁ h₂) rewrite b≡t =
+    later⇓ (bind⇓ C⟦ while b c ⟧ (⇩⇒C h₁) (⇩⇒C h₂))
 
-  ⇩⇒C σ .σ (⇩-while-false b≡f) rewrite b≡f =
+  ⇩⇒C (⇩-while-false b≡f) rewrite b≡f =
     now⇓
 
 --
