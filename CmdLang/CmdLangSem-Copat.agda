@@ -32,33 +32,25 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- C⟦_⟧
 
   C⟦_⟧ : ∀ {i} (c : Cmd) (σ : State) → Delay i State
-  C⟦If⟧ : ∀ {i} (bv : Bool) (c₁ c₂ : Cmd) (σ : State) →
-    Delay i State
-  C⟦While⟧ : ∀ {i} (bv : Bool) (b : BExp) (c : Cmd) (σ : State) →
-    Delay i State
   ♯cmd : ∀ {i} (c : Cmd) (σ : State) → ∞Delay i State
   ♯seq : ∀ {i} (c₁ c₂ : Cmd) (σ : State) → ∞Delay i State
 
   C⟦ skip ⟧ σ =
     return σ
+
   C⟦ assign v a ⟧ σ =
     return (update σ v (A⟦ a ⟧ σ))
+
   C⟦ seq c₁ c₂ ⟧ σ =
     later (♯seq c₁ c₂ σ)
-  C⟦ if b c₁ c₂ ⟧ σ =
-    C⟦If⟧ (B⟦ b ⟧ σ) c₁ c₂ σ
-  C⟦ while b c ⟧ σ =
-    C⟦While⟧ (B⟦ b ⟧ σ) b c σ
 
-  C⟦If⟧ true c₁ c₂ σ =
-    later (♯cmd c₁ σ)
-  C⟦If⟧ false c₁ c₂ σ =
-    later (♯cmd c₂ σ)
+  C⟦ if b c₁ c₂ ⟧ σ with B⟦ b ⟧ σ
+  ... | true = later (♯cmd c₁ σ)
+  ... | false = later (♯cmd c₂ σ)
 
-  C⟦While⟧ true b c σ =
-    later (♯seq c (while b c) σ)
-  C⟦While⟧ false b c σ =
-    return σ
+  C⟦ while b c ⟧ σ with B⟦ b ⟧ σ
+  ... | true = later (♯seq c (while b c) σ)
+  ... | false = return σ
 
   force (♯cmd c σ) =
     C⟦ c ⟧ σ
