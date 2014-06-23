@@ -106,4 +106,75 @@ bind⇓-inv i f {later ?a} (later⇓ {j} h) =
   let a , ⇓a , ⇓b =  bind⇓-inv j f {force ?a} h
   in a , later⇓ ⇓a , ⇓b
 
+
+-- _⇑_
+
+mutual
+
+  data _⇑ {i : Size} {A : Set} : (a? : Delay ∞ A) → Set where
+    later⇑ : ∀ {♯a : ∞Delay ∞ A} → _∞⇑ {i} {A} ♯a →
+      later ♯a ⇑
+
+  record _∞⇑ {i : Size} {A : Set} (♯a : ∞Delay ∞ A) : Set where
+    coinductive
+    field
+      ⇑force : {j : Size< i} → _⇑ {j} {A} (force ♯a)
+
+open _∞⇑ public
+
+_⇑⟨_⟩ = λ {A} a? i → _⇑ {i} {A} a? 
+
+_∞⇑⟨_⟩ = λ {A} ♯a i → _∞⇑ {i} {A} ♯a 
+
+-- never∞⇑
+
+never∞⇑ : {A : Set} → never {∞} {A} ∞⇑
+
+⇑force never∞⇑ {j} = later⇑ {j} never∞⇑
+
+
+-- map⇑
+
+mutual
+
+  map⇑ : ∀ {A B} (f : A → B) {a? : Delay ∞ A} →
+    a? ⇑ → (f <$> a?) ⇑
+
+  map⇑ f (later⇑ {♯a} h) = later⇑ (∞map⇑ f h)
+
+  ∞map⇑ : ∀ {A B} (f : A → B) {♯a : ∞Delay ∞ A} →
+    ♯a ∞⇑ → (♯a ∞>>= (λ a → return (f a)) ) ∞⇑
+
+  ⇑force (∞map⇑ f h) = map⇑ f (⇑force h)
+
+-- bind⇑₁
+
+mutual
+
+  bind⇑₁ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {?a : Delay ∞ A} →
+    ?a ⇑⟨ i ⟩ → (?a >>= f) ⇑⟨ i ⟩
+
+  bind⇑₁ f (later⇑ h) = later⇑ (∞bind⇑₁ f h)
+
+  ∞bind⇑₁ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {♯a : ∞Delay ∞ A} →
+    ♯a ∞⇑⟨ i ⟩ → (♯a ∞>>= f) ∞⇑⟨ i ⟩
+
+  ⇑force (∞bind⇑₁ f h) = bind⇑₁ f (⇑force h)
+
+
+-- bind⇑₂
+
+mutual
+
+  bind⇑₂ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {?a : Delay ∞ A} {a : A} →
+    ?a ⇓ a → f a ⇑⟨ i ⟩ →(?a >>= f) ⇑⟨ i ⟩
+
+  bind⇑₂ f (now⇓ {a}) h⇧ = h⇧
+  bind⇑₂ f (later⇓ h⇩) h⇧ = later⇑ (∞bind⇑₂ f h⇩ h⇧)
+
+  ∞bind⇑₂ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {♯a : ∞Delay ∞ A} {a : A} →
+    force ♯a ⇓ a → f a ⇑⟨ i ⟩ → (♯a ∞>>= f) ∞⇑⟨ i ⟩
+
+  ⇑force (∞bind⇑₂ f h⇩ h⇧) = bind⇑₂ f h⇩ h⇧
+
 --

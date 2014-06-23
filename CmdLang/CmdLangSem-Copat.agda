@@ -18,6 +18,8 @@ open import Data.Nat
 open import Data.Unit
 open import Data.Product
 
+open import Function
+
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to ≡[_])
 
@@ -119,5 +121,91 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
   ⇩⇒C (⇩-while-false b≡f) rewrite b≡f =
     now⇓
+
+
+  --
+  -- Divergence
+  --
+
+  mutual
+
+    data _/_⇧ {i : Size} : (c : Cmd) (σ : State) → Set where
+      ⇧-seq₁ :
+        ∀ {σ c₁ c₂} → c₁ ∞/ σ ⇧ → seq c₁ c₂ / σ ⇧
+      ⇧-seq₂ :
+        ∀ {σ σ′ c₁ c₂} → c₁ / σ ⇩ σ′ → c₂ ∞/ σ′ ⇧ → seq c₁ c₂ / σ ⇧
+      ⇧-if-true :
+        ∀ {σ b c₁ c₂} → (b≡t : B⟦ b ⟧ σ ≡ true) →
+          c₁ ∞/ σ ⇧ → if b c₁ c₂ / σ ⇧
+      ⇧-if-false :
+        ∀ {σ b c₁ c₂} → (b≡f : B⟦ b ⟧ σ ≡ false) →
+          c₂ ∞/ σ ⇧ → if b c₁ c₂ / σ ⇧
+      ⇧-while₁ :
+        ∀ {σ b c} → (b≡t : B⟦ b ⟧ σ ≡ true) →
+          c ∞/ σ ⇧ → while b c / σ ⇧
+      ⇧-while₂ :
+        ∀ {σ σ′ b c} → (b≡t : B⟦ b ⟧ σ ≡ true) →
+          c / σ ⇩ σ′ → while b c ∞/ σ′ ⇧ → while b c / σ ⇧
+
+    record _∞/_⇧ {i : Size} (c : Cmd) (σ : State) : Set where
+      coinductive
+      field
+        ⇧force : {j : Size< i} → _/_⇧ {j} c σ
+
+  open _∞/_⇧ public
+
+  _/_⇧⟨_⟩ = λ c σ i  → _/_⇧ {i} c σ 
+
+  _∞/_⇧⟨_⟩ = λ c σ i → _∞/_⇧ {i} c σ 
+
+  --
+  -- ⇧⇒C
+  --
+
+  mutual
+
+    ⇧⇒C : {i : Size} {c : Cmd} {σ : State} →
+      c / σ ⇧⟨ i ⟩ → C⟦ c ⟧ σ ⇑⟨ i ⟩
+
+    ⇧⇒C (⇧-seq₁ h⇧) =
+      later⇑ (∞⇧⇒seq₁ h⇧)
+
+    ⇧⇒C (⇧-seq₂ h⇩ h⇧) =
+      later⇑ (∞⇧⇒seq₂ h⇩ h⇧)
+
+    ⇧⇒C (⇧-if-true b≡t h⇧) rewrite b≡t =
+      later⇑ (∞⇧⇒cmd h⇧)
+
+    ⇧⇒C (⇧-if-false b≡f h⇧) rewrite b≡f =
+      later⇑ (∞⇧⇒cmd h⇧)
+
+    ⇧⇒C (⇧-while₁ b≡t h⇧) rewrite b≡t =
+      later⇑ (∞⇧⇒seq₁ h⇧)
+
+    ⇧⇒C (⇧-while₂ b≡t h⇩ h⇧) rewrite b≡t =
+      later⇑ (∞⇧⇒seq₂ h⇩ h⇧)
+
+    -- ∞⇧⇒cmd
+
+    ∞⇧⇒cmd : {i : Size} {c : Cmd} {σ : State} →
+      c ∞/ σ ⇧⟨ i ⟩ → ♯cmd c σ ∞⇑⟨ i ⟩
+
+    ⇑force (∞⇧⇒cmd h⇧) {j} = ⇧⇒C (⇧force h⇧ {j})
+
+    -- ∞⇧⇒seq₁
+
+    ∞⇧⇒seq₁ : {i : Size} {c₁ c₂ : Cmd} {σ : State} →
+      c₁ ∞/ σ ⇧⟨ i ⟩ → ♯seq c₁ c₂ σ ∞⇑⟨ i ⟩
+
+    ⇑force (∞⇧⇒seq₁ {c₂ = c₂} h⇧) {j} =
+      bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C (⇧force h⇧ {j}))
+
+    -- ∞⇧⇒seq₂
+
+    ∞⇧⇒seq₂ : {i : Size} {c₁ c₂ : Cmd} {σ σ′ : State} →
+      c₁ / σ ⇩ σ′ → c₂ ∞/ σ′ ⇧⟨ i ⟩ → ♯seq c₁ c₂ σ ∞⇑⟨ i ⟩
+
+    ⇑force (∞⇧⇒seq₂ {c₂ = c₂} h⇩ h⇧) =
+      bind⇑₂ C⟦ c₂ ⟧ (⇩⇒C h⇩) (⇧⇒C (⇧force h⇧))
 
 --
