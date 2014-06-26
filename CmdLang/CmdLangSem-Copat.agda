@@ -34,7 +34,6 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- C⟦_⟧
 
   C⟦_⟧ : ∀ {i} (c : Cmd) (σ : State) → Delay i State
-  ♯cmd : ∀ {i} (c : Cmd) (σ : State) → ∞Delay i State
   ♯seq : ∀ {i} (c₁ c₂ : Cmd) (σ : State) → ∞Delay i State
 
   C⟦ skip ⟧ σ =
@@ -44,18 +43,15 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     return (update σ v (A⟦ a ⟧ σ))
 
   C⟦ seq c₁ c₂ ⟧ σ =
-    later (♯seq c₁ c₂ σ)
+    C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
 
   C⟦ if b c₁ c₂ ⟧ σ with B⟦ b ⟧ σ
-  ... | true = later (♯cmd c₁ σ)
-  ... | false = later (♯cmd c₂ σ)
+  ... | true =  C⟦ c₁ ⟧ σ
+  ... | false = C⟦ c₂ ⟧ σ
 
   C⟦ while b c ⟧ σ with B⟦ b ⟧ σ
-  ... | true = later (♯seq c (while b c) σ)
+  ... | true  = later (♯seq c (while b c) σ)
   ... | false = return σ
-
-  force (♯cmd c σ) =
-    C⟦ c ⟧ σ
 
   force (♯seq c₁ c₂ σ) =
     C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
@@ -77,15 +73,15 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩ i (assign v a) now⇓ =
     ⇩-assign
 
-  C⇒⇩ i (seq c₁ c₂) (later⇓ {j} h) =
-    let σ′ , h₁ , h₂ = bind⇓-inv j C⟦ c₂ ⟧ h
-    in ⇩-seq (C⇒⇩ j c₁ h₁) (C⇒⇩ j c₂ h₂)
+  C⇒⇩ i (seq c₁ c₂) h =
+    let σ′ , h₁ , h₂ = bind⇓-inv i C⟦ c₂ ⟧ h
+    in ⇩-seq (C⇒⇩ i c₁ h₁) (C⇒⇩ i c₂ h₂)
 
   C⇒⇩ i (if b c₁ c₂) {σ} h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
-  C⇒⇩ i (if b c₁ c₂) (later⇓ {j} h) | true  | ≡[ b≡t ] =
-    ⇩-if-true b≡t (C⇒⇩ j c₁ h)
-  C⇒⇩ i (if b c₁ c₂) (later⇓ {j} h) | false | ≡[ b≡f ] =
-    ⇩-if-false b≡f (C⇒⇩ j c₂ h)
+  C⇒⇩ i (if b c₁ c₂) h | true  | ≡[ b≡t ] =
+    ⇩-if-true b≡t (C⇒⇩ i c₁ h)
+  C⇒⇩ i (if b c₁ c₂) h | false | ≡[ b≡f ] =
+    ⇩-if-false b≡f (C⇒⇩ i c₂ h)
 
   C⇒⇩ i (while b c) {σ} h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
   C⇒⇩ i (while b c) (later⇓ {j} h) | true | ≡[ b≡t ] =
@@ -108,13 +104,13 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     now⇓
 
   ⇩⇒C {seq c₁ c₂} (⇩-seq h₁ h₂) =
-    later⇓ (bind⇓ C⟦ c₂ ⟧ (⇩⇒C h₁) (⇩⇒C h₂))
+    bind⇓ C⟦ c₂ ⟧ (⇩⇒C h₁) (⇩⇒C h₂)
 
   ⇩⇒C (⇩-if-true b≡t h) rewrite b≡t =
-    later⇓ (⇩⇒C h)
+    ⇩⇒C h
 
   ⇩⇒C (⇩-if-false b≡f h) rewrite b≡f =
-    later⇓ (⇩⇒C h)
+    ⇩⇒C h
 
   ⇩⇒C {while b c} (⇩-while-true b≡t h₁ h₂) rewrite b≡t =
     later⇓ (bind⇓ C⟦ while b c ⟧ (⇩⇒C h₁) (⇩⇒C h₂))
@@ -131,15 +127,15 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
     data _/_⇧ {i : Size} : (c : Cmd) (σ : State) → Set where
       ⇧-seq₁ :
-        ∀ {σ c₁ c₂} → c₁ ∞/ σ ⇧ → seq c₁ c₂ / σ ⇧
+        ∀ {σ c₁ c₂} → c₁ / σ ⇧ → seq c₁ c₂ / σ ⇧
       ⇧-seq₂ :
-        ∀ {σ σ′ c₁ c₂} → c₁ / σ ⇩ σ′ → c₂ ∞/ σ′ ⇧ → seq c₁ c₂ / σ ⇧
+        ∀ {σ σ′ c₁ c₂} → c₁ / σ ⇩ σ′ → c₂ / σ′ ⇧ → seq c₁ c₂ / σ ⇧
       ⇧-if-true :
         ∀ {σ b c₁ c₂} → (b≡t : B⟦ b ⟧ σ ≡ true) →
-          c₁ ∞/ σ ⇧ → if b c₁ c₂ / σ ⇧
+          c₁ / σ ⇧⟨ i ⟩ → if b c₁ c₂ / σ ⇧
       ⇧-if-false :
         ∀ {σ b c₁ c₂} → (b≡f : B⟦ b ⟧ σ ≡ false) →
-          c₂ ∞/ σ ⇧ → if b c₁ c₂ / σ ⇧
+          c₂ / σ ⇧⟨ i ⟩ → if b c₁ c₂ / σ ⇧
       ⇧-while₁ :
         ∀ {σ b c} → (b≡t : B⟦ b ⟧ σ ≡ true) →
           c ∞/ σ ⇧ → while b c / σ ⇧
@@ -152,11 +148,11 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
       field
         ⇧force : {j : Size< i} → _/_⇧ {j} c σ
 
+    _/_⇧⟨_⟩ = λ c σ i  → _/_⇧ {i} c σ 
+
+    _∞/_⇧⟨_⟩ = λ c σ i → _∞/_⇧ {i} c σ 
+
   open _∞/_⇧ public
-
-  _/_⇧⟨_⟩ = λ c σ i  → _/_⇧ {i} c σ 
-
-  _∞/_⇧⟨_⟩ = λ c σ i → _∞/_⇧ {i} c σ 
 
   --
   -- ⇧⇒C
@@ -167,30 +163,23 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     ⇧⇒C : {i : Size} {c : Cmd} {σ : State} →
       c / σ ⇧⟨ i ⟩ → C⟦ c ⟧ σ ⇑⟨ i ⟩
 
-    ⇧⇒C (⇧-seq₁ h⇧) =
-      later⇑ (∞⇧⇒seq₁ h⇧)
+    ⇧⇒C {i} {seq c₁ c₂} (⇧-seq₁ h⇧) =
+      bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C h⇧)
 
-    ⇧⇒C (⇧-seq₂ h⇩ h⇧) =
-      later⇑ (∞⇧⇒seq₂ h⇩ h⇧)
+    ⇧⇒C  {i} {seq c₁ c₂} (⇧-seq₂ h⇩ h⇧) =
+      bind⇑₂ C⟦ c₂ ⟧ (⇩⇒C h⇩) (⇧⇒C h⇧)
 
     ⇧⇒C (⇧-if-true b≡t h⇧) rewrite b≡t =
-      later⇑ (∞⇧⇒cmd h⇧)
+      ⇧⇒C h⇧
 
     ⇧⇒C (⇧-if-false b≡f h⇧) rewrite b≡f =
-      later⇑ (∞⇧⇒cmd h⇧)
+      ⇧⇒C h⇧
 
     ⇧⇒C (⇧-while₁ b≡t h⇧) rewrite b≡t =
       later⇑ (∞⇧⇒seq₁ h⇧)
 
     ⇧⇒C (⇧-while₂ b≡t h⇩ h⇧) rewrite b≡t =
       later⇑ (∞⇧⇒seq₂ h⇩ h⇧)
-
-    -- ∞⇧⇒cmd
-
-    ∞⇧⇒cmd : {i : Size} {c : Cmd} {σ : State} →
-      c ∞/ σ ⇧⟨ i ⟩ → ♯cmd c σ ∞⇑⟨ i ⟩
-
-    ⇑force (∞⇧⇒cmd h⇧) {j} = ⇧⇒C (⇧force h⇧ {j})
 
     -- ∞⇧⇒seq₁
 
