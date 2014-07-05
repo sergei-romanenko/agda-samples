@@ -27,7 +27,7 @@ solve0 : ∀ (f : Expr 0 × Expr 0) →
   let ρ = [] in ⟦ e₁ ⟧ ρ ≈ ⟦ e₂ ⟧ ρ
 
 solve0 f hyp =
-  prove f [] hyp
+  prove f [] (hyp {[]})
 
 -- ρ = a ∷ []
 

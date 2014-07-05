@@ -25,8 +25,6 @@ x + y = {!!}
 -- Magic to write 3 rather than suc (suc (suc zero))
 
 {-# BUILTIN NATURAL ℕ    #-}
-{-# BUILTIN ZERO    zero #-}
-{-# BUILTIN SUC     suc  #-}
 
 module Samples-1 where
   x : ℕ

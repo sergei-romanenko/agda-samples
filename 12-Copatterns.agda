@@ -1,4 +1,4 @@
-{-# OPTIONS --copatterns --sized-types #-}
+{-# OPTIONS --copatterns #-}
 
 {-
 See the papers

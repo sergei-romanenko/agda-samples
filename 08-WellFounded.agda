@@ -5,10 +5,8 @@ open import Data.Nat
 open import Data.Nat.Properties
 open import Data.List
   hiding (partition)
-open import Data.Maybe
-
 open import Data.Product
-  renaming (map to map×)
+  hiding (map)
 
 open import Function
 
@@ -138,8 +136,8 @@ module log2-bad where
   log2 (suc zero) = zero
   log2 (suc (suc n)) = suc (log2 (suc ⌊ n /2⌋))
 
-  log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
-  log2-test = refl
+  -- log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
+  -- log2-test = refl
 
 module log2-good-wf-ind where
 
@@ -327,12 +325,12 @@ module Quicksort-good-with-Inverse-image where
 
   open PartitionSize
 
-  open module WF-ll {A : Set} = Inverse-image {_} {List A} {ℕ} {_<′_} length
+  open module WF-ll {A : Set} = Inverse-image {A = List A} {B = ℕ} {_<′_} length
 
   _≺_ : ∀ {a} {A : Set a} → Rel (List A) _
   _≺_ = _<′_ on length
 
-  wf-ll : ∀ {A : Set} → Well-founded {_} {List A} _≺_
+  wf-ll : ∀ {A : Set} → Well-founded {A = List A} _≺_
   wf-ll = well-founded <-well-founded
 
   quicksort′ : {A : Set} (p : A → A → Bool) → (xs : List A) →
