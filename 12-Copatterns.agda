@@ -28,11 +28,17 @@ open import Function
 open import Data.Nat
 open import Data.Bool using (Bool; true; false)
 open import Data.List as List using (List; module List; []; _∷_)
+open import Data.Empty
+open import Data.String using (String; _++_)
 open import Relation.Binary.PropositionalEquality
 
 open import Relation.Binary using (Setoid; module Setoid)
 
 import Relation.Binary.PreorderReasoning as Pre
+
+--
+-- "Sizes" and "sized types".
+--
 
 {-
 postulate
@@ -42,14 +48,43 @@ postulate
   ∞      : Size
 -}
 
+
+-- Equality of sizes
+
+s≡s : (s : Size) → s ≡ s
+s≡s s = refl
+
+↑≡↑ : (s : Size) → ↑ s ≡ ↑ s
+↑≡↑ s = refl
+
+↑∞≡∞ : ↑ ∞ ≡ ∞
+↑∞≡∞ = refl
+
+↑≡∞ : (s : Size) → ↑ s ≡ ∞ → s ≡ ∞
+↑≡∞ .∞ refl = refl
+
+--
+-- "Less then" for sizes
+--
+-- (i : Size) (j : Size< i) → ...
+--
+-- i ≤ ↑ i ≤ ∞
+-- A constraint solver for a set of inequalities x + n ≤ y, x ≤ y + m .
+-- Subtyping: T {i} ≤ T {↑ i} ≤ T {∞}
+--
+
+--
+-- Values can be instrumented with "sizes".
+--
+
 data ℕˢ : {i : Size} → Set where
   zero : {i : Size} → ℕˢ {↑ i} 
   suc  : {i : Size} → ℕˢ {i} → ℕˢ {↑ i}
 
 predˢ : {i : Size} → ℕˢ {i} → ℕˢ {i}
 
-predˢ .{↑ i} (zero {i}) = zero {i}
-predˢ .{↑ i} (suc {i} n) = n
+predˢ zero = zero
+predˢ (suc n) = n
 
 subˢ : {i : Size} → ℕˢ {i} → ℕˢ {∞} → ℕˢ {i}
 
@@ -57,9 +92,19 @@ subˢ zero n = zero
 subˢ (suc m) zero = suc m
 subˢ (suc m) (suc n) = suc (subˢ m n)
 
-div : {i : Size} → ℕˢ {i} → ℕˢ → ℕˢ {i}
-div zero n = zero
-div (suc m) n = suc (div (subˢ m n) n)
+-- Now the compiler is able to understand
+-- that the first argument becomes smaller.
+-- `m` is smaller than `suc m`, and
+-- the size of `subˢ m n`is the same as than of `m`.
+
+divˢ : {i : Size} → ℕˢ {i} → ℕˢ → ℕˢ {i}
+divˢ zero n = zero
+divˢ (suc m) n = suc (divˢ (subˢ m n) n)
+
+--
+-- Let's make the sizes visible,
+-- to see what really happens with them.
+--
 
 data ℕ′ : Size → Set where
   zero : (i : Size) → ℕ′ (↑ i) 
@@ -80,6 +125,12 @@ div′ : (i : Size) → ℕ′ i → ℕ′ ∞ → ℕ′ i
 div′ .(↑ i) (zero i) n = zero i
 div′ .(↑ i) (suc i m) n = suc i (div′ i (sub′ i m n) n)
 
+--
+-- A more abstract approach.
+-- What really matters for sizes?
+-- Just to become "smaller"!
+--
+
 data ℕ′′ (i : Size) : Set where
   zero : (j : Size< i) → ℕ′′ i 
   suc  : (j : Size< i) → ℕ′′ j → ℕ′′ i
@@ -94,6 +145,35 @@ sub′′ : (i : Size) → ℕ′′ i → ℕ′′ ∞ → ℕ′′ i
 sub′′ i (zero j) n = zero j
 sub′′ i (suc j m) (zero ∞) = suc j m
 sub′′ i (suc j m) (suc ∞ n) = sub′′ j m n
+
+--
+-- Copatterns: a way to implement "virtual functions".
+--
+
+record Animal : Set where
+  field
+    color  : String
+    nature : String
+
+  response : String → String
+  response name =
+    "Hello, " ++ name ++ "! I'm " ++ color ++ " and " ++ nature ++ "!"
+
+open Animal
+
+frog : Animal
+color  frog = "green"
+nature frog = "good"
+
+askFrog : response frog "human" ≡ "Hello, human! I'm green and good!"
+askFrog = refl
+
+dog : Animal
+color  dog = "black"
+nature dog = "bad"
+
+askDog : response dog "beast" ≡ "Hello, beast! I'm black and bad!"
+askDog = refl
 
 --
 -- Streams
@@ -188,10 +268,10 @@ ones′ = map suc zeros
 
 {-
  ones ⇒ 1 ∷ ones
- ones′ ⇒ map suc zeros ⇒ map suc (0 ∷ ♯ zeros) ⇒
-       ⇒ 1 ∷ ♯ map suc (♭ (♯ zeros)) ⇒ 1 ∷ ♯ map suc zeros
-       ⇒ 1 ∷ ♯ ones′
- Hence, ones ∼ ♯ ones′ ⇒ 1 ∷ ones ∼ 1 ∷ ♯ ones′
+ ones′ ⇒ map suc zeros ⇒ map suc (0 ∷ zeros) ⇒
+       ⇒ 1 ∷ map suc zeros ⇒ 1 ∷ map suc zeros
+       ⇒ 1 ∷ ones′
+ Hence, ones ∼ ones′ ⇒ 1 ∷ ones ∼ 1 ∷ ones′
  and we never obtain differing stream elements. :-)
 -}
 
