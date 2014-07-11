@@ -11,16 +11,21 @@ See the paper
 
 module CmdLang-PartMonad where
 
-open import Level public
+open import Level
   using (Level) renaming (zero to lzero; suc to lsuc)
 
-open import Size public
+open import Size
 
-open import Category.Monad public
+open import Category.Monad
   using (RawMonad; module RawMonad)
 
-open import Data.Product public
-  using (∃; ∃₂; _×_; _,_; proj₁; proj₂)
+open import Data.Product
+  using (∃; ∃₂; Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Sum
+  using (_⊎_; inj₁; inj₂)
+open import Data.Empty
+
+open import Relation.Nullary
 
 -- Delay & ∞Delay
 
@@ -75,8 +80,7 @@ data _⇓_ {i : Size} {A : Set} : (a? : Delay ∞ A) (a : A) → Set where
 
 _⇓⟨_⟩_ = λ {A} a? i a → _⇓_ {i} {A} a? a 
 
-_⇓   :  {A : Set} (x : Delay ∞ A) → Set
-x ⇓  =  ∃ λ a → x ⇓ a
+_⇓⟨_⟩ = λ {A} a? i → ∃ λ a → _⇓_ {i} {A} a? a
 
 -- map⇓
 
@@ -88,22 +92,23 @@ map⇓ f (later⇓ h) = later⇓ (map⇓ f h)
 
 -- bind⇓
 
-bind⇓ : ∀ {A B} (f : A → Delay ∞ B) {?a : Delay ∞ A} {a : A} {b : B} →
-  ?a ⇓ a → f a ⇓ b → (?a >>= f) ⇓ b
+bind⇓ : ∀ {i} {A B} (f : A → Delay ∞ B) {a? : Delay ∞ A} {a : A} {b : B} →
+  a? ⇓⟨ i ⟩ a →  f a ⇓ b → (a? >>= f) ⇓ b
 
-bind⇓ f now⇓ h₂ = h₂
-bind⇓ f (later⇓ h₁) h₂ = later⇓ (bind⇓ f h₁ h₂)
+bind⇓ {i} f now⇓ h₂ = h₂
+bind⇓ {i} f (later⇓ {j} h₁) h₂ =
+  later⇓ (bind⇓ {j} f h₁ h₂)
 
 -- bind⇓-inv
 
 bind⇓-inv : ∀ {A B} (i : Size) (f : A → Delay ∞ B)
-  {?a : Delay ∞ A} {b : B} →
-  (?a >>= f) ⇓⟨ i ⟩ b →
-  ∃ λ (a : A) → ?a ⇓⟨ i ⟩ a × f a ⇓⟨ i ⟩ b
+  {a? : Delay ∞ A} {b : B} →
+  (a? >>= f) ⇓⟨ i ⟩ b →
+  ∃ λ (a : A) → a? ⇓⟨ i ⟩ a × f a ⇓⟨ i ⟩ b
 
 bind⇓-inv i f {now a} h = a , now⇓ , h
-bind⇓-inv i f {later ?a} (later⇓ {j} h) =
-  let a , ⇓a , ⇓b =  bind⇓-inv j f {force ?a} h
+bind⇓-inv i f {later a?} (later⇓ {j} h) =
+  let a , ⇓a , ⇓b =  bind⇓-inv j f {force a?} h
   in a , later⇓ ⇓a , ⇓b
 
 
@@ -151,8 +156,8 @@ mutual
 
 mutual
 
-  bind⇑₁ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {?a : Delay ∞ A} →
-    ?a ⇑⟨ i ⟩ → (?a >>= f) ⇑⟨ i ⟩
+  bind⇑₁ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {a? : Delay ∞ A} →
+    a? ⇑⟨ i ⟩ → (a? >>= f) ⇑⟨ i ⟩
 
   bind⇑₁ f (later⇑ h) = later⇑ (∞bind⇑₁ f h)
 
@@ -166,8 +171,8 @@ mutual
 
 mutual
 
-  bind⇑₂ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {?a : Delay ∞ A} {a : A} →
-    ?a ⇓ a → f a ⇑⟨ i ⟩ →(?a >>= f) ⇑⟨ i ⟩
+  bind⇑₂ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {a? : Delay ∞ A} {a : A} →
+    a? ⇓ a → f a ⇑⟨ i ⟩ → (a? >>= f) ⇑⟨ i ⟩
 
   bind⇑₂ f (now⇓ {a}) h⇧ = h⇧
   bind⇑₂ f (later⇓ h⇩) h⇧ = later⇑ (∞bind⇑₂ f h⇩ h⇧)
@@ -176,5 +181,33 @@ mutual
     force ♯a ⇓ a → f a ⇑⟨ i ⟩ → (♯a ∞>>= f) ∞⇑⟨ i ⟩
 
   ⇑force (∞bind⇑₂ f h⇩ h⇧) = bind⇑₂ f h⇩ h⇧
+
+
+⇑⇓⊥ : ∀ {i A} {a? : Delay ∞ A} {a : A} →
+            a? ⇑⟨ i ⟩ → a? ⇓⟨ i ⟩ a → ⊥
+⇑⇓⊥ () now⇓
+⇑⇓⊥ (later⇑ {j} h∞⇑) (later⇓ h⇓) =
+  ⇑⇓⊥ (⇑force h∞⇑) h⇓
+
+EM : Set₁
+EM = (A : Set) → A ⊎ ¬ A
+
+EM⇑⇓ = ∀ {i : Size} {A} (a? : Delay ∞ A) →
+            a? ⇑⟨ i ⟩ ⊎ a? ⇓⟨ i ⟩
+
+module Bind⇑-inv (em : EM⇑⇓) where
+
+  bind⇑-inv : ∀ {A B} (f : A → Delay ∞ B) {a? : Delay ∞ A} →
+      (a? >>= f) ⇑ →
+        a? ⇑ ⊎ ∃ λ a → a? ⇓ a × f a ⇑
+
+  bind⇑-inv f {a?} h with em a?
+  bind⇑-inv f h | inj₁ a?⇑ =
+    inj₁ a?⇑
+  bind⇑-inv f h | inj₂ (a , a?⇓a) with em (f a)
+  bind⇑-inv f h | inj₂ (a′ , a?⇓a) | inj₁ fa⇑ =
+    inj₂ (a′ , a?⇓a , fa⇑)
+  bind⇑-inv {i} f {a?} h | inj₂ (a′ , a?⇓a) | inj₂ (b , fa⇓b) =
+    ⊥-elim (⇑⇓⊥ h (bind⇓ f a?⇓a fa⇓b))
 
 --

@@ -13,10 +13,14 @@ and is drastically simpler than the stuff in CmdLangSem-Coind.
 
 module CmdLangSem-Copat where
 
+open import Size
+
 open import Data.Bool
 open import Data.Nat
 open import Data.Unit
 open import Data.Product
+open import Data.Sum
+open import Data.Empty
 
 open import Function
 
@@ -86,7 +90,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩ i (while b c) {σ} h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
   C⇒⇩ i (while b c) (later⇓ {j} h) | true | ≡[ b≡t ] =
     let σ′ , h₁ , h₂ = bind⇓-inv j C⟦ while b c ⟧ h
-    in ⇩-while-true b≡t (C⇒⇩ j c h₁) (C⇒⇩ j (while b c) h₂)
+    in ⇩-while-true b≡t (C⇒⇩ i c h₁) (C⇒⇩ j (while b c) h₂)
   C⇒⇩ i (while b c) now⇓ | false | ≡[ b≡f ] =
     ⇩-while-false b≡f
 
@@ -136,10 +140,10 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
       ⇧-if-false :
         ∀ {σ b c₁ c₂} → (b≡f : B⟦ b ⟧ σ ≡ false) →
           c₂ / σ ⇧⟨ i ⟩ → if b c₁ c₂ / σ ⇧
-      ⇧-while₁ :
+      ⇧-while-true₁ :
         ∀ {σ b c} → (b≡t : B⟦ b ⟧ σ ≡ true) →
-          c ∞/ σ ⇧ → while b c / σ ⇧
-      ⇧-while₂ :
+          c / σ ⇧⟨ i ⟩ → while b c / σ ⇧
+      ⇧-while-true₂ :
         ∀ {σ σ′ b c} → (b≡t : B⟦ b ⟧ σ ≡ true) →
           c / σ ⇩ σ′ → while b c ∞/ σ′ ⇧ → while b c / σ ⇧
 
@@ -175,19 +179,19 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     ⇧⇒C (⇧-if-false b≡f h⇧) rewrite b≡f =
       ⇧⇒C h⇧
 
-    ⇧⇒C (⇧-while₁ b≡t h⇧) rewrite b≡t =
-      later⇑ (∞⇧⇒seq₁ h⇧)
+    ⇧⇒C (⇧-while-true₁ b≡t h⇧) rewrite b≡t =
+      later⇑ (⇧⇒seq₁ h⇧)
 
-    ⇧⇒C (⇧-while₂ b≡t h⇩ h⇧) rewrite b≡t =
+    ⇧⇒C (⇧-while-true₂ b≡t h⇩ h⇧) rewrite b≡t =
       later⇑ (∞⇧⇒seq₂ h⇩ h⇧)
 
-    -- ∞⇧⇒seq₁
+    -- ⇧⇒seq₁
 
-    ∞⇧⇒seq₁ : {i : Size} {c₁ c₂ : Cmd} {σ : State} →
-      c₁ ∞/ σ ⇧⟨ i ⟩ → ♯seq c₁ c₂ σ ∞⇑⟨ i ⟩
+    ⇧⇒seq₁ : {i : Size} {c₁ c₂ : Cmd} {σ : State} →
+      c₁ / σ ⇧⟨ i ⟩ → ♯seq c₁ c₂ σ ∞⇑⟨ i ⟩
 
-    ⇑force (∞⇧⇒seq₁ {c₂ = c₂} h⇧) {j} =
-      bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C (⇧force h⇧ {j}))
+    ⇑force (⇧⇒seq₁ {c₂ = c₂} h⇧) =
+      bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C h⇧)
 
     -- ∞⇧⇒seq₂
 
@@ -196,5 +200,56 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
     ⇑force (∞⇧⇒seq₂ {c₂ = c₂} h⇩ h⇧) =
       bind⇑₂ C⟦ c₂ ⟧ (⇩⇒C h⇩) (⇧⇒C (⇧force h⇧))
+
+
+  --
+  -- C⇒⇧
+  --
+
+  module C⇒⇧-em (em : EM⇑⇓)
+    where 
+
+    open Bind⇑-inv em
+
+    mutual
+
+
+      {-
+      C⇒⇧ : {i : Size} (c : Cmd) (σ : State) →
+        C⟦ c ⟧ σ ⇑⟨ i ⟩ → c / σ ⇧
+      -}
+
+      C⇒⇧ : (c : Cmd) (σ : State) →
+        C⟦ c ⟧ σ ⇑ → c / σ ⇧
+
+      C⇒⇧ skip σ ()
+
+      C⇒⇧ (assign v a) σ ()
+
+      C⇒⇧ (seq c₁ c₂) σ h with bind⇑-inv C⟦ c₂ ⟧ {C⟦ c₁ ⟧ σ} h
+      ... | inj₁ c₁⇑ =
+        ⇧-seq₁ (C⇒⇧ c₁ σ c₁⇑)
+      ... | inj₂ (σ′ , c₁⇓σ′ , c₂⇑) =
+        ⇧-seq₂ (C⇒⇩ ∞ c₁ c₁⇓σ′) (C⇒⇧ c₂ σ′ c₂⇑)
+
+      C⇒⇧ (if b c₁ c₂) σ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+      C⇒⇧ (if b c₁ c₂) σ h | true  | ≡[ b≡t ] =
+        ⇧-if-true b≡t (C⇒⇧ c₁ σ h)
+      C⇒⇧ (if b c₁ c₂) σ h | false | ≡[ b≡f ] =
+        ⇧-if-false b≡f (C⇒⇧ c₂ σ h)
+
+      C⇒⇧ (while b c) σ h  with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+      C⇒⇧ (while b c) σ (later⇑ ♯seq∞⇑) | true | ≡[ b≡t ]
+        with bind⇑-inv C⟦ while b c ⟧ {C⟦ c ⟧ σ} (⇑force ♯seq∞⇑)
+      ... | inj₁ c⇑ =
+        ⇧-while-true₁ b≡t (C⇒⇧ c σ c⇑)
+      ... | inj₂ (σ′ , c⇓σ′ , w⇑) =
+        ⇧-while-true₂ b≡t (C⇒⇩ ∞ c c⇓σ′) (C⇒∞⇧ (while b c) σ′ w⇑)
+      C⇒⇧ (while b c) σ () | false | ≡[ b≡f ]
+
+      C⇒∞⇧ : (c : Cmd) (σ : State) →
+        C⟦ c ⟧ σ ⇑ → c ∞/ σ ⇧
+
+      ⇧force (C⇒∞⇧ c σ h⇑) {j} = {!!} -- C⇒⇧ c σ h⇑
 
 --
