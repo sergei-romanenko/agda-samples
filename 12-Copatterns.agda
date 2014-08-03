@@ -132,18 +132,18 @@ div′ .(↑ i) (suc i m) n = suc i (div′ i (sub′ i m n) n)
 --
 
 data ℕ′′ (i : Size) : Set where
-  zero : (j : Size< i) → ℕ′′ i 
+  zero : ℕ′′ i 
   suc  : (j : Size< i) → ℕ′′ j → ℕ′′ i
 
 pred′′ : (i : Size) → ℕ′′ i → ℕ′′ i
 
-pred′′ i (zero j) = zero j
+pred′′ i zero = zero
 pred′′ i (suc j n) = n
 
 sub′′ : (i : Size) → ℕ′′ i → ℕ′′ ∞ → ℕ′′ i
 
-sub′′ i (zero j) n = zero j
-sub′′ i (suc j m) (zero ∞) = suc j m
+sub′′ i zero n = zero
+sub′′ i (suc j m) zero = suc j m
 sub′′ i (suc j m) (suc ∞ n) = sub′′ j m n
 
 --
@@ -211,6 +211,10 @@ tail (repeat a) = repeat a
 takeˢ : ∀ {A} (n : ℕ) (s : Stream A) → List A
 takeˢ zero s = []
 takeˢ (suc n) s = (head s) ∷ (takeˢ n (tail s))
+
+interleave : ∀ {i A} (xs ys : Stream {i} A) → Stream {i} A
+head (interleave xs ys) = head xs
+tail (interleave {i} xs ys) {j} = interleave {j} ys (tail xs)
 
 zeros : Stream ℕ
 head zeros = 0
@@ -283,22 +287,41 @@ ones∼ones′ : ones ∼ ones′
 
 -- map-iterate
 
-map-iterate : {A : Set} (f : A → A) → (x : A) →
-              map f (iterate f x) ∼ iterate f (f x)
+map-iterate : ∀ {i} {A : Set} (f : A → A) (x : A) →
+              map f (iterate f x) ∼⟨ i ⟩∼ iterate f (f x)
 ∼head (map-iterate f x) = refl
 ∼tail (map-iterate f x) = map-iterate f (f x)
 
 -- map-comp
 
-map-comp : {A B C : Set} (f : A → B) (g : B → C) (xs : Stream A) →
-           map g (map f xs) ∼ map (g ∘ f) xs
+map-comp : ∀ {i} {A B C : Set} (f : A → B) (g : B → C) (xs : Stream A) →
+           map g (map f xs) ∼⟨ i ⟩∼ map (g ∘ f) xs
 ∼head (map-comp f g xs) = refl
 ∼tail (map-comp f g xs) = map-comp f g (tail xs)
 
+--
+-- Congruence
+--
+
+head-cong : ∀ {i A} {xs ys : Stream A} → xs ∼⟨ i ⟩∼ ys → head xs ≡ head ys
+head-cong xs∼ys = ∼head xs∼ys
+
+tail-cong :
+  ∀ {i} {j : Size< i} {A} {xs ys : Stream A} →
+    xs ∼⟨ i ⟩∼ ys → tail xs ∼⟨ j ⟩∼ tail ys
+tail-cong xs∼ys = ∼tail xs∼ys
+
+-- map-cong
+
+map-cong : ∀ {i A B} {xs ys : Stream A} (f : A → B) →
+  xs ∼⟨ i ⟩∼ ys → map f xs ∼⟨ i ⟩∼ map f ys
+∼head (map-cong f xs∼ys) = cong f (∼head xs∼ys)
+∼tail (map-cong f xs∼ys) {j} = map-cong f (∼tail xs∼ys)
+
 -- zipWith-cong
 
-zipWith-cong : ∀ {A B C} (_∙_ : A → B → C) {xs xs′ ys ys′} →
-  xs ∼ xs′ → ys ∼ ys′ → zipWith _∙_ xs ys ∼ zipWith _∙_ xs′ ys′
+zipWith-cong : ∀ {i A B C} (_∙_ : A → B → C) {xs xs′ ys ys′} →
+  xs ∼⟨ i ⟩∼ xs′ → ys ∼⟨ i ⟩∼ ys′ → zipWith _∙_ xs ys ∼⟨ i ⟩∼ zipWith _∙_ xs′ ys′
 ∼head (zipWith-cong _∙_ xs∼xs′ ys∼ys′) =
   cong₂ _∙_ (∼head xs∼xs′) (∼head ys∼ys′)
 ∼tail (zipWith-cong _∙_ xs∼xs′ ys∼ys′) {j} =
@@ -347,8 +370,8 @@ module fib-good where
 
   fib-correct : fib ∼ 0 ∷ 1 ∷ zipWith _+_ (tail fib) fib
   ∼head fib-correct = refl
-  ∼head (∼tail fib-correct {j}) = refl
-  ∼tail (∼tail fib-correct {j}) {k} = ∼refl (zipWith _+_ (tail fib) fib)
+  ∼head (∼tail fib-correct) = refl
+  ∼tail (∼tail fib-correct) = ∼refl (zipWith _+_ (tail fib) fib)
 
 --
 -- ∼-reasoning (a DSL)
