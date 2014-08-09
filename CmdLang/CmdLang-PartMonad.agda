@@ -26,6 +26,8 @@ open import Data.Sum
 open import Data.Empty
 
 open import Relation.Nullary
+open import Relation.Nullary.Negation
+  using (¬¬-Monad; excluded-middle)
 
 -- Delay & ∞Delay
 
@@ -52,10 +54,10 @@ module Bind where
   mutual
     _>>=_ :  ∀ {i A B} → Delay i A → (A → Delay i B) → Delay i B
     now   a  >>= f = f a
-    later a♯ >>= f = later (a♯ ∞>>= f)
+    later a∞ >>= f = later (a∞ ∞>>= f)
 
     _∞>>=_ : ∀ {i A B} → ∞Delay i A → (A → Delay i B) → ∞Delay i B
-    force (a♯ ∞>>= f)  =  force a♯ >>= f
+    force (a∞ ∞>>= f)  =  force a∞ >>= f
 
 -- delayMonad
 
@@ -74,13 +76,16 @@ open Bind public using (_∞>>=_)
 
 data _⇓_ {i : Size} {A : Set} : (a? : Delay ∞ A) (a : A) → Set where
   now⇓   : ∀ {a} →
-    now a ⇓ a
-  later⇓ : ∀ {j : Size< i} {a} {♯a : ∞Delay ∞ A} → _⇓_ {j} {A} (force ♯a) a →
-    later ♯a ⇓ a
+    _⇓_ {i} (now a) a
+  later⇓ : ∀ {j : Size< i} {a} {a∞ : ∞Delay ∞ A} → _⇓_ {j} {A} (force a∞) a →
+    later a∞ ⇓ a
 
 _⇓⟨_⟩_ = λ {A} a? i a → _⇓_ {i} {A} a? a 
 
 _⇓⟨_⟩ = λ {A} a? i → ∃ λ a → _⇓_ {i} {A} a? a
+
+_⇓ =  λ {A} a? → ∃ λ a → _⇓_ {∞} {A} a? a
+
 
 -- map⇓
 
@@ -117,25 +122,25 @@ bind⇓-inv i f {later a?} (later⇓ {j} h) =
 mutual
 
   data _⇑ {i : Size} {A : Set} : (a? : Delay ∞ A) → Set where
-    later⇑ : ∀ {♯a : ∞Delay ∞ A} → _∞⇑ {i} {A} ♯a →
-      later ♯a ⇑
+    later⇑ : ∀ {a∞ : ∞Delay ∞ A} → _∞⇑ {i} {A} a∞ →
+      later a∞ ⇑
 
-  record _∞⇑ {i : Size} {A : Set} (♯a : ∞Delay ∞ A) : Set where
+  record _∞⇑ {i : Size} {A : Set} (a∞ : ∞Delay ∞ A) : Set where
     coinductive
     field
-      ⇑force : {j : Size< i} → _⇑ {j} {A} (force ♯a)
+      ⇑force : {j : Size< i} → _⇑ {j} {A} (force a∞)
 
 open _∞⇑ public
 
 _⇑⟨_⟩ = λ {A} a? i → _⇑ {i} {A} a? 
 
-_∞⇑⟨_⟩ = λ {A} ♯a i → _∞⇑ {i} {A} ♯a 
+_∞⇑⟨_⟩ = λ {A} a∞ i → _∞⇑ {i} {A} a∞ 
 
 -- never∞⇑
 
 never∞⇑ : {A : Set} → never {∞} {A} ∞⇑
 
-⇑force never∞⇑ {j} = later⇑ {j} never∞⇑
+⇑force never∞⇑ {j} = later⇑ never∞⇑
 
 
 -- map⇑
@@ -145,10 +150,10 @@ mutual
   map⇑ : ∀ {A B} (f : A → B) {a? : Delay ∞ A} →
     a? ⇑ → (f <$> a?) ⇑
 
-  map⇑ f (later⇑ {♯a} h) = later⇑ (∞map⇑ f h)
+  map⇑ f (later⇑ {a∞} h) = later⇑ (∞map⇑ f h)
 
-  ∞map⇑ : ∀ {A B} (f : A → B) {♯a : ∞Delay ∞ A} →
-    ♯a ∞⇑ → (♯a ∞>>= (λ a → return (f a)) ) ∞⇑
+  ∞map⇑ : ∀ {A B} (f : A → B) {a∞ : ∞Delay ∞ A} →
+    a∞ ∞⇑ → (a∞ ∞>>= (λ a → return (f a)) ) ∞⇑
 
   ⇑force (∞map⇑ f h) = map⇑ f (⇑force h)
 
@@ -161,8 +166,8 @@ mutual
 
   bind⇑₁ f (later⇑ h) = later⇑ (∞bind⇑₁ f h)
 
-  ∞bind⇑₁ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {♯a : ∞Delay ∞ A} →
-    ♯a ∞⇑⟨ i ⟩ → (♯a ∞>>= f) ∞⇑⟨ i ⟩
+  ∞bind⇑₁ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {a∞ : ∞Delay ∞ A} →
+    a∞ ∞⇑⟨ i ⟩ → (a∞ ∞>>= f) ∞⇑⟨ i ⟩
 
   ⇑force (∞bind⇑₁ f h) = bind⇑₁ f (⇑force h)
 
@@ -177,17 +182,58 @@ mutual
   bind⇑₂ f (now⇓ {a}) h⇧ = h⇧
   bind⇑₂ f (later⇓ h⇩) h⇧ = later⇑ (∞bind⇑₂ f h⇩ h⇧)
 
-  ∞bind⇑₂ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {♯a : ∞Delay ∞ A} {a : A} →
-    force ♯a ⇓ a → f a ⇑⟨ i ⟩ → (♯a ∞>>= f) ∞⇑⟨ i ⟩
+  ∞bind⇑₂ : ∀ {i : Size} {A B} (f : A → Delay ∞ B) {a∞ : ∞Delay ∞ A} {a : A} →
+    force a∞ ⇓ a → f a ⇑⟨ i ⟩ → (a∞ ∞>>= f) ∞⇑⟨ i ⟩
 
   ⇑force (∞bind⇑₂ f h⇩ h⇧) = bind⇑₂ f h⇩ h⇧
 
+-- not-⇓-and-⇑
 
-⇑⇓⊥ : ∀ {i A} {a? : Delay ∞ A} {a : A} →
-            a? ⇑⟨ i ⟩ → a? ⇓⟨ i ⟩ a → ⊥
+not-⇓-and-⇑ : ∀ {i} {j : Size< (↑ i)}  {A} {a? : Delay ∞ A} {a : A} →
+            a? ⇓⟨ j ⟩ a → a? ⇑⟨ i ⟩ → ⊥
+not-⇓-and-⇑ now⇓ ()
+not-⇓-and-⇑ (later⇓ h⇓) (later⇑ h∞⇑) =
+  not-⇓-and-⇑ h⇓ (⇑force h∞⇑)
+
+-- ⇑⇓⊥
+
+⇑⇓⊥ : ∀ {i} {j : Size< (↑ i)} {A} {a? : Delay ∞ A} {a : A} →
+            a? ⇑⟨ i ⟩ → a? ⇓⟨ j ⟩ a → ⊥
 ⇑⇓⊥ () now⇓
-⇑⇓⊥ (later⇑ {j} h∞⇑) (later⇓ h⇓) =
-  ⇑⇓⊥ (⇑force h∞⇑) h⇓
+⇑⇓⊥ (later⇑ h∞⇑) (later⇓ h⇓) =
+    ⇑⇓⊥ (⇑force h∞⇑) h⇓
+
+mutual
+
+  not-⇓-implies-⇑ : ∀ {A} {a? : Delay ∞ A} →
+    ¬ a? ⇓ → a? ⇑
+  not-⇓-implies-⇑ {a? = a?} ¬h⇓ with a?
+  not-⇓-implies-⇑ ¬h⇓ | now a = ⊥-elim (¬h⇓ (a , now⇓))
+  not-⇓-implies-⇑ ¬h⇓ | later a∞ =
+    later⇑ (∞not-⇓-implies-⇑ ¬h⇓)
+
+  ∞not-⇓-implies-⇑ : ∀ {A} {a∞ : ∞Delay ∞ A} →
+    ¬ later a∞ ⇓⟨ ∞ ⟩ → a∞ ∞⇑
+  ⇑force (∞not-⇓-implies-⇑ ¬h⇓) {j} =
+    not-⇓-implies-⇑ (λ { (a , h⇓) → ¬h⇓ (a , later⇓ h⇓)} )
+
+-- ⇓ or ⇑ (classically).
+
+mutual
+
+  ⇓-or-⇑ :
+    ∀ {A} {a? : Delay ∞ A} → ¬ ¬ (a? ⇓ ⊎ a? ⇑)
+  ⇓-or-⇑ {A} {a?} =
+    helper |$| excluded-middle
+    where
+    open RawMonad ¬¬-Monad using () renaming (_<$>_ to _|$|_)
+     -- _|$|_ : (A → B) → ¬ ¬ A → ¬ ¬ B
+
+    helper : Dec (a? ⇓) → a? ⇓ ⊎ a? ⇑
+    helper (yes h⇓) = inj₁ h⇓
+    helper (no ¬h⇓) = inj₂ (not-⇓-implies-⇑ ¬h⇓)
+
+-- EM
 
 EM : Set₁
 EM = (A : Set) → A ⊎ ¬ A
@@ -207,7 +253,7 @@ module Bind⇑-inv (em : EM⇑⇓) where
   bind⇑-inv f h | inj₂ (a , a?⇓a) with em (f a)
   bind⇑-inv f h | inj₂ (a′ , a?⇓a) | inj₁ fa⇑ =
     inj₂ (a′ , a?⇓a , fa⇑)
-  bind⇑-inv {i} f {a?} h | inj₂ (a′ , a?⇓a) | inj₂ (b , fa⇓b) =
+  bind⇑-inv f {a?} h | inj₂ (a′ , a?⇓a) | inj₂ (b , fa⇓b) =
     ⊥-elim (⇑⇓⊥ h (bind⇓ f a?⇓a fa⇓b))
 
 --
