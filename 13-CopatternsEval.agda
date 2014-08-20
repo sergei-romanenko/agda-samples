@@ -59,7 +59,7 @@ module Coinductive-delay-monad where
 
     data Delay (A : Set) : Set where
       return : (a : A) → Delay A
-      later  : (♯a : ∞Delay A) → Delay A
+      later  : (a∞ : ∞Delay A) → Delay A
 
     record ∞Delay (A : Set) : Set where
       coinductive
@@ -79,10 +79,10 @@ module Coinductive-delay-monad where
   mutual
     _>>=_ : ∀ {A B} → Delay A → (A → Delay B) → Delay B
     return a >>= f = f a
-    later ♯a >>= f = later (♯a ♯>>= f)
+    later a∞ >>= f = later (a∞ ∞>>= f)
 
-    _♯>>=_ : ∀ {A B} → ∞Delay A → (A → Delay B) → ∞Delay B
-    force (♯a ♯>>= f) = force ♯a >>= f
+    _∞>>=_ : ∀ {A B} → ∞Delay A → (A → Delay B) → ∞Delay B
+    force (a∞ ∞>>= f) = force a∞ >>= f
 
   -- Evaluation in the delay monad
 
@@ -98,10 +98,10 @@ module Coinductive-delay-monad where
     apply u? v? =
       u? >>= (λ u →
       v? >>= (λ v →
-        later (♯apply u v)))
+        later (∞apply u v)))
 
-    ♯apply : Val → Val → ∞Delay Val
-    force (♯apply (clos t ρ) v) = ⟦ t ⟧ (v ∷ ρ)
+    ∞apply : Val → Val → ∞Delay Val
+    force (∞apply (clos t ρ) v) = ⟦ t ⟧ (v ∷ ρ)
 
 
 --
@@ -112,7 +112,7 @@ mutual
 
   data Delay {i : Size} (A : Set) : Set where
     return : (a : A) → Delay {i} A
-    later  : (♯a : ∞Delay {i} A) → Delay {i} A
+    later  : (a∞ : ∞Delay {i} A) → Delay {i} A
 
   record ∞Delay {i : Size} (A : Set) : Set where
     coinductive
@@ -134,10 +134,10 @@ force (forever {i}) {j} = later (forever {j})
 mutual
   _>>=_ : ∀ {i A B} → Delay {i} A → (A → Delay {i} B) → Delay {i} B
   return a >>= f = f a
-  later ♯a >>= f = later (♯a ♯>>= f)
+  later a∞ >>= f = later (a∞ ∞>>= f)
 
-  _♯>>=_ : ∀ {i A B} → ∞Delay {i} A → (A → Delay {i} B) → ∞Delay {i} B
-  force (♯a ♯>>= f) = force ♯a >>= f
+  _∞>>=_ : ∀ {i A B} → ∞Delay {i} A → (A → Delay {i} B) → ∞Delay {i} B
+  force (a∞ ∞>>= f) = force a∞ >>= f
 
 --
 -- Sized corecursive evaluator
@@ -155,9 +155,9 @@ mutual
   apply u? v? =
     u? >>= (λ u →
     v? >>= (λ v →
-      later (♯apply u v)))
+      later (∞apply u v)))
 
-  ♯apply : ∀ {i} → Val → Val → ∞Delay {i} Val
-  force (♯apply (clos t ρ) v) = ⟦ t ⟧ (v ∷ ρ)
+  ∞apply : ∀ {i} → Val → Val → ∞Delay {i} Val
+  force (∞apply (clos t ρ) v) = ⟦ t ⟧ (v ∷ ρ)
 
 --

@@ -26,7 +26,8 @@ open import Level public
 open import Size
 open import Function
 open import Data.Nat
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; not)
+open import Data.Bool.Properties using (not-involutive)
 open import Data.List as List using (List; module List; []; _∷_)
 open import Data.Empty
 open import Data.String using (String; _++_)
@@ -447,7 +448,7 @@ mutual
   record ∞Colist {i : Size} (A : Set) : Set where
     coinductive
     field
-      colist♭ : {j : Size< i} → Colist {j} A
+      ∞colist : {j : Size< i} → Colist {j} A
 
 open ∞Colist
 
@@ -456,16 +457,16 @@ mutual
   mapColist : ∀ {i A B} (f : A → B) (xs : Colist {i} A) → Colist {i} B
 
   mapColist f [] = []
-  mapColist f (x ∷ xs) = (f x) ∷ mapColist♯ f xs
+  mapColist f (x ∷ xs) = (f x) ∷ ∞mapColist f xs
 
-  mapColist♯ : ∀ {i A B} (f : A → B) (xs : ∞Colist {i} A) → ∞Colist {i} B
+  ∞mapColist : ∀ {i A B} (f : A → B) (xs : ∞Colist {i} A) → ∞Colist {i} B
 
-  colist♭ (mapColist♯ f xs) = mapColist f (colist♭ xs)
+  ∞colist (∞mapColist f xs) = mapColist f (∞colist xs)
 
 append : ∀ {i A} → List A → ∞Colist {i} A → ∞Colist {i} A
 
-colist♭ (append [] ys) = colist♭ ys
-colist♭ (append (x ∷ xs) ys) = x ∷ append xs ys
+∞colist (append [] ys) = ∞colist ys
+∞colist (append (x ∷ xs) ys) = x ∷ append xs ys
 
 -- Trees
 
@@ -482,8 +483,8 @@ module Trees where
 
   bf : ∀ {i A} → List (Tree {i} A) → ∞Colist {i} A
 
-  colist♭ (bf []) = []
-  colist♭ (bf {i} (t ∷ ts)) {j} =
+  ∞colist (bf []) = []
+  ∞colist (bf {i} (t ∷ ts)) {j} =
     label t ∷ append (List.map label ts)
                      (bf {j} (List.concatMap (λ t′ → children t′ {j}) (t ∷ ts)))
 
@@ -493,52 +494,97 @@ module Trees where
 
 module BTrees where
 
-  record TreeC (A : Set) : Set where
+  record Tree (A : Set) : Set where
     coinductive
-    field 
-      labelC : A
-      childL : TreeC A
-      childR : TreeC A
-  open TreeC
-
-  repeatC : ∀ {A} (a : A) → TreeC A
-  labelC (repeatC a) = a
-  childL (repeatC a) = repeatC a
-  childR (repeatC a) = repeatC a
-
-  collectC : ∀ {A} → List Bool → TreeC A → List A
-  collectC []       t = []
-  collectC (true  ∷ bs) t = labelC t ∷ collectC bs (childL t)
-  collectC (false ∷ bs) t = labelC t ∷ collectC bs (childR t)
-
-  swapC : ∀ {A} → TreeC A → TreeC A
-  labelC (swapC t) = labelC t
-  childL (swapC t) = swapC (childR t)
-  childR (swapC t) = swapC (childL t)
-  
-  mapC : ∀ {A B} → (f : A → B) → TreeC A → TreeC B
-  labelC (mapC f t) = f (labelC t)
-  childL (mapC f t) = mapC f (childL t)
-  childR (mapC f t) = mapC f (childR t)
-
-  record TreeB (A : Set) : Set where
-    coinductive
+    constructor _∷⟨_⟩
     field 
       label : A
-      child : Bool -> TreeB A
-  open TreeB
+      child : Bool -> Tree A
+  open Tree
 
-  collect : ∀ {A} → List Bool → TreeB A → List A
+  collect : ∀ {A} → List Bool → Tree A → List A
   collect []       t = []
   collect (b ∷ bs) t = label t ∷ collect bs (child t b)
 
-  swap : ∀ {A} → TreeB A → TreeB A
+  swap : ∀ {A} → Tree A → Tree A
   label (swap t) = label t
-  child (swap t) true  = swap (child t false)
-  child (swap t) false = swap (child t true)
+  child (swap t) b  = swap (child t (not b))
 
-  alternate : {A : Set} (x y : A) → TreeB A
+  mapB : ∀ {A B} → (f : A → B) → Tree A → Tree B
+  label (mapB f t) = f (label t)
+  child (mapB f t) b = mapB f (child t b)
+
+  alternate : {A : Set} (x y : A) → Tree A
   label (alternate x y) = x
   child (alternate x y) b = alternate y x
+
+  -- Bisimularity for trees
+
+  infix 4 _≈_
+
+  record _≈_ {i : Size} {A : Set} (x y : Tree A) : Set where
+    coinductive
+    constructor _∷⟨_⟩
+    field
+      ≈label : label x ≡ label y
+      ≈child : {j : Size< i} (b : Bool) → _≈_ {j} (child x b) (child y b)
+  open _≈_
+
+  _≈⟨_⟩≈_ = λ {A} x i y → _≈_ {i} {A} x y
+
+  -- A proof
+
+  mapB-comp : ∀ {i} {A B C : Set} (f : A → B) (g : B → C) (t : Tree A) →
+                mapB g (mapB f t) ≈⟨ i ⟩≈ mapB (g ∘ f) t
+  ≈label (mapB-comp f g t) = refl
+  ≈child (mapB-comp f g t) b = mapB-comp f g (child t b)
+
+  --
+  -- ≈-reasoning
+  --
+  -- ≈ is reflexive, symmetric and transitive
+  --
+
+  ≈refl : ∀ {i A} → (x : Tree A) → x ≈⟨ i ⟩≈ x
+  ≈label (≈refl x) = refl
+  ≈child (≈refl x) {j} b = ≈refl {j} (child x b)
+
+  ≈sym : ∀ {i A} → {x y : Tree A} → x ≈⟨ i ⟩≈ y → y ≈⟨ i ⟩≈ x
+  ≈label (≈sym x≈y) = sym (≈label x≈y)
+  ≈child (≈sym x≈y) b = ≈sym (≈child x≈y b)
+
+  ≈trans : ∀ {i A} → {x y z : Tree A} →
+    x ≈⟨ i ⟩≈ y → y ≈⟨ i ⟩≈ z → x ≈⟨ i ⟩≈ z
+  ≈label (≈trans x≈y y≈z) = trans (≈label x≈y) (≈label y≈z)
+  ≈child (≈trans x≈y y≈z) b = ≈trans (≈child x≈y b) (≈child y≈z b)
+
+  ≈setoid : (i : Size) (A : Set) → Setoid lzero lzero
+  ≈setoid i A = record
+    { Carrier       = Tree A
+    ; _≈_           = _≈_ {i}
+    ; isEquivalence = record
+      { refl  = λ {xs} → ≈refl xs
+      ; sym   = ≈sym
+      ; trans = ≈trans
+      }
+    }
+
+  module ≈-Reasoning {i : Size} {A : Set} where
+    open Pre (Setoid.preorder (≈setoid i A)) public
+      renaming (_≈⟨⟩_ to _≡⟨⟩_; _≈⟨_⟩_ to _≡⟨_⟩_; _∼⟨_⟩_ to _≈⟨_⟩_)
+
+
+  -- A proof with ≈-Reasoning
+
+  swap∘swap : ∀ {i A} (t : Tree A) → swap (swap t) ≈⟨ i ⟩≈ t
+  ≈label (swap∘swap t) = refl
+  ≈child (swap∘swap t) b = begin
+    swap (swap (child t (not (not b))))
+      ≡⟨ cong (swap ∘ swap ∘ child t) (not-involutive b) ⟩
+    swap (swap (child t b))
+      ≈⟨ swap∘swap (child t b) ⟩
+    child t b
+    ∎
+    where open ≈-Reasoning
 
 --
