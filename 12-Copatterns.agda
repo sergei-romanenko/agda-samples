@@ -29,9 +29,10 @@ open import Data.Nat
 open import Data.Bool using (Bool; true; false; not)
 open import Data.Bool.Properties using (not-involutive)
 open import Data.List as List using (List; module List; []; _∷_)
+open import Data.Product using (_×_; _,_)
 open import Data.Empty
 open import Data.String using (String; _++_)
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality renaming ([_] to ≡[_])
 
 open import Relation.Binary using (Setoid; module Setoid)
 
@@ -146,6 +147,45 @@ sub′′ : (i : Size) → ℕ′′ i → ℕ′′ ∞ → ℕ′′ i
 sub′′ i zero n = zero
 sub′′ i (suc j m) zero = suc j m
 sub′′ i (suc j m) (suc ∞ n) = sub′′ j m n
+
+--
+-- Quicksort with sized lists
+--
+
+module Quicksort where
+
+  infixr 5 _∷_ _++ˢ_
+
+  data Listˢ {i} {a} (A : Set a) : Set a where
+    []  : Listˢ {i} A
+    _∷_ : {j : Size< i} → (x : A) (xs : Listˢ {j} A) → Listˢ {i} A
+
+  -- * Basic functions
+
+  [_]ˢ : ∀ {i a} {A : Set a} → A → Listˢ {↑ i} A
+  [ x ]ˢ = x ∷ []
+
+  _++ˢ_ : ∀ {a} {A : Set a} → Listˢ A → Listˢ A → Listˢ A
+  []       ++ˢ ys = ys
+  (x ∷ xs) ++ˢ ys = x ∷ (xs ++ˢ ys)
+
+  -- partition
+
+  partition : ∀ {i a} {A : Set a} → (A → Bool) →
+                Listˢ {i} A → (Listˢ {i} A × Listˢ {i} A)
+  partition p [] = ([] , [])
+  partition p (x ∷ xs) with p x | partition p xs
+  ... | true  | (ys , zs) = (x ∷ ys , zs)
+  ... | false | (ys , zs) = (ys , x ∷ zs)
+
+  -- quicksort
+  
+  quicksort : ∀ {i} {A : Set} (p : A → A → Bool) → Listˢ {i} A → Listˢ {∞} A
+  quicksort p [] = []
+  quicksort p (x ∷ xs) with partition (p x) xs
+  ... | (small , big) =
+    quicksort p small ++ˢ [ x ]ˢ ++ˢ quicksort p big
+
 
 --
 -- Copatterns: a way to implement "virtual functions".
@@ -354,25 +394,25 @@ zipWith-cong : ∀ {i A B C} (_∙_ : A → B → C) {xs xs′ ys ys′} →
 module fib-bad where
 
   fib : Stream ℕ
-  -- fib = 0 ∷ 1 ∷ zipWith _+_ (tail fib) fib
+  -- fib = 0 ∷ 1 ∷ zipWith _+_ fib (tail fib)
   head fib = 0
   head (tail fib) = 1
-  tail (tail fib) = zipWith _+_ (tail fib) fib
+  tail (tail fib) = zipWith _+_ fib (tail fib)
 
 module fib-good where
 
   fib : {i : Size} → Stream {i} ℕ
   head fib = 0
   head (tail fib) = 1
-  tail (tail fib) = zipWith _+_ (tail fib) fib
+  tail (tail fib) = zipWith _+_ fib (tail fib)
 
   5-fib : takeˢ 7 fib ≡ 0 ∷ 1 ∷ 1 ∷ 2 ∷ 3 ∷ 5 ∷ 8 ∷ []
   5-fib = refl
 
-  fib-correct : fib ∼ 0 ∷ 1 ∷ zipWith _+_ (tail fib) fib
+  fib-correct : fib ∼ 0 ∷ 1 ∷ zipWith _+_ fib (tail fib)
   ∼head fib-correct = refl
   ∼head (∼tail fib-correct) = refl
-  ∼tail (∼tail fib-correct) = ∼refl (zipWith _+_ (tail fib) fib)
+  ∼tail (∼tail fib-correct) = ∼refl (zipWith _+_ fib (tail fib))
 
 --
 -- ∼-reasoning (a DSL)
