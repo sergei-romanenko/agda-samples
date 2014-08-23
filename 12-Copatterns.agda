@@ -230,6 +230,10 @@ record Stream {i : Size} (A : Set) : Set where
     tail : {j : Size< i} → Stream {j} A
 open Stream public
 
+--
+-- Functions on infinite data.
+--
+
 map : ∀ {i A B} (f : A → B) (s : Stream {i} A) → Stream {i} B
 
 head (map f s) = f (head s)
@@ -265,16 +269,21 @@ nats≥ : ℕ → Stream ℕ
 head (nats≥ n) = n
 tail (nats≥ n) = nats≥ (suc n)
 
---
--- Functions on infinite data.
---
--- See map, zipWith, take, repeat, iterate.
-
 5-zeros : takeˢ 5 zeros ≡ zero ∷ zero ∷ zero ∷ zero ∷ zero ∷ []
 5-zeros = refl
 
 3-nats≥2 : takeˢ 3 (nats≥ 2) ≡ 2 ∷ 3 ∷ 4 ∷ []
 3-nats≥2 = refl
+
+mutual
+
+  even : ∀ {A} (xs : Stream A) → Stream A
+  head (even xs) = head xs
+  tail (even xs) = odd (tail xs)
+
+  odd : ∀ {A} (xs : Stream A) → Stream A
+  odd xs = even (tail xs)
+
 
 --
 -- Bisimilarity
@@ -291,10 +300,6 @@ record _∼_ {i : Size} {A : Set} (xs ys : Stream A) : Set where
 open _∼_
 
 _∼⟨_⟩∼_ = λ {A} xs i ys → _∼_ {i} {A} xs ys
-
-zeros≡repeat0 : zeros ∼ repeat 0
-∼head (zeros≡repeat0) = refl
-∼tail (zeros≡repeat0) = zeros≡repeat0
 
 ones : Stream ℕ
 head ones = 1
@@ -325,6 +330,19 @@ ones∼ones′ : ones ∼ ones′
 ∼tail (ones∼ones′) = ones∼ones′
 
 -- More proofs by coinduction
+
+-- zeros≡repeat0
+
+zeros≡repeat0 : zeros ∼ repeat 0
+∼head (zeros≡repeat0) = refl
+∼tail (zeros≡repeat0) = zeros≡repeat0
+
+-- il-even-odd
+
+il-even-odd : ∀ {A : Set} (xs : Stream A) →
+                interleave (even xs) (odd xs) ∼ xs
+∼head (il-even-odd xs) = refl
+∼tail (il-even-odd xs) = il-even-odd (tail xs)
 
 -- map-iterate
 
