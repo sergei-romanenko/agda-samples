@@ -37,6 +37,7 @@ record CmdLangSem-Bad (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set�
 
   -- C⟦_⟧
 
+  {-# TERMINATING #-}
   C⟦_⟧ : (c : Cmd) (σ : State) → State ⊥
   C⟦If⟧ : (bv : Bool) (c₁ c₂ : Cmd) (σ : State) → State ⊥
   C⟦While⟧ : (bv : Bool) (b : BExp) (c : Cmd) (σ : State) → State ⊥

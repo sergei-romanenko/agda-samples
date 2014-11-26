@@ -15,12 +15,10 @@ open import Data.Nat.Properties
 open import Algebra
   using (module CommutativeSemiring)
 
-private
-  module *+ =
-    CommutativeSemiring Data.Nat.Properties.commutativeSemiring
+open import Data.Nat.Properties.Simple
 
 open import Relation.Binary.PropositionalEquality as P
-  using (_≡_; refl; cong; →-to-⟶; module ≡-Reasoning)
+  using (_≡_; refl; cong; cong₂; →-to-⟶; module ≡-Reasoning)
 
 open import Function
 import Function.Related as Related
@@ -36,9 +34,9 @@ m+1+n≡1+m+n m n = begin
   m + suc n
     ≡⟨ refl ⟩
   m + (1 + n)
-    ≡⟨ P.sym (*+.+-assoc m (suc zero) n) ⟩
+    ≡⟨ P.sym (+-assoc m (suc zero) n) ⟩
   (m + 1) + n
-    ≡⟨ *+.+-comm m (suc zero) ⟨ *+.+-cong ⟩ refl ⟩
+    ≡⟨ +-comm m (suc zero) ⟨ cong₂ _+_ ⟩ refl ⟩
   (1 + m) + n
     ≡⟨ refl ⟩
   suc (m + n)

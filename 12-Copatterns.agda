@@ -411,6 +411,7 @@ zipWith-cong : ∀ {i A B C} (_∙_ : A → B → C) {xs xs′ ys ys′} →
 
 module fib-bad where
 
+  {-# TERMINATING #-}
   fib : Stream ℕ
   -- fib = 0 ∷ 1 ∷ zipWith _+_ fib (tail fib)
   head fib = 0

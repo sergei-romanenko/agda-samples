@@ -130,14 +130,15 @@ log2<′ n = s≤′s (s≤′s (⌊n/2⌋≤′n n))
 
 module log2-bad where
 
+  {-# TERMINATING #-}
   log2 : ℕ → ℕ
 
   log2 zero = zero
   log2 (suc zero) = zero
   log2 (suc (suc n)) = suc (log2 (suc ⌊ n /2⌋))
 
-  -- log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
-  -- log2-test = refl
+  log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
+  log2-test = refl
 
 module log2-good-wf-ind where
 
@@ -275,6 +276,7 @@ partition p (x ∷ xs) with p x | partition p xs
 
 module Quicksort-bad where
 
+  {-# TERMINATING #-}
   quicksort : {A : Set} (p : A → A → Bool) → List A → List A
   quicksort p [] = []
   quicksort p (x ∷ xs) with partition (p x) xs

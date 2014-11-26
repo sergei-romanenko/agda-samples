@@ -31,9 +31,9 @@ module SmallStepSeq where
 open import Data.Nat
 open import Data.List
 open import Data.Product
-  renaming (map to map×)
+  hiding (map)
 open import Data.Sum
-  renaming (map to map⊎)
+  hiding (map)
 open import Data.Empty
 open import Data.Maybe
 

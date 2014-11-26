@@ -17,13 +17,15 @@ n+sm (suc n) m = cong suc (n+sm n m)
 
 +-comm : ∀ n m → n + m ≡ m + n
 +-comm zero m = sym (n+0 m)
-+-comm (suc n) m =
-  begin
-    suc n + m ≡⟨ refl ⟩
-    suc (n + m) ≡⟨ cong suc (+-comm n m) ⟩
-    suc (m + n) ≡⟨ sym (n+sm m n) ⟩
-    m + suc n
-   ∎
++-comm (suc n) m = begin
+  suc n + m
+    ≡⟨ refl ⟩
+  suc (n + m)
+    ≡⟨ cong suc (+-comm n m) ⟩
+  suc (m + n)
+    ≡⟨ sym (n+sm m n) ⟩
+  m + suc n
+  ∎
   where open ≡-Reasoning
 
 -- Induction by derivation

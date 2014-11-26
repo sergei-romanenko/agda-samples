@@ -130,6 +130,7 @@ map-comp f g (x ∷ xs) = refl ∷ ♯ map-comp f g (♭ xs)
 
 module fib-bad where
 
+  {-# TERMINATING #-}
   fib : Stream ℕ
   fib = 0 ∷ ♯ zipWith _+_ fib (1 ∷ ♯ fib)
 
@@ -207,6 +208,7 @@ module ≈-Reasoning-bad-test {A : Set}  where
 
 -- Doesn't work... Here Agda is unable to prove productivity...
 
+  {-# TERMINATING #-}
   ones≈ones′₁ : ones ≈ ones′
   ones≈ones′₁ =
     ones

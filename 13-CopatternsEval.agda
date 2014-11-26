@@ -27,6 +27,7 @@ data Tm (n : ℕ) : Set where
 
 mutual
   record Val : Set where
+    inductive
     constructor clos
     field
       {n} : ℕ
@@ -40,6 +41,7 @@ module Naive-CBV-interpreter where
 
   -- Termination check fails!
 
+  {-# TERMINATING #-}
   mutual
     ⟦_⟧_ : ∀ {n} → Tm n → Env n → Val
     ⟦ var x ⟧ ρ = lookup x ρ
@@ -88,6 +90,7 @@ module Coinductive-delay-monad where
 
   -- Productivity check fails!
 
+  {-# TERMINATING #-}
   mutual
     ⟦_⟧_ : ∀ {n} → Tm n → Env n → Delay Val
     ⟦ var x ⟧ ρ = return (lookup x ρ)
