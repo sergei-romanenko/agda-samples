@@ -46,7 +46,7 @@ data Term : Type → Set where
   _∙_  : ∀ {α β} → Term (α ⇒ β) → Term α → Term β
   ZERO : Term N
   SUC  : Term (N ⇒ N)
-  R    : ∀ {α} → Term (α ⇒ (α ⇒ N ⇒ α) ⇒ N ⇒ α)
+  R    : ∀ {α} → Term (α ⇒ (N ⇒ α ⇒ α) ⇒ N ⇒ α)
 
 --
 -- Example terms.
@@ -66,10 +66,15 @@ K2 α β = K ∙ (S ∙ K ∙ K {β = α})
 suc1 : Term (N ⇒ N ⇒ N)
 suc1 = S ∙ (K ∙ K) ∙ SUC
 
+-- suc2 x y = suc y
+
+suc2 : Term (N ⇒ N ⇒ N)
+suc2 = K ∙ SUC
+
 -- add x y = x + y
 
 add : Term N → Term N → Term N
-add m n = R ∙ n ∙ (S ∙ (K ∙ K) ∙ SUC) ∙ m
+add m n = R ∙ n ∙ (K ∙ SUC) ∙ m
 
 --
 -- Head reduction.
@@ -84,11 +89,11 @@ data _⟶_ : ∀ {α} → Term α → Term α → Set where
             S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
   ⟶A : ∀ {α β} {x x′ : Term (α ⇒ β)} {y   : Term α} →
             x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
-  ⟶RZ : ∀ {α} {x : Term α} {y : Term (α ⇒ N ⇒ α)} →
+  ⟶RZ : ∀ {α} {x : Term α} {y : Term (N ⇒ α ⇒ α)} →
             R ∙ x ∙ y ∙ ZERO ⟶ x 
-  ⟶RS : ∀ {α} {x : Term α} {y : Term (α ⇒ N ⇒ α)} {z : Term N} →
-            R ∙ x ∙ y ∙ (SUC ∙ z) ⟶ y ∙ (R ∙ x ∙ y ∙ z) ∙ z
-  ⟶RN : ∀ {α} {x : Term α} {y : Term (α ⇒ N ⇒ α)} {z z′ : Term N} →
+  ⟶RS : ∀ {α} {x : Term α} {y : Term (N ⇒ α ⇒ α)} {z : Term N} →
+            R ∙ x ∙ y ∙ (SUC ∙ z) ⟶ y ∙ z ∙ (R ∙ x ∙ y ∙ z)
+  ⟶RN : ∀ {α} {x : Term α} {y : Term (N ⇒ α ⇒ α)} {z z′ : Term N} →
             z ⟶ z′  →  R ∙ x ∙ y ∙ z ⟶ R ∙ x ∙ y ∙ z′
 
 -- Reflexive and transitive closure of _⟶_ .
@@ -109,9 +114,8 @@ reduction-example x = there ⟶S $ there ⟶K here
 -- Example: 1 + 1.
 
 1+1 : add (SUC ∙ ZERO) (SUC ∙ ZERO) ⟶*
-          SUC ∙ (R ∙ (SUC ∙ ZERO) ∙ (S ∙ (K ∙ K) ∙ SUC) ∙ ZERO)
-1+1 = there ⟶RS $ there (⟶A ⟶S) $ there (⟶A (⟶A ⟶K)) $ there ⟶K here
-      
+               SUC ∙ (R ∙ (SUC ∙ ZERO) ∙ (K ∙ SUC) ∙ ZERO)
+1+1 = there ⟶RS (there (⟶A ⟶K) here)
 
 --
 -- Normalizable terms.
@@ -138,8 +142,14 @@ data Normalizable : ∀ {α} → Term α → Set where
           Normalizable (R {α})
   nR1 : ∀ {α} {x : Term α} →
           Normalizable x → Normalizable (R ∙ x)
-  nR2 : ∀ {α} {x : Term α} {y : Term (α ⇒ N ⇒ α)} →
+  nR2 : ∀ {α} {x : Term α} {y : Term (N ⇒ α ⇒ α)} →
           Normalizable x → Normalizable y → Normalizable (R ∙ x ∙ y)
+
+
+-- Example: 1 + 1 is normalizable.
+
+norm-1+1 : Normalizable (R ∙ (SUC ∙ ZERO) ∙ (K ∙ SUC) ∙ (SUC ∙ ZERO))
+norm-1+1 = n⟶ ⟶RS (n⟶ (⟶A ⟶K) (nSUC1 (n⟶ ⟶RZ (nSUC1 nZ))))
 
 --
 -- Computable terms
@@ -211,7 +221,7 @@ all-computable (R {α}) =
              {z} (cnz : CompN z) → Computable (R ∙ x ∙ y ∙ z)
   helper cx cy cZERO = red-comp ⟶RZ cx
   helper cx cy (cSUC cnz) =
-    red-comp ⟶RS (proj₂ (proj₂ cy (helper cx cy cnz)) cnz)
+    red-comp ⟶RS (proj₂ (proj₂ cy cnz) (helper cx cy cnz))
   helper cx cy (c⟶ z⟶z′ cnz′) =
    red-comp (⟶RN z⟶z′) (helper cx cy cnz′)
 
