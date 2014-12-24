@@ -30,7 +30,7 @@ open import Function
 infixr 5 _⇒_
 
 data Type : Set where
-  ι   :  Type
+  ⋆   :  Type
   _⇒_ : (α β : Type) → Type
 
 --
@@ -90,10 +90,10 @@ reduction-example x = there ⟶S (there ⟶K here)
 data Normalizable : ∀ {α} → Term α → Set where
   nK  : ∀ {α β} →
           Normalizable (K {α} {β})
-  nS  : ∀ {α β γ} →
-          Normalizable (S {α} {β} {γ})
   nK1 : ∀ {α β} {x : Term α} →
           Normalizable x → Normalizable (K {α} {β} ∙ x)
+  nS  : ∀ {α β γ} →
+          Normalizable (S {α} {β} {γ})
   nS1 : ∀ {α β γ} {x : Term (α ⇒ β ⇒ γ)} →
           Normalizable x → Normalizable (S ∙ x)
   nS2 : ∀ {α β γ} {x : Term (α ⇒ β ⇒ γ)} {y : Term (α ⇒ β)} →
@@ -112,7 +112,7 @@ data Normalizable : ∀ {α} → Term α → Set where
 -- namely that x is a computable term of type α.
 
 Computable : ∀ {α} → Term α → Set
-Computable {ι} x = ⊥
+Computable {⋆} x = ⊥
 Computable {α ⇒ β} x =
   Normalizable x
     × ({y : Term α} → Computable y → Computable (x ∙ y))
@@ -123,7 +123,7 @@ Computable {α ⇒ β} x =
 -- "any typable term is normalizable").
 
 comp→norm : ∀ {α} {x : Term α} → Computable x → Normalizable x
-comp→norm {ι} ()
+comp→norm {⋆} ()
 comp→norm {α ⇒ β} (nx , h) = nx
 
 -- Main lemma:
@@ -131,7 +131,7 @@ comp→norm {α ⇒ β} (nx , h) = nx
 
 red-comp : ∀ {α} {x x′ : Term α} →
   x ⟶ x′ → Computable x′ → Computable x
-red-comp {ι} r ()
+red-comp {⋆} r ()
 red-comp {α ⇒ β} r (nx′ , h) =
   n⟶ r nx′ , (λ cy → red-comp {β} (⟶A r) (h cy))
 
@@ -175,8 +175,8 @@ all-normalizable x =
 
 open import Relation.Binary.PropositionalEquality
 
-III : Term (ι ⇒ ι)
-III = ⌈ all-normalizable (I {ι ⇒ ι} ∙ (I {ι ⇒ ι} ∙ I {ι})) ⌉
+III : Term (⋆ ⇒ ⋆)
+III = ⌈ all-normalizable (I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})) ⌉
 
 III≡ : III ≡ S ∙ K ∙ K
 III≡ = refl
