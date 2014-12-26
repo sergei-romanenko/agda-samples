@@ -39,20 +39,23 @@ data Type : Set where
 
 infixl 5 _∙_
 
-data Term : Type → Set where
-  K   : ∀ {α β} → Term (α ⇒ β ⇒ α)
-  S   : ∀ {α β γ} → Term ((α ⇒ β ⇒ γ) ⇒ (α ⇒ β) ⇒ α ⇒ γ)
-  _∙_ : ∀ {α β} → Term (α ⇒ β) → Term α → Term β
+data Tm : Type → Set where
+  K   : ∀ {α β} → Tm (α ⇒ β ⇒ α)
+  S   : ∀ {α β γ} → Tm ((α ⇒ β ⇒ γ) ⇒ (α ⇒ β) ⇒ α ⇒ γ)
+  _∙_ : ∀ {α β} → Tm (α ⇒ β) → Tm α → Tm β
 
 --
 -- Example terms.
 --
 
-I : ∀ {α} → Term (α ⇒ α)
+I : ∀ {α} → Tm (α ⇒ α)
 I {α} = S {α} ∙ K {α} ∙ K {α} {α}
 
-K2 : ∀ α β → Term (α ⇒ β ⇒ β)
+K2 : ∀ α β → Tm (α ⇒ β ⇒ β)
 K2 α β = K ∙ (S ∙ K ∙ K {β = α})
+
+III : Tm (⋆ ⇒ ⋆)
+III = I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})
 
 --
 -- Head reduction.
@@ -60,45 +63,45 @@ K2 α β = K ∙ (S ∙ K ∙ K {β = α})
 
 infix 3 _⟶_
 
-data _⟶_ : ∀ {α} → Term α → Term α → Set where
-  ⟶K : ∀ {α β} {x : Term α} {y : Term β} →
+data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
+  ⟶K : ∀ {α β} {x : Tm α} {y : Tm β} →
             K ∙ x ∙ y ⟶ x
-  ⟶S : ∀ {α β γ} {x : Term (α ⇒ β ⇒ γ)} {y : Term (α ⇒ β)} {z : Term α} →
+  ⟶S : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
             S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
-  ⟶A : ∀ {α β} {x x′ : Term (α ⇒ β)} {y   : Term α} →
+  ⟶A : ∀ {α β} {x x′ : Tm (α ⇒ β)} {y   : Tm α} →
             x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
 
 -- Reflexive and transitive closure of _⟶_ .
 
 infix 3 _⟶*_
 
-data _⟶*_ : ∀ {α} → Term α → Term α → Set where
-  here  : ∀ {α} {t : Term α} →
+data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
+  here  : ∀ {α} {t : Tm α} →
             t ⟶* t
-  there : ∀ {α} {t1 t2 t3 : Term α} →
+  there : ∀ {α} {t1 t2 t3 : Tm α} →
             t1 ⟶  t2  →  t2 ⟶* t3  →  t1 ⟶* t3
 
 -- Example: the behavior of I .
 
-reduction-example : ∀ {α} (x : Term α) → (I {α}) ∙ x ⟶* x
+reduction-example : ∀ {α} (x : Tm α) → (I {α}) ∙ x ⟶* x
 reduction-example x = there ⟶S (there ⟶K here)
 
 --
 -- Normalizable terms.
 --
 
-data Normalizable : ∀ {α} → Term α → Set where
+data Normalizable : ∀ {α} → Tm α → Set where
   nK  : ∀ {α β} →
           Normalizable (K {α} {β})
-  nK1 : ∀ {α β} {x : Term α} →
+  nK1 : ∀ {α β} {x : Tm α} →
           Normalizable x → Normalizable (K {α} {β} ∙ x)
   nS  : ∀ {α β γ} →
           Normalizable (S {α} {β} {γ})
-  nS1 : ∀ {α β γ} {x : Term (α ⇒ β ⇒ γ)} →
+  nS1 : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} →
           Normalizable x → Normalizable (S ∙ x)
-  nS2 : ∀ {α β γ} {x : Term (α ⇒ β ⇒ γ)} {y : Term (α ⇒ β)} →
+  nS2 : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} →
           Normalizable x → Normalizable y → Normalizable (S ∙ x ∙ y)
-  n⟶ : ∀ {α} {x x′ : Term α} →
+  n⟶ : ∀ {α} {x x′ : Tm α} →
           x ⟶ x′  → Normalizable x′ → Normalizable x
 
 --
@@ -111,25 +114,25 @@ data Normalizable : ∀ {α} → Term α → Set where
 -- on the derivation of x : α using a stronger induction hypothesis,
 -- namely that x is a computable term of type α.
 
-Computable : ∀ {α} → Term α → Set
+Computable : ∀ {α} → Tm α → Set
 Computable {⋆} x = ⊥
 Computable {α ⇒ β} x =
   Normalizable x
-    × ({y : Term α} → Computable y → Computable (x ∙ y))
+    × ({y : Tm α} → Computable y → Computable (x ∙ y))
 
 -- The definition of `Computable` implies that
 -- a computable term is normalizable.
 -- (Hence, if we show that "any typable term is computable", it will imply that
 -- "any typable term is normalizable").
 
-comp→norm : ∀ {α} {x : Term α} → Computable x → Normalizable x
-comp→norm {⋆} ()
-comp→norm {α ⇒ β} (nx , h) = nx
+→norm : ∀ {α} {x : Tm α} → Computable x → Normalizable x
+→norm {⋆} ()
+→norm {α ⇒ β} (nx , h) = nx
 
 -- Main lemma:
 -- a reduction step preserves computability.
 
-red-comp : ∀ {α} {x x′ : Term α} →
+red-comp : ∀ {α} {x x′ : Tm α} →
   x ⟶ x′ → Computable x′ → Computable x
 red-comp {⋆} r ()
 red-comp {α ⇒ β} r (nx′ , h) =
@@ -138,9 +141,9 @@ red-comp {α ⇒ β} r (nx′ , h) =
 -- Main theorem:
 -- all typable terms are computable.
 
-all-computable : ∀ {α} (x : Term α) → Computable x
+all-computable : ∀ {α} (x : Tm α) → Computable x
 all-computable K =
-  nK , (λ cx → nK1 (comp→norm cx) , (λ cy → red-comp ⟶K cx))
+  nK , (λ cx → nK1 (→norm cx) , (λ cy → red-comp ⟶K cx))
 all-computable S =
   nS , (λ {(nx , hx) → nS1 nx
           , (λ {(ny , hy) → (nS2 nx ny)
@@ -152,16 +155,16 @@ all-computable (x ∙ y)
 -- Main result:
 -- all typable terms are normalizable.
 
-all-normalizable : ∀ {α} (x : Term α) → Normalizable x
+all-normalizable : ∀ {α} (x : Tm α) → Normalizable x
 all-normalizable x =
-  comp→norm (all-computable x)
+  →norm (all-computable x)
 
 --
 -- Extracting the normal form from the proof:
 -- given a proof that x is normalizable, we can extract the normal form.
 --
 
-⌈_⌉ : ∀ {α} {x : Term α} → Normalizable x → Term α
+⌈_⌉ : ∀ {α} {x : Tm α} → Normalizable x → Tm α
 ⌈ nK ⌉ = K
 ⌈ nS ⌉ = S
 ⌈ nK1 nx ⌉ = K ∙ ⌈ nx ⌉
@@ -170,13 +173,21 @@ all-normalizable x =
 ⌈ n⟶ r nx′ ⌉ = ⌈ nx′ ⌉
 
 --
+-- Normalization.
+--
+
+norm : ∀ {α} (x : Tm α) → Tm α
+norm x = ⌈ all-normalizable x ⌉
+
+--
 -- Example
 --
 
 open import Relation.Binary.PropositionalEquality
 
-III : Term (⋆ ⇒ ⋆)
-III = ⌈ all-normalizable (I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})) ⌉
+norm-III : Tm (⋆ ⇒ ⋆)
+norm-III = norm (I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆}))
 
-III≡ : III ≡ S ∙ K ∙ K
-III≡ = refl
+norm-III≡ : norm-III ≡ S ∙ K ∙ K
+norm-III≡ = refl
+
