@@ -71,24 +71,25 @@ KI α β = K ∙ (S ∙ K ∙ K {β = α})
 III : Tm (⋆ ⇒ ⋆)
 III = I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})
 
-{-
 --
--- Head reduction.
+-- Reduction.
 --
 
-infix 3 _⟶_
+infix 4 _⟶_
 
 data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
   ⟶K : ∀ {α β} {x : Tm α} {y : Tm β} →
             K ∙ x ∙ y ⟶ x
   ⟶S : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
             S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
-  ⟶A : ∀ {α β} {x x′ : Tm (α ⇒ β)} {y   : Tm α} →
+  ⟶L : ∀ {α β} {x x′ : Tm (α ⇒ β)} {y   : Tm α} →
             x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
+  ⟶R : ∀ {α β} {x : Tm (α ⇒ β)} {y y′ : Tm α} →
+            y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
 
 -- Reflexive and transitive closure of _⟶_ .
 
-infix 3 _⟶*_
+infix 4 _⟶*_
 
 data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
   here  : ∀ {α} {t : Tm α} →
@@ -100,7 +101,6 @@ data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
 
 reduction-example : ∀ {α} (x : Tm α) → (I {α}) ∙ x ⟶* x
 reduction-example x = there ⟶S (there ⟶K here)
--}
 
 --
 -- Normal forms.
@@ -109,13 +109,13 @@ reduction-example x = there ⟶S (there ⟶K here)
 data Nf : Type → Set where
   K0 : ∀ {α β} →
          Nf (α ⇒ β ⇒ α)
-  K1 : ∀ {α β} (x : Nf α) →
+  K1 : ∀ {α β} (nx : Nf α) →
          Nf (β ⇒ α)
   S0 : ∀ {α β γ} →
          Nf ((α ⇒ β ⇒ γ) ⇒ (α ⇒ β) ⇒ α ⇒ γ)
-  S1 : ∀ {α β γ} (x : Nf (α ⇒ β ⇒ γ)) →
+  S1 : ∀ {α β γ} (nx : Nf (α ⇒ β ⇒ γ)) →
          Nf ((α ⇒ β) ⇒ α ⇒ γ)
-  S2 : ∀ {α β γ} (x : Nf (α ⇒ β ⇒ γ)) (y : Nf (α ⇒ β))→
+  S2 : ∀ {α β γ} (nx : Nf (α ⇒ β ⇒ γ)) (ny : Nf (α ⇒ β))→
          Nf (α ⇒ γ)
 
 reify : ∀ {α} (n : Nf α) → Tm α
@@ -126,6 +126,28 @@ reify (S1 nx) = S ∙ reify nx
 reify (S2 nx ny) = S ∙ reify nx ∙ reify ny
 
 --
+-- `reify nx` does return a term that cannot be reduced).
+--
+
+Normal-form : ∀ {α} (x : Tm α) → Set
+Normal-form x = ∄ (λ y → x ⟶ y)
+
+reify→nf : ∀ {α} (nx : Nf α) → Normal-form (reify nx)
+reify→nf K0 (y , ())
+reify→nf (K1 nx) (._ , ⟶L ())
+reify→nf (K1 nx) (._ , ⟶R ⟶y) =
+  reify→nf nx (, ⟶y)
+reify→nf S0 (y , ())
+reify→nf (S1 nx) (._ , ⟶L ())
+reify→nf (S1 nx) (._ , ⟶R ⟶y) =
+  reify→nf nx (, ⟶y)
+reify→nf (S2 nx ny) (._ , ⟶L (⟶L ()))
+reify→nf (S2 nx ny) (._ , ⟶L (⟶R ⟶y)) =
+  reify→nf nx (, ⟶y)
+reify→nf (S2 nx ny) (._ , ⟶R ⟶y) =
+  reify→nf ny (, ⟶y)
+
+--
 -- A "naive" big-step normalization function.
 --
 
@@ -133,74 +155,91 @@ module NaiveNorm where
 
   {-# TERMINATING #-}
 
-  reflect∙ : ∀ {α β} (x : Nf (α ⇒ β)) (u : Nf α) → Nf β
-  reflect∙ K0 nu = K1 nu
-  reflect∙ (K1 nx) nu = nx
-  reflect∙ S0 nu = S1 nu
-  reflect∙ (S1 nx) nu = S2 nx nu
-  reflect∙ (S2 nx ny) nu =
-    reflect∙ (reflect∙ nx nu) (reflect∙ ny nu)
+  _⟨∙⟩_ : ∀ {α β} (x : Nf (α ⇒ β)) (u : Nf α) → Nf β
+  K0 ⟨∙⟩ nu       = K1 nu
+  K1 nx ⟨∙⟩  nu   = nx
+  S0 ⟨∙⟩ nu       = S1 nu
+  S1 nx ⟨∙⟩ nu    = S2 nx nu
+  S2 nx ny ⟨∙⟩ nu = (nx ⟨∙⟩ nu) ⟨∙⟩ (ny ⟨∙⟩ nu)
 
-  reflect : ∀ {α} (x : Tm α) → Nf α
-  reflect K = K0
-  reflect S = S0
-  reflect (x ∙ y) = reflect∙ (reflect x) (reflect y)
+  ⟦_⟧ : ∀ {α} (x : Tm α) → Nf α
+  ⟦ K ⟧ = K0
+  ⟦ S ⟧ = S0
+  ⟦ x ∙ y ⟧ = ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧
 
   norm : ∀ {α} → Tm α → Tm α
-  norm = reify ∘ reflect
+  norm = reify ∘ ⟦_⟧
 
   norm-III : norm III ≡ S ∙ K ∙ K
   norm-III = refl
 
 --
+-- A "denotational" semantics for `Term α`.
+--
+
+module DenotationalNorm where
+
+  D : (α : Type) → Set
+  D ⋆ = ⊥
+  D (α ⇒ β) = D α → D β
+
+  ⟦_⟧ : ∀ {α} (x : Tm α) → D α
+  ⟦ K ⟧ = λ x y → x
+  ⟦ S ⟧ = λ x y z → (x z) (y z)
+  ⟦ x ∙ y ⟧ = ⟦ x ⟧ ⟦ y ⟧
+
+  -- The problem is how to "reify" D-values?
+  -- (= How to go back to first-order terms?)
+
+--
 -- Glueing
 --
 
-Gl : (α : Type) → Set
-Gl ⋆ = ⊥
-Gl (α ⇒ β) = Nf (α ⇒ β) × (Gl α → Gl β)
+G : (α : Type) → Set
+G ⋆ = ⊥
+G (α ⇒ β) = Nf (α ⇒ β) × (G α → G β)
 
 -- ⌈_⌉
 
-⌈_⌉ : ∀ {α} (g : Gl α) → Nf α
+⌈_⌉ : ∀ {α} (g : G α) → Nf α
 ⌈_⌉ {⋆} ()
 ⌈_⌉ {α ⇒ β} (n , f) = n
 
 -- ⟪_⟫
 
-⟪_⟫ : ∀ {α} (gx : Gl α) → Tm α
+⟪_⟫ : ∀ {α} (p : G α) → Tm α
 ⟪_⟫ = reify ∘ ⌈_⌉
 
 -- Application for glued values
 
 infixl 5 _⟨∙⟩_
 
-_⟨∙⟩_ : ∀ {α β} (p : Gl (α ⇒ β)) (q : Gl α) → Gl β
+_⟨∙⟩_ : ∀ {α β} (p : G (α ⇒ β)) (q : G α) → G β
 (nx , fx) ⟨∙⟩ q = fx q
 
 --
 -- Now `reflect` terminates!
 --
 
-reflect : ∀ {α} (x : Tm α) → Gl α
-reflect K =
+⟦_⟧ : ∀ {α} (x : Tm α) → G α
+⟦ K ⟧ =
   K0 , λ p →
     K1 ⌈ p ⌉ , λ q →
       p
-reflect S =
+⟦ S ⟧ =
   S0 , λ p →
     S1 ⌈ p ⌉ , λ q →
       S2 ⌈ p ⌉ ⌈ q ⌉ , λ r →
         (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r)
-reflect (x ∙ y) =
-  reflect x ⟨∙⟩ reflect y
+⟦ x ∙ y ⟧ =
+  ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧
 
 --
 -- Normalization.
 --
 
 norm : ∀ {α} → Tm α → Tm α
-norm = ⟪_⟫ ∘ reflect
+norm = ⟪_⟫ ∘ ⟦_⟧
 
 norm-III : norm III ≡ S ∙ K ∙ K
 norm-III = refl
@@ -242,7 +281,7 @@ module ≈-Reasoning {α : Type} = EqReasoning (≈setoid {α})
 --     x₁ ≈ x₂ → norm x₁ ≡ norm x₂
 --
 
-≈→≡gl : ∀ {α} {x₁ x₂ : Tm α} → x₁ ≈ x₂ → reflect x₁ ≡ reflect x₂
+≈→≡gl : ∀ {α} {x₁ x₂ : Tm α} → x₁ ≈ x₂ → ⟦ x₁ ⟧ ≡ ⟦ x₂ ⟧
 ≈→≡gl ≈refl = refl
 ≈→≡gl (≈sym x₂≈x₁) =
   sym (≈→≡gl x₂≈x₁)
@@ -263,62 +302,62 @@ norm-sound x₁≈x₂ =
 --     norm x ≈ x
 -- 
 
-Gl∙ : {α : Type} (gx : Gl α) → Set
-Gl∙ {⋆} p = ⊥
-Gl∙ {α ⇒ β} p = ∀ (q : Gl α) → Gl∙ q →
-  Gl∙ (p ⟨∙⟩ q)
+H : {α : Type} (p : G α) → Set
+H {⋆} p = ⊥
+H {α ⇒ β} p = ∀ (q : G α) → H q →
+  H (p ⟨∙⟩ q)
     × ⟪ p ⟫ ∙ ⟪ q ⟫ ≈ ⟪ p ⟨∙⟩ q ⟫
 
 mutual
 
-  all-gl∙ : ∀ {α} (x : Tm α) → Gl∙ {α} (reflect x)
-  all-gl∙ K =
+  all-H : ∀ {α} (x : Tm α) → H {α} ⟦ x ⟧
+  all-H K =
     λ p f →
       (λ q g → f , ≈K) , ≈refl
-  all-gl∙ S p f =
+  all-H S p f =
     (λ q g → (λ r h → all-gl-S₁ p f q g r h ,
       all-gl-S₂ p f q g r h)
         , ≈refl) , ≈refl
-  all-gl∙ (x ∙ y) =
-    all-gl∙app (reflect x) (all-gl∙ x) (reflect y) (all-gl∙ y)
+  all-H (x ∙ y) =
+    all-H∙ ⟦ x ⟧ (all-H x) ⟦ y ⟧ (all-H y)
+
+  all-gl-S₁ : ∀ {α β γ}
+    (p : G (α ⇒ β ⇒ γ)) (f : H p)
+    (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
+      H ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
+  all-gl-S₁ {α} {β} {γ} p f q g r h =
+    all-H∙ (p ⟨∙⟩ r) (all-H∙ p f r h)
+               (q ⟨∙⟩ r) (all-H∙ q g r h)
 
   all-gl-S₂ : ∀ {α β γ}
-    (p : Gl (α ⇒ β ⇒ γ)) (f : Gl∙ p)
-    (q : Gl (α ⇒ β)) (g : Gl∙ q)
-    (r : Gl α) (h : Gl∙ r) →
+    (p : G (α ⇒ β ⇒ γ)) (f : H p)
+    (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
       S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫ ≈ ⟪ p ⟨∙⟩ r ⟨∙⟩ (q ⟨∙⟩ r) ⟫
-  all-gl-S₂ p hx q hy r hz = begin
+  all-gl-S₂ p f q g r h = begin
     S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
-        ≈⟨ ≈S ⟩
+      ≈⟨ ≈S ⟩
     (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
-        ≈⟨ ∙-cong (proj₂ (hx r hz)) (proj₂ (hy r hz)) ⟩
+      ≈⟨ ∙-cong (proj₂ (f r h)) (proj₂ (g r h)) ⟩
     ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
-        ≈⟨ proj₂ ((all-gl∙app p hx r hz) (q ⟨∙⟩ r) (all-gl∙app q hy r hz)) ⟩
+      ≈⟨ proj₂ ((all-H∙ p f r h) (q ⟨∙⟩ r) (all-H∙ q g r h)) ⟩
     ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
     ∎
     where open ≈-Reasoning
 
-  all-gl-S₁ : ∀ {α β γ}
-    (p : Gl (α ⇒ β ⇒ γ)) (f : Gl∙ p)
-    (q : Gl (α ⇒ β)) (g : Gl∙ q)
-    (r : Gl α) (h : Gl∙ r) →
-      Gl∙ ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
-  all-gl-S₁ {α} {β} {γ} p f q g r h =
-    all-gl∙app (p ⟨∙⟩ r) (all-gl∙app p f r h)
-               (q ⟨∙⟩ r) (all-gl∙app q g r h)
+  all-H∙ : ∀ {α β}
+    (p : G (α ⇒ β)) (f : H p) (q : G α) (g : H q) → H (p ⟨∙⟩ q)
+  all-H∙ p f q g = proj₁ (f q g)
 
-  all-gl∙app : ∀ {α β}
-    (p : Gl (α ⇒ β)) (f : Gl∙ p) (q : Gl α) (g : Gl∙ q) → Gl∙ (p ⟨∙⟩ q)
-  all-gl∙app p f q g = proj₁ (f q g)
-
+-- norm x ≈ x
 
 norm-complete : ∀ {α} (x : Tm α) → norm x ≈ x
+
 norm-complete K = ≈refl
 norm-complete S = ≈refl
 norm-complete (x ∙ y) = begin
-  ⟪ reflect x ⟨∙⟩ reflect y ⟫
-    ≈⟨ ≈sym $ proj₂ (all-gl∙ x (reflect y) (all-gl∙ y)) ⟩
-  ⟪ reflect x ⟫ ∙ ⟪ reflect y ⟫
+  ⟪ ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧ ⟫
+    ≈⟨ ≈sym $ proj₂ (all-H x ⟦ y ⟧ (all-H y)) ⟩
+  ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
     ≈⟨ ∙-cong (norm-complete x) (norm-complete y) ⟩
   x ∙ y
   ∎
