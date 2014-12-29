@@ -32,6 +32,11 @@ open import Function
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to ≡[_])
 
+open import Relation.Binary
+  using (Setoid)
+
+import Relation.Binary.EqReasoning as EqReasoning
+
 --
 -- Types.
 --
@@ -60,12 +65,13 @@ data Tm : Type → Set where
 I : ∀ {α} → Tm (α ⇒ α)
 I {α} = S {α} ∙ K {α} ∙ K {α} {α}
 
-K2 : ∀ α β → Tm (α ⇒ β ⇒ β)
-K2 α β = K ∙ (S ∙ K ∙ K {β = α})
+KI : ∀ α β → Tm (α ⇒ β ⇒ β)
+KI α β = K ∙ (S ∙ K ∙ K {β = α})
 
 III : Tm (⋆ ⇒ ⋆)
 III = I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})
 
+{-
 --
 -- Head reduction.
 --
@@ -94,6 +100,7 @@ data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
 
 reduction-example : ∀ {α} (x : Tm α) → (I {α}) ∙ x ⟶* x
 reduction-example x = there ⟶S (there ⟶K here)
+-}
 
 --
 -- Normal forms.
@@ -108,7 +115,7 @@ data Nf : Type → Set where
          Nf ((α ⇒ β ⇒ γ) ⇒ (α ⇒ β) ⇒ α ⇒ γ)
   S1 : ∀ {α β γ} (x : Nf (α ⇒ β ⇒ γ)) →
          Nf ((α ⇒ β) ⇒ α ⇒ γ)
-  S2 : ∀ {α β γ} (x : Nf (α ⇒ β ⇒ γ)) (x : Nf (α ⇒ β))→
+  S2 : ∀ {α β γ} (x : Nf (α ⇒ β ⇒ γ)) (y : Nf (α ⇒ β))→
          Nf (α ⇒ γ)
 
 reify : ∀ {α} (n : Nf α) → Tm α
@@ -159,10 +166,17 @@ Gl (α ⇒ β) = Nf (α ⇒ β) × (Gl α → Gl β)
 ⌈_⌉ {⋆} ()
 ⌈_⌉ {α ⇒ β} (n , f) = n
 
+-- ⟪_⟫
+
+⟪_⟫ : ∀ {α} (gx : Gl α) → Tm α
+⟪_⟫ = reify ∘ ⌈_⌉
+
+-- Application for glued values
+
 infixl 5 _⟨∙⟩_
 
-_⟨∙⟩_ : ∀ {α β} (gx : Gl (α ⇒ β)) (gy : Gl α) → Gl β
-(nx , fx) ⟨∙⟩ gy = fx gy
+_⟨∙⟩_ : ∀ {α β} (p : Gl (α ⇒ β)) (q : Gl α) → Gl β
+(nx , fx) ⟨∙⟩ q = fx q
 
 --
 -- Now `reflect` terminates!
@@ -170,14 +184,14 @@ _⟨∙⟩_ : ∀ {α β} (gx : Gl (α ⇒ β)) (gy : Gl α) → Gl β
 
 reflect : ∀ {α} (x : Tm α) → Gl α
 reflect K =
-  K0 , λ gx →
-    K1 ⌈ gx ⌉ , λ gy →
-      gx
+  K0 , λ p →
+    K1 ⌈ p ⌉ , λ q →
+      p
 reflect S =
-  S0 , λ gx →
-    S1 ⌈ gx ⌉ , λ gy →
-      S2 ⌈ gx ⌉ ⌈ gy ⌉ , λ gz →
-        (gx ⟨∙⟩ gz) ⟨∙⟩ (gy ⟨∙⟩ gz)
+  S0 , λ p →
+    S1 ⌈ p ⌉ , λ q →
+      S2 ⌈ p ⌉ ⌈ q ⌉ , λ r →
+        (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r)
 reflect (x ∙ y) =
   reflect x ⟨∙⟩ reflect y
 
@@ -186,7 +200,126 @@ reflect (x ∙ y) =
 --
 
 norm : ∀ {α} → Tm α → Tm α
-norm = reify ∘ ⌈_⌉ ∘ reflect
+norm = ⟪_⟫ ∘ reflect
 
 norm-III : norm III ≡ S ∙ K ∙ K
 norm-III = refl
+
+--
+-- Convertibility
+--
+
+infix 4 _≈_
+
+data _≈_  : {α : Type} (x y : Tm α) → Set where
+  ≈refl  : ∀ {α} {x : Tm α} →
+             x ≈ x
+  ≈sym   : ∀ {α} {x y : Tm α} →
+             x ≈ y → y ≈ x
+  ≈trans : ∀ {α} {x y z : Tm α} →
+             x ≈ y → y ≈ z → x ≈ z
+  ≈K     : ∀ {α β} {x : Tm α} {y : Tm β} →
+             K ∙ x ∙ y ≈ x
+  ≈S     : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
+             S ∙ x ∙ y ∙ z ≈ (x ∙ z) ∙ (y ∙ z)
+  ∙-cong : ∀ {α β} {x₁ x₂ : Tm (α ⇒ β)} {y₁ y₂ : Tm α} →
+             x₁ ≈ x₂ → y₁ ≈ y₂ → x₁ ∙ y₁ ≈ x₂ ∙ y₂
+
+≈setoid : {α : Type} → Setoid _ _
+
+≈setoid {α} = record
+  { Carrier = Tm α
+  ; _≈_ = _≈_
+  ; isEquivalence = record
+    { refl = ≈refl
+    ; sym = ≈sym
+    ; trans = ≈trans } }
+
+module ≈-Reasoning {α : Type} = EqReasoning (≈setoid {α})
+
+--
+-- Soundness: the normal forms of two convertible terms are equal
+--     x₁ ≈ x₂ → norm x₁ ≡ norm x₂
+--
+
+≈→≡gl : ∀ {α} {x₁ x₂ : Tm α} → x₁ ≈ x₂ → reflect x₁ ≡ reflect x₂
+≈→≡gl ≈refl = refl
+≈→≡gl (≈sym x₂≈x₁) =
+  sym (≈→≡gl x₂≈x₁)
+≈→≡gl (≈trans x≈y y≈z) =
+  trans (≈→≡gl x≈y) (≈→≡gl y≈z)
+≈→≡gl ≈K = refl
+≈→≡gl ≈S = refl
+≈→≡gl (∙-cong {α} {β} x₁≈x₂ y₁≈y₂) =
+  cong₂ _⟨∙⟩_ (≈→≡gl x₁≈x₂) (≈→≡gl y₁≈y₂)
+
+norm-sound : ∀ {α} {x₁ x₂ : Tm α} →
+  x₁ ≈ x₂ → norm x₁ ≡ norm x₂
+norm-sound x₁≈x₂ =
+  cong ⟪_⟫ (≈→≡gl x₁≈x₂)
+
+--
+-- Completeness: terms are convertible to their normal forms
+--     norm x ≈ x
+-- 
+
+Gl∙ : {α : Type} (gx : Gl α) → Set
+Gl∙ {⋆} p = ⊥
+Gl∙ {α ⇒ β} p = ∀ (q : Gl α) → Gl∙ q →
+  Gl∙ (p ⟨∙⟩ q)
+    × ⟪ p ⟫ ∙ ⟪ q ⟫ ≈ ⟪ p ⟨∙⟩ q ⟫
+
+mutual
+
+  all-gl∙ : ∀ {α} (x : Tm α) → Gl∙ {α} (reflect x)
+  all-gl∙ K =
+    λ p f →
+      (λ q g → f , ≈K) , ≈refl
+  all-gl∙ S p f =
+    (λ q g → (λ r h → all-gl-S₁ p f q g r h ,
+      all-gl-S₂ p f q g r h)
+        , ≈refl) , ≈refl
+  all-gl∙ (x ∙ y) =
+    all-gl∙app (reflect x) (all-gl∙ x) (reflect y) (all-gl∙ y)
+
+  all-gl-S₂ : ∀ {α β γ}
+    (p : Gl (α ⇒ β ⇒ γ)) (f : Gl∙ p)
+    (q : Gl (α ⇒ β)) (g : Gl∙ q)
+    (r : Gl α) (h : Gl∙ r) →
+      S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫ ≈ ⟪ p ⟨∙⟩ r ⟨∙⟩ (q ⟨∙⟩ r) ⟫
+  all-gl-S₂ p hx q hy r hz = begin
+    S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
+        ≈⟨ ≈S ⟩
+    (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
+        ≈⟨ ∙-cong (proj₂ (hx r hz)) (proj₂ (hy r hz)) ⟩
+    ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
+        ≈⟨ proj₂ ((all-gl∙app p hx r hz) (q ⟨∙⟩ r) (all-gl∙app q hy r hz)) ⟩
+    ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
+    ∎
+    where open ≈-Reasoning
+
+  all-gl-S₁ : ∀ {α β γ}
+    (p : Gl (α ⇒ β ⇒ γ)) (f : Gl∙ p)
+    (q : Gl (α ⇒ β)) (g : Gl∙ q)
+    (r : Gl α) (h : Gl∙ r) →
+      Gl∙ ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
+  all-gl-S₁ {α} {β} {γ} p f q g r h =
+    all-gl∙app (p ⟨∙⟩ r) (all-gl∙app p f r h)
+               (q ⟨∙⟩ r) (all-gl∙app q g r h)
+
+  all-gl∙app : ∀ {α β}
+    (p : Gl (α ⇒ β)) (f : Gl∙ p) (q : Gl α) (g : Gl∙ q) → Gl∙ (p ⟨∙⟩ q)
+  all-gl∙app p f q g = proj₁ (f q g)
+
+
+norm-complete : ∀ {α} (x : Tm α) → norm x ≈ x
+norm-complete K = ≈refl
+norm-complete S = ≈refl
+norm-complete (x ∙ y) = begin
+  ⟪ reflect x ⟨∙⟩ reflect y ⟫
+    ≈⟨ ≈sym $ proj₂ (all-gl∙ x (reflect y) (all-gl∙ y)) ⟩
+  ⟪ reflect x ⟫ ∙ ⟪ reflect y ⟫
+    ≈⟨ ∙-cong (norm-complete x) (norm-complete y) ⟩
+  x ∙ y
+  ∎
+  where open ≈-Reasoning
