@@ -51,8 +51,8 @@ data Tm : Type → Set where
 I : ∀ {α} → Tm (α ⇒ α)
 I {α} = S {α} ∙ K {α} ∙ K {α} {α}
 
-K2 : ∀ α β → Tm (α ⇒ β ⇒ β)
-K2 α β = K ∙ (S ∙ K ∙ K {β = α})
+KI : ∀ α β → Tm (α ⇒ β ⇒ β)
+KI α β = K ∙ (S ∙ K ∙ K {β = α})
 
 III : Tm (⋆ ⇒ ⋆)
 III = I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})
@@ -91,18 +91,18 @@ reduction-example x = there ⟶S (there ⟶K here)
 --
 
 data Normalizable : ∀ {α} → Tm α → Set where
-  nK0 : ∀ {α β} →
-          Normalizable (K {α} {β})
-  nK1 : ∀ {α β} {x : Tm α} →
-          Normalizable x → Normalizable (K {α} {β} ∙ x)
-  nS0 : ∀ {α β γ} →
-          Normalizable (S {α} {β} {γ})
-  nS1 : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} →
-          Normalizable x → Normalizable (S ∙ x)
-  nS2 : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} →
-          Normalizable x → Normalizable y → Normalizable (S ∙ x ∙ y)
+  K0 : ∀ {α β} →
+         Normalizable (K {α} {β})
+  K1 : ∀ {α β} {x : Tm α} →
+         Normalizable x → Normalizable (K {α} {β} ∙ x)
+  S0 : ∀ {α β γ} →
+         Normalizable (S {α} {β} {γ})
+  S1 : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} →
+         Normalizable x → Normalizable (S ∙ x)
+  S2 : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} →
+         Normalizable x → Normalizable y → Normalizable (S ∙ x ∙ y)
   n⟶ : ∀ {α} {x x′ : Tm α} →
-          x ⟶ x′  → Normalizable x′ → Normalizable x
+           x ⟶ x′  → Normalizable x′ → Normalizable x
 
 --
 -- Computable terms
@@ -125,17 +125,17 @@ Computable {α ⇒ β} x =
 -- (Hence, if we show that "any typable term is computable", it will imply that
 -- "any typable term is normalizable").
 
-↓ : ∀ {α} {x : Tm α} → Computable x → Normalizable x
-↓ {⋆} ()
-↓ {α ⇒ β} (nx , h) = nx
+⟪_⟫ : ∀ {α} {x : Tm α} → Computable x → Normalizable x
+⟪_⟫ {⋆} ()
+⟪_⟫ {α ⇒ β} p = proj₁ p
 
 -- Applying a computable to a computable
 
 infixl 5 _⟨∙⟩_
 
 _⟨∙⟩_ : ∀ {α β} {x : Tm (α ⇒ β)} {y : Tm α}
-  (cx : Computable x) (cy : Computable y) → Computable (x ∙ y)
-_⟨∙⟩_ (nx , hx) cy = hx cy
+  (p : Computable x) (q : Computable y) → Computable (x ∙ y)
+p ⟨∙⟩ q = proj₂ p q
 
 -- Main lemma:
 -- a reduction step preserves computability.
@@ -143,8 +143,8 @@ _⟨∙⟩_ (nx , hx) cy = hx cy
 red-comp : ∀ {α} {x x′ : Tm α} →
   x ⟶ x′ → Computable x′ → Computable x
 red-comp {⋆} r ()
-red-comp {α ⇒ β} r (nx′ , h) =
-  n⟶ r nx′ , (λ cy → red-comp {β} (⟶A r) (h cy))
+red-comp {α ⇒ β} r p =
+  n⟶ r ⟪ p ⟫ , λ q → red-comp {β} (⟶A r) (p ⟨∙⟩ q)
 
 
 -- Main theorem:
@@ -152,12 +152,12 @@ red-comp {α ⇒ β} r (nx′ , h) =
 
 all-computable : ∀ {α} (x : Tm α) → Computable x
 all-computable K =
-  nK0 , (λ cx → nK1 (↓ cx) , (λ cy → red-comp ⟶K cx))
+  K0 , λ p → K1 ⟪ p ⟫ , λ q → red-comp ⟶K p
 all-computable S =
-  nS0 , λ cx →
-    nS1 (↓ cx) , λ cy →
-      nS2 (↓ cx) (↓ cy) , λ cz →
-        red-comp ⟶S ((cx ⟨∙⟩ cz) ⟨∙⟩ (cy ⟨∙⟩ cz))
+  S0 , λ p →
+    S1 ⟪ p ⟫ , λ q →
+      S2 ⟪ p ⟫ ⟪ q ⟫ , λ r →
+        red-comp ⟶S ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
 all-computable (x ∙ y) =
   all-computable x ⟨∙⟩ all-computable y
 
@@ -165,7 +165,7 @@ all-computable (x ∙ y) =
 -- all typable terms are normalizable.
 
 all-normalizable : ∀ {α} (x : Tm α) → Normalizable x
-all-normalizable = ↓ ∘ all-computable
+all-normalizable = ⟪_⟫ ∘ all-computable
 
 --
 -- Extracting the normal form from the proof:
@@ -173,11 +173,11 @@ all-normalizable = ↓ ∘ all-computable
 --
 
 ⌈_⌉ : ∀ {α} {x : Tm α} → Normalizable x → Tm α
-⌈ nK0 ⌉ = K
-⌈ nS0 ⌉ = S
-⌈ nK1 nx ⌉ = K ∙ ⌈ nx ⌉
-⌈ nS1 nx ⌉ = S ∙ ⌈ nx ⌉
-⌈ nS2 nx ny ⌉ = S ∙ ⌈ nx ⌉ ∙ ⌈ ny ⌉
+⌈ K0 ⌉ = K
+⌈ K1 nx ⌉ = K ∙ ⌈ nx ⌉
+⌈ S0 ⌉ = S
+⌈ S1 nx ⌉ = S ∙ ⌈ nx ⌉
+⌈ S2 nx ny ⌉ = S ∙ ⌈ nx ⌉ ∙ ⌈ ny ⌉
 ⌈ n⟶ r nx′ ⌉ = ⌈ nx′ ⌉
 
 --
