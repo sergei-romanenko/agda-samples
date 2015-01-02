@@ -55,8 +55,8 @@ data Tm : Type → Set where
 I : ∀ {α} → Tm (α ⇒ α)
 I {α} = S {α} ∙ K {α} ∙ K {α} {α}
 
-K2 : ∀ α β → Tm (α ⇒ β ⇒ β)
-K2 α β = K ∙ (S ∙ K ∙ K {β = α})
+KI : ∀ α β → Tm (α ⇒ β ⇒ β)
+KI α β = K ∙ (S ∙ K ∙ K {β = α})
 
 #2 : Tm N
 #2 = SUC ∙ (SUC ∙ ZERO)
