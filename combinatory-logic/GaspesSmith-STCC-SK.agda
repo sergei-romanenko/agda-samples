@@ -101,7 +101,7 @@ data Normalizable : ∀ {α} → Tm α → Set where
          Normalizable x → Normalizable (S ∙ x)
   S2 : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} →
          Normalizable x → Normalizable y → Normalizable (S ∙ x ∙ y)
-  n⟶ : ∀ {α} {x x′ : Tm α} →
+  ⟶N : ∀ {α} {x x′ : Tm α} →
            x ⟶ x′  → Normalizable x′ → Normalizable x
 
 --
@@ -142,9 +142,9 @@ p ⟨∙⟩ q = proj₂ p q
 
 red-comp : ∀ {α} {x x′ : Tm α} →
   x ⟶ x′ → Computable x′ → Computable x
-red-comp {⋆} r ()
-red-comp {α ⇒ β} r p =
-  n⟶ r ⟪ p ⟫ , λ q → red-comp {β} (⟶A r) (p ⟨∙⟩ q)
+red-comp {⋆} x⟶x′ ()
+red-comp {α ⇒ β} x⟶x′ p =
+  ⟶N x⟶x′ ⟪ p ⟫ , λ q → red-comp {β} (⟶A x⟶x′) (p ⟨∙⟩ q)
 
 
 -- Main theorem:
@@ -178,7 +178,7 @@ all-normalizable = ⟪_⟫ ∘ all-computable
 ⌈ S0 ⌉ = S
 ⌈ S1 nx ⌉ = S ∙ ⌈ nx ⌉
 ⌈ S2 nx ny ⌉ = S ∙ ⌈ nx ⌉ ∙ ⌈ ny ⌉
-⌈ n⟶ r nx′ ⌉ = ⌈ nx′ ⌉
+⌈ ⟶N x⟶x′ nx′ ⌉ = ⌈ nx′ ⌉
 
 --
 -- Normalization.
@@ -198,4 +198,3 @@ norm-III = norm (I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆}))
 
 norm-III≡ : norm-III ≡ S ∙ K ∙ K
 norm-III≡ = refl
-

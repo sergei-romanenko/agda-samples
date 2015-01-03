@@ -132,7 +132,7 @@ data Normalizable : ∀ {α} → Tm α → Set where
          Normalizable x → Normalizable (S ∙ x)
   S2 : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} →
          Normalizable x → Normalizable y → Normalizable (S ∙ x ∙ y)
-  n⟶ : ∀ {α} {x x′ : Tm α} →
+  ⟶N : ∀ {α} {x x′ : Tm α} →
            x ⟶ x′  → Normalizable x′ → Normalizable x
   ZERO0 : Normalizable ZERO
   SUC0  : Normalizable SUC
@@ -149,7 +149,7 @@ data Normalizable : ∀ {α} → Tm α → Set where
 -- Example: 1 + 1 is normalizable.
 
 norm-1+1 : Normalizable (R ∙ (SUC ∙ ZERO) ∙ (K ∙ SUC) ∙ (SUC ∙ ZERO))
-norm-1+1 = n⟶ ⟶RS (n⟶ (⟶A ⟶K) (SUC1 (n⟶ ⟶RZ (SUC1 ZERO0))))
+norm-1+1 = ⟶N ⟶RS (⟶N (⟶A ⟶K) (SUC1 (⟶N ⟶RZ (SUC1 ZERO0))))
 
 --
 -- Computable terms
@@ -161,14 +161,12 @@ norm-1+1 = n⟶ ⟶RS (n⟶ (⟶A ⟶K) (SUC1 (n⟶ ⟶RZ (SUC1 ZERO0))))
 -- on the derivation of x : α using a stronger induction hypothesis,
 -- namely that x is a computable term of type α.
 
-data NComputable : (x : Tm N) → Set where
-  CZERO : NComputable ZERO
-  CSUC  : ∀ {x} → NComputable x → NComputable (SUC ∙ x)
-  c⟶  : ∀ {x x′} →
-          x ⟶ x′  → NComputable x′ → NComputable x
+-- Note. In the paper there is introduced a separate definition for
+-- the computability of numbers. But, we can just consider a number
+-- to be "computable", iff it is "normalizable".
 
 Computable : ∀ {α} → Tm α → Set
-Computable {N} x = NComputable x
+Computable {N} x = Normalizable x
 Computable {α ⇒ β} x =
   Normalizable x
     × ({y : Tm α} → Computable y → Computable (x ∙ y))
@@ -178,13 +176,8 @@ Computable {α ⇒ β} x =
 -- (Hence, if we show that "any typable term is computable", it will imply that
 -- "any typable term is normalizable").
 
-n⟪_⟫ : ∀ {x : Tm N} → NComputable x → Normalizable x
-n⟪ CZERO ⟫ = ZERO0
-n⟪ CSUC x ⟫ = SUC1 n⟪ x ⟫
-n⟪ c⟶ x y ⟫ = n⟶ x n⟪ y ⟫
-
 ⟪_⟫ : ∀ {α} {x : Tm α} → Computable x → Normalizable x
-⟪_⟫ {N} {x} p = n⟪ p ⟫
+⟪_⟫ {N} p = p
 ⟪_⟫ {α ⇒ β} {x} p = proj₁ p
 
 -- Applying a computable to a computable
@@ -200,10 +193,10 @@ p ⟨∙⟩ q = proj₂ p q
 
 red-comp : ∀ {α} {x x′ : Tm α} →
   x ⟶ x′ → Computable x′ → Computable x
-red-comp {N} r h = c⟶ r h
-red-comp {α ⇒ β} r p =
-  n⟶ r ⟪ p ⟫ , (λ q → red-comp (⟶A r) (p ⟨∙⟩ q))
-
+red-comp {N} x⟶x′ p =
+  ⟶N x⟶x′ p
+red-comp {α ⇒ β} x⟶x′ p =
+  ⟶N x⟶x′ ⟪ p ⟫ , (λ q → red-comp (⟶A x⟶x′) (p ⟨∙⟩ q))
 
 -- Main theorem:
 -- all typable terms are computable.
@@ -218,21 +211,22 @@ all-computable S =
         red-comp ⟶S ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
 all-computable (x ∙ y) =
   all-computable x ⟨∙⟩ all-computable y
-all-computable ZERO = CZERO
-all-computable SUC = SUC0 , CSUC
+all-computable ZERO = ZERO0
+all-computable SUC = SUC0 , SUC1
 all-computable (R {α}) =
-  R0 , (λ {x} p →
-    R1 ⟪ p ⟫ , (λ {y} q →
-      R2 ⟪ p ⟫ ⟪ q ⟫ , (λ {z} r →
-        helper p q r)))
+  R0 , λ {x} p →
+    R1 ⟪ p ⟫ , λ {y} q →
+      R2 ⟪ p ⟫ ⟪ q ⟫ , λ {z} r →
+        helper p q r
   where
   helper : ∀ {x} (p : Computable {α} x) {y} (q : Computable y)
-             {z} (r : NComputable z) → Computable (R ∙ x ∙ y ∙ z)
-  helper p q CZERO = red-comp ⟶RZ p
-  helper p q (CSUC r) =
+             {z} (r : Computable z) → Computable (R ∙ x ∙ y ∙ z)
+  helper p q ZERO0 =
+    red-comp ⟶RZ p
+  helper p q (SUC1 r) =
     red-comp ⟶RS ((q ⟨∙⟩ r) ⟨∙⟩ (helper p q r))
-  helper p q (c⟶ n⟶n′ r′) =
-    red-comp (⟶RN n⟶n′) (helper p q r′)
+  helper p q (⟶N z⟶z′ r′) =
+    red-comp (⟶RN z⟶z′) (helper p q r′)
 
 -- Main result:
 -- all typable terms are normalizable.
@@ -251,7 +245,7 @@ all-normalizable = ⟪_⟫ ∘ all-computable
 ⌈ S0 ⌉ = S
 ⌈ S1 nx ⌉ = S ∙ ⌈ nx ⌉
 ⌈ S2 nx ny ⌉ = S ∙ ⌈ nx ⌉ ∙ ⌈ ny ⌉
-⌈ n⟶ r nx′ ⌉ = ⌈ nx′ ⌉
+⌈ ⟶N x⟶x′ nx′ ⌉ = ⌈ nx′ ⌉
 ⌈ ZERO0 ⌉ = ZERO
 ⌈ SUC0 ⌉ = SUC
 ⌈ SUC1 nx ⌉ = SUC ∙ ⌈ nx ⌉
