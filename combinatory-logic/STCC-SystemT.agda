@@ -220,7 +220,8 @@ module NaiveNorm where
   infixl 5 _⟨∙⟩_
 
   {-# TERMINATING #-}
-  _⟨∙⟩_ : ∀ {α β} (x : Nf (α ⇒ β)) (u : Nf α) → Nf β
+
+  _⟨∙⟩_ : ∀ {α β} (u : Nf (α ⇒ β)) (w : Nf α) → Nf β
   K0 ⟨∙⟩ w = K1 w
   K1 u ⟨∙⟩ w = u
   S0 ⟨∙⟩ w = S1 w
