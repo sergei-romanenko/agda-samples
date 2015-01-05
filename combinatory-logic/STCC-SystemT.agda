@@ -44,9 +44,9 @@ import Relation.Binary.EqReasoning as EqReasoning
 
 infixr 5 _⇒_
 
-data Type : Set where
-  N   :  Type
-  _⇒_ : (α β : Type) → Type
+data Ty : Set where
+  N   :  Ty
+  _⇒_ : (α β : Ty) → Ty
 
 --
 -- Typed terms.
@@ -54,7 +54,7 @@ data Type : Set where
 
 infixl 5 _∙_
 
-data Tm : Type → Set where
+data Tm : Ty → Set where
   K   : ∀ {α β} → Tm (α ⇒ β ⇒ α)
   S   : ∀ {α β γ} → Tm ((α ⇒ β ⇒ γ) ⇒ (α ⇒ β) ⇒ α ⇒ γ)
   _∙_ : ∀ {α β} → Tm (α ⇒ β) → Tm α → Tm β
@@ -137,79 +137,79 @@ reduction-example x = there ⟶S (there ⟶K here)
 -- Normal forms.
 -- 
 
-data Nf : Type → Set where
+data Nf : Ty → Set where
   K0 : ∀ {α β} →
          Nf (α ⇒ β ⇒ α)
-  K1 : ∀ {α β} (nx : Nf α) →
+  K1 : ∀ {α β} (u : Nf α) →
          Nf (β ⇒ α)
   S0 : ∀ {α β γ} →
          Nf ((α ⇒ β ⇒ γ) ⇒ (α ⇒ β) ⇒ α ⇒ γ)
-  S1 : ∀ {α β γ} (nx : Nf (α ⇒ β ⇒ γ)) →
+  S1 : ∀ {α β γ} (u : Nf (α ⇒ β ⇒ γ)) →
          Nf ((α ⇒ β) ⇒ α ⇒ γ)
-  S2 : ∀ {α β γ} (nx : Nf (α ⇒ β ⇒ γ)) (ny : Nf (α ⇒ β))→
+  S2 : ∀ {α β γ} (u : Nf (α ⇒ β ⇒ γ)) (v : Nf (α ⇒ β))→
          Nf (α ⇒ γ)
   ZERO0 : Nf N
   SUC0  : Nf (N ⇒ N)
-  SUC1  : ∀ (nx : Nf N) →
+  SUC1  : ∀ (u : Nf N) →
             Nf N
   R0    : ∀ {α} →
             Nf (α ⇒ (N ⇒ α ⇒ α) ⇒ N ⇒ α)
-  R1    : ∀ {α} (nx : Nf α) →
+  R1    : ∀ {α} (u : Nf α) →
             Nf ((N ⇒ α ⇒ α) ⇒ N ⇒ α)
-  R2    : ∀ {α} (nx : Nf α) (ny : Nf (N ⇒ α ⇒ α)) →
+  R2    : ∀ {α} (u : Nf α) (v : Nf (N ⇒ α ⇒ α)) →
             Nf (N ⇒ α)
 
 
 reify : ∀ {α} (n : Nf α) → Tm α
 
 reify K0 = K
-reify (K1 nx) = K ∙ reify nx
+reify (K1 u) = K ∙ reify u
 reify S0 = S
-reify (S1 nx) = S ∙ reify nx
-reify (S2 nx ny) = S ∙ reify nx ∙ reify ny
+reify (S1 u) = S ∙ reify u
+reify (S2 u v) = S ∙ reify u ∙ reify v
 reify ZERO0 = ZERO
 reify SUC0 = SUC
-reify (SUC1 nx) = SUC ∙ reify nx
+reify (SUC1 u) = SUC ∙ reify u
 reify R0 = R
-reify (R1 nx) = R ∙ reify nx
-reify (R2 nx ny) = R ∙ reify nx ∙ reify ny
+reify (R1 u) = R ∙ reify u
+reify (R2 u v) = R ∙ reify u ∙ reify v
 
 --
--- `reify nx` does return a term that cannot be reduced).
+-- `reify u` does return a term that cannot be reduced).
 --
 
 Normal-form : ∀ {α} (x : Tm α) → Set
 Normal-form x = ∄ (λ y → x ⟶ y)
 
-reify→nf : ∀ {α} (nx : Nf α) → Normal-form (reify nx)
+reify→nf : ∀ {α} (u : Nf α) → Normal-form (reify u)
 
 reify→nf K0 (y , ())
-reify→nf (K1 nx) (._ , ⟶AL ())
-reify→nf (K1 nx) (._ , ⟶AR ⟶y) =
-  reify→nf nx (, ⟶y)
+reify→nf (K1 u) (._ , ⟶AL ())
+reify→nf (K1 u) (._ , ⟶AR ⟶y) =
+  reify→nf u (, ⟶y)
 reify→nf S0 (y , ())
-reify→nf (S1 nx) (._ , ⟶AL ())
-reify→nf (S1 nx) (._ , ⟶AR ⟶y) =
-  reify→nf nx (, ⟶y)
-reify→nf (S2 nx ny) (._ , ⟶AL (⟶AL ()))
-reify→nf (S2 nx ny) (._ , ⟶AL (⟶AR ⟶y)) =
-  reify→nf nx (, ⟶y)
-reify→nf (S2 nx ny) (._ , ⟶AR ⟶y) =
-  reify→nf ny (, ⟶y)
+reify→nf (S1 u) (._ , ⟶AL ())
+reify→nf (S1 u) (._ , ⟶AR ⟶y) =
+  reify→nf u (, ⟶y)
+reify→nf (S2 u v) (._ , ⟶AL (⟶AL ()))
+reify→nf (S2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
+  reify→nf u (, ⟶y)
+reify→nf (S2 u v) (._ , ⟶AR ⟶y) =
+  reify→nf v (, ⟶y)
 reify→nf ZERO0 (y , ())
 reify→nf SUC0 (y , ())
-reify→nf (SUC1 nx) (._ , ⟶AL ())
-reify→nf (SUC1 nx) (._ , ⟶AR ⟶y) =
- reify→nf nx (, ⟶y)
+reify→nf (SUC1 u) (._ , ⟶AL ())
+reify→nf (SUC1 u) (._ , ⟶AR ⟶y) =
+ reify→nf u (, ⟶y)
 reify→nf R0 (y , ())
-reify→nf (R1 nx) (._ , ⟶AL ())
-reify→nf (R1 nx) (._ , ⟶AR ⟶y) =
-  reify→nf nx (, ⟶y)
-reify→nf (R2 nx ny) (._ , ⟶AL (⟶AL ()))
-reify→nf (R2 nx ny) (._ , ⟶AL (⟶AR ⟶y)) =
-  reify→nf nx (, ⟶y)
-reify→nf (R2 nx ny) (._ , ⟶AR ⟶y) =
-  reify→nf ny (, ⟶y)
+reify→nf (R1 u) (._ , ⟶AL ())
+reify→nf (R1 u) (._ , ⟶AR ⟶y) =
+  reify→nf u (, ⟶y)
+reify→nf (R2 u v) (._ , ⟶AL (⟶AL ()))
+reify→nf (R2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
+  reify→nf u (, ⟶y)
+reify→nf (R2 u v) (._ , ⟶AR ⟶y) =
+  reify→nf v (, ⟶y)
 
 --
 -- A "naive" big-step normalization function.
@@ -221,16 +221,16 @@ module NaiveNorm where
 
   {-# TERMINATING #-}
   _⟨∙⟩_ : ∀ {α β} (x : Nf (α ⇒ β)) (u : Nf α) → Nf β
-  K0 ⟨∙⟩ nu = K1 nu
-  K1 nx ⟨∙⟩ nu = nx
-  S0 ⟨∙⟩ nu = S1 nu
-  S1 nx ⟨∙⟩ nu = S2 nx nu
-  S2 nx ny ⟨∙⟩ nu = (nx ⟨∙⟩ nu) ⟨∙⟩ (ny ⟨∙⟩ nu)
-  SUC0 ⟨∙⟩ nu = SUC1 nu
-  R0 ⟨∙⟩ nu = R1 nu
-  R1 nx ⟨∙⟩ nu = R2 nx nu
-  R2 nx ny ⟨∙⟩ ZERO0 = nx
-  R2 nx ny ⟨∙⟩ SUC1 nu = ny ⟨∙⟩ nu ⟨∙⟩ (R2 nx ny ⟨∙⟩ nu)
+  K0 ⟨∙⟩ w = K1 w
+  K1 u ⟨∙⟩ w = u
+  S0 ⟨∙⟩ w = S1 w
+  S1 u ⟨∙⟩ w = S2 u w
+  S2 u v ⟨∙⟩ w = (u ⟨∙⟩ w) ⟨∙⟩ (v ⟨∙⟩ w)
+  SUC0 ⟨∙⟩ w = SUC1 w
+  R0 ⟨∙⟩ w = R1 w
+  R1 u ⟨∙⟩ w = R2 u w
+  R2 u v ⟨∙⟩ ZERO0 = u
+  R2 u v ⟨∙⟩ SUC1 w = v ⟨∙⟩ w ⟨∙⟩ (R2 u v ⟨∙⟩ w)
 
   ⟦_⟧ : ∀ {α} (x : Tm α) → Nf α
   ⟦ K ⟧ = K0
@@ -265,7 +265,7 @@ module DenotationalNorm where
 
   open import Data.Nat
 
-  D : (α : Type) → Set
+  D : (α : Ty) → Set
   D N = ℕ
   D (α ⇒ β) = D α → D β
 
@@ -285,7 +285,7 @@ module DenotationalNorm where
 -- Glueing
 --
 
-G : (α : Type) → Set
+G : (α : Ty) → Set
 G N = ℕ
 G (α ⇒ β) = Nf (α ⇒ β) × (G α → G β)
 
@@ -352,7 +352,7 @@ norm-1+1 = refl
 
 infix 4 _≈_
 
-data _≈_  : {α : Type} (x y : Tm α) → Set where
+data _≈_  : {α : Ty} (x y : Tm α) → Set where
   ≈refl  : ∀ {α} {x : Tm α} →
              x ≈ x
   ≈sym   : ∀ {α} {x y : Tm α} →
@@ -370,7 +370,7 @@ data _≈_  : {α : Type} (x y : Tm α) → Set where
   ≈RS    : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} {z : Tm N} →
             R ∙ x ∙ y ∙ (SUC ∙ z) ≈ y ∙ z ∙ (R ∙ x ∙ y ∙ z)
 
-≈setoid : {α : Type} → Setoid _ _
+≈setoid : {α : Ty} → Setoid _ _
 
 ≈setoid {α} = record
   { Carrier = Tm α
@@ -380,7 +380,7 @@ data _≈_  : {α : Type} (x y : Tm α) → Set where
     ; sym = ≈sym
     ; trans = ≈trans } }
 
-module ≈-Reasoning {α : Type} = EqReasoning (≈setoid {α})
+module ≈-Reasoning {α : Ty} = EqReasoning (≈setoid {α})
 
 --
 -- Soundness: the normal forms of two convertible terms are equal
@@ -411,7 +411,7 @@ norm-sound x₁≈x₂ =
 --     norm x ≈ x
 -- 
 
-H : {α : Type} (p : G α) → Set
+H : {α : Ty} (p : G α) → Set
 H {N} p = ⊤
 H {α ⇒ β} p = ∀ (q : G α) → H q →
   H (p ⟨∙⟩ q)

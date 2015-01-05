@@ -43,9 +43,9 @@ import Relation.Binary.EqReasoning as EqReasoning
 
 infixr 5 _⇒_
 
-data Type : Set where
-  ⋆   :  Type
-  _⇒_ : (α β : Type) → Type
+data Ty : Set where
+  ⋆   :  Ty
+  _⇒_ : (α β : Ty) → Ty
 
 --
 -- Typed terms.
@@ -53,7 +53,7 @@ data Type : Set where
 
 infixl 5 _∙_
 
-data Tm : Type → Set where
+data Tm : Ty → Set where
   K   : ∀ {α β} → Tm (α ⇒ β ⇒ α)
   S   : ∀ {α β γ} → Tm ((α ⇒ β ⇒ γ) ⇒ (α ⇒ β) ⇒ α ⇒ γ)
   _∙_ : ∀ {α β} → Tm (α ⇒ β) → Tm α → Tm β
@@ -106,46 +106,46 @@ reduction-example x = there ⟶S (there ⟶K here)
 -- Normal forms.
 -- 
 
-data Nf : Type → Set where
+data Nf : Ty → Set where
   K0 : ∀ {α β} →
          Nf (α ⇒ β ⇒ α)
-  K1 : ∀ {α β} (nx : Nf α) →
+  K1 : ∀ {α β} (u : Nf α) →
          Nf (β ⇒ α)
   S0 : ∀ {α β γ} →
          Nf ((α ⇒ β ⇒ γ) ⇒ (α ⇒ β) ⇒ α ⇒ γ)
-  S1 : ∀ {α β γ} (nx : Nf (α ⇒ β ⇒ γ)) →
+  S1 : ∀ {α β γ} (u : Nf (α ⇒ β ⇒ γ)) →
          Nf ((α ⇒ β) ⇒ α ⇒ γ)
-  S2 : ∀ {α β γ} (nx : Nf (α ⇒ β ⇒ γ)) (ny : Nf (α ⇒ β))→
+  S2 : ∀ {α β γ} (u : Nf (α ⇒ β ⇒ γ)) (v : Nf (α ⇒ β))→
          Nf (α ⇒ γ)
 
 reify : ∀ {α} (n : Nf α) → Tm α
 reify K0 = K
-reify (K1 nx) = K ∙ reify nx
+reify (K1 u) = K ∙ reify u
 reify S0 = S
-reify (S1 nx) = S ∙ reify nx
-reify (S2 nx ny) = S ∙ reify nx ∙ reify ny
+reify (S1 u) = S ∙ reify u
+reify (S2 u v) = S ∙ reify u ∙ reify v
 
 --
--- `reify nx` does return a term that cannot be reduced).
+-- `reify u` does return a term that cannot be reduced).
 --
 
 Normal-form : ∀ {α} (x : Tm α) → Set
 Normal-form x = ∄ (λ y → x ⟶ y)
 
-reify→nf : ∀ {α} (nx : Nf α) → Normal-form (reify nx)
+reify→nf : ∀ {α} (u : Nf α) → Normal-form (reify u)
 reify→nf K0 (y , ())
-reify→nf (K1 nx) (._ , ⟶AL ())
-reify→nf (K1 nx) (._ , ⟶AR ⟶y) =
-  reify→nf nx (, ⟶y)
+reify→nf (K1 u) (._ , ⟶AL ())
+reify→nf (K1 u) (._ , ⟶AR ⟶y) =
+  reify→nf u (, ⟶y)
 reify→nf S0 (y , ())
-reify→nf (S1 nx) (._ , ⟶AL ())
-reify→nf (S1 nx) (._ , ⟶AR ⟶y) =
-  reify→nf nx (, ⟶y)
-reify→nf (S2 nx ny) (._ , ⟶AL (⟶AL ()))
-reify→nf (S2 nx ny) (._ , ⟶AL (⟶AR ⟶y)) =
-  reify→nf nx (, ⟶y)
-reify→nf (S2 nx ny) (._ , ⟶AR ⟶y) =
-  reify→nf ny (, ⟶y)
+reify→nf (S1 u) (._ , ⟶AL ())
+reify→nf (S1 u) (._ , ⟶AR ⟶y) =
+  reify→nf u (, ⟶y)
+reify→nf (S2 u v) (._ , ⟶AL (⟶AL ()))
+reify→nf (S2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
+  reify→nf u (, ⟶y)
+reify→nf (S2 u v) (._ , ⟶AR ⟶y) =
+  reify→nf v (, ⟶y)
 
 --
 -- A "naive" big-step normalization function.
@@ -156,11 +156,11 @@ module NaiveNorm where
   {-# TERMINATING #-}
 
   _⟨∙⟩_ : ∀ {α β} (x : Nf (α ⇒ β)) (u : Nf α) → Nf β
-  K0 ⟨∙⟩ nu       = K1 nu
-  K1 nx ⟨∙⟩  nu   = nx
-  S0 ⟨∙⟩ nu       = S1 nu
-  S1 nx ⟨∙⟩ nu    = S2 nx nu
-  S2 nx ny ⟨∙⟩ nu = (nx ⟨∙⟩ nu) ⟨∙⟩ (ny ⟨∙⟩ nu)
+  K0 ⟨∙⟩ w       = K1 w
+  K1 u ⟨∙⟩  w   = u
+  S0 ⟨∙⟩ w       = S1 w
+  S1 u ⟨∙⟩ w    = S2 u w
+  S2 u v ⟨∙⟩ w = (u ⟨∙⟩ w) ⟨∙⟩ (v ⟨∙⟩ w)
 
   ⟦_⟧ : ∀ {α} (x : Tm α) → Nf α
   ⟦ K ⟧ = K0
@@ -179,7 +179,7 @@ module NaiveNorm where
 
 module DenotationalNorm where
 
-  D : (α : Type) → Set
+  D : (α : Ty) → Set
   D ⋆ = ⊥
   D (α ⇒ β) = D α → D β
 
@@ -196,7 +196,7 @@ module DenotationalNorm where
 -- Glueing
 --
 
-G : (α : Type) → Set
+G : (α : Ty) → Set
 G ⋆ = ⊥
 G (α ⇒ β) = Nf (α ⇒ β) × (G α → G β)
 
@@ -216,7 +216,7 @@ G (α ⇒ β) = Nf (α ⇒ β) × (G α → G β)
 infixl 5 _⟨∙⟩_
 
 _⟨∙⟩_ : ∀ {α β} (p : G (α ⇒ β)) (q : G α) → G β
-(nx , fx) ⟨∙⟩ q = fx q
+p ⟨∙⟩ q = proj₂ p q
 
 --
 -- Now `reflect` terminates!
@@ -251,7 +251,7 @@ norm-III = refl
 
 infix 4 _≈_
 
-data _≈_  : {α : Type} (x y : Tm α) → Set where
+data _≈_  : {α : Ty} (x y : Tm α) → Set where
   ≈refl  : ∀ {α} {x : Tm α} →
              x ≈ x
   ≈sym   : ∀ {α} {x y : Tm α} →
@@ -265,7 +265,7 @@ data _≈_  : {α : Type} (x y : Tm α) → Set where
   ∙-cong : ∀ {α β} {x₁ x₂ : Tm (α ⇒ β)} {y₁ y₂ : Tm α} →
              x₁ ≈ x₂ → y₁ ≈ y₂ → x₁ ∙ y₁ ≈ x₂ ∙ y₂
 
-≈setoid : {α : Type} → Setoid _ _
+≈setoid : {α : Ty} → Setoid _ _
 
 ≈setoid {α} = record
   { Carrier = Tm α
@@ -275,7 +275,7 @@ data _≈_  : {α : Type} (x y : Tm α) → Set where
     ; sym = ≈sym
     ; trans = ≈trans } }
 
-module ≈-Reasoning {α : Type} = EqReasoning (≈setoid {α})
+module ≈-Reasoning {α : Ty} = EqReasoning (≈setoid {α})
 
 --
 -- Soundness: the normal forms of two convertible terms are equal
@@ -300,10 +300,10 @@ norm-sound x₁≈x₂ =
 
 --
 -- Completeness: terms are convertible to their normal forms
---     norm x ≈ x
+--     x ≈ norm x
 -- 
 
-H : {α : Type} (p : G α) → Set
+H : {α : Ty} (p : G α) → Set
 H {⋆} p = ⊥
 H {α ⇒ β} p = ∀ (q : G α) → H q →
   H (p ⟨∙⟩ q)
