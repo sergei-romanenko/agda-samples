@@ -72,35 +72,36 @@ III : Tm (⋆ ⇒ ⋆)
 III = I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})
 
 --
--- Reduction.
+-- Convertibility
 --
 
-infix 4 _⟶_
+infix 4 _≈_
 
-data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
-  ⟶K : ∀ {α β} {x : Tm α} {y : Tm β} →
-            K ∙ x ∙ y ⟶ x
-  ⟶S : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
-            S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
-  ⟶AL : ∀ {α β} {x x′ : Tm (α ⇒ β)} {y   : Tm α} →
-            x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
-  ⟶AR : ∀ {α β} {x : Tm (α ⇒ β)} {y y′ : Tm α} →
-            y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
+data _≈_  : {α : Ty} (x y : Tm α) → Set where
+  ≈refl  : ∀ {α} {x : Tm α} →
+             x ≈ x
+  ≈sym   : ∀ {α} {x y : Tm α} →
+             x ≈ y → y ≈ x
+  ≈trans : ∀ {α} {x y z : Tm α} →
+             x ≈ y → y ≈ z → x ≈ z
+  ≈K     : ∀ {α β} {x : Tm α} {y : Tm β} →
+             K ∙ x ∙ y ≈ x
+  ≈S     : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
+             S ∙ x ∙ y ∙ z ≈ (x ∙ z) ∙ (y ∙ z)
+  ∙-cong : ∀ {α β} {x₁ x₂ : Tm (α ⇒ β)} {y₁ y₂ : Tm α} →
+             x₁ ≈ x₂ → y₁ ≈ y₂ → x₁ ∙ y₁ ≈ x₂ ∙ y₂
 
--- Reflexive and transitive closure of _⟶_ .
+≈setoid : {α : Ty} → Setoid _ _
 
-infix 4 _⟶*_
+≈setoid {α} = record
+  { Carrier = Tm α
+  ; _≈_ = _≈_
+  ; isEquivalence = record
+    { refl = ≈refl
+    ; sym = ≈sym
+    ; trans = ≈trans } }
 
-data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
-  here  : ∀ {α} {t : Tm α} →
-            t ⟶* t
-  there : ∀ {α} {t1 t2 t3 : Tm α} →
-            t1 ⟶  t2  →  t2 ⟶* t3  →  t1 ⟶* t3
-
--- Example: the behavior of I .
-
-reduction-example : ∀ {α} (x : Tm α) → (I {α}) ∙ x ⟶* x
-reduction-example x = there ⟶S (there ⟶K here)
+module ≈-Reasoning {α : Ty} = EqReasoning (≈setoid {α})
 
 --
 -- Normal forms.
@@ -126,27 +127,11 @@ reify (S1 u) = S ∙ reify u
 reify (S2 u v) = S ∙ reify u ∙ reify v
 
 --
--- `reify u` does return a term that cannot be reduced).
+-- There is no non-functional normal form!
 --
 
-Normal-form : ∀ {α} (x : Tm α) → Set
-Normal-form x = ∄ (λ y → x ⟶ y)
-
-reify→nf : ∀ {α} (u : Nf α) → Normal-form (reify u)
-
-reify→nf K0 (y , ())
-reify→nf (K1 u) (._ , ⟶AL ())
-reify→nf (K1 u) (._ , ⟶AR ⟶y) =
-  reify→nf u (, ⟶y)
-reify→nf S0 (y , ())
-reify→nf (S1 u) (._ , ⟶AL ())
-reify→nf (S1 u) (._ , ⟶AR ⟶y) =
-  reify→nf u (, ⟶y)
-reify→nf (S2 u v) (._ , ⟶AL (⟶AL ()))
-reify→nf (S2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
-  reify→nf u (, ⟶y)
-reify→nf (S2 u v) (._ , ⟶AR ⟶y) =
-  reify→nf v (, ⟶y)
+∄-Nf-⋆ : (u : Nf ⋆) → ⊥
+∄-Nf-⋆ ()
 
 --
 -- A "naive" big-step normalization function.
@@ -238,6 +223,14 @@ p ⟨∙⟩ q = proj₂ p q
 ⟦ x ∙ y ⟧ =
   ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧
 
+
+--
+-- Corollary: there is no non-functional term!
+--
+
+∄-Tm-⋆ : (x : Tm ⋆) → ⊥
+∄-Tm-⋆ x = ∄-Nf-⋆ ⌈ ⟦ x ⟧ ⌉
+
 --
 -- Normalization.
 --
@@ -247,38 +240,6 @@ norm = ⟪_⟫ ∘ ⟦_⟧
 
 norm-III : norm III ≡ S ∙ K ∙ K
 norm-III = refl
-
---
--- Convertibility
---
-
-infix 4 _≈_
-
-data _≈_  : {α : Ty} (x y : Tm α) → Set where
-  ≈refl  : ∀ {α} {x : Tm α} →
-             x ≈ x
-  ≈sym   : ∀ {α} {x y : Tm α} →
-             x ≈ y → y ≈ x
-  ≈trans : ∀ {α} {x y z : Tm α} →
-             x ≈ y → y ≈ z → x ≈ z
-  ≈K     : ∀ {α β} {x : Tm α} {y : Tm β} →
-             K ∙ x ∙ y ≈ x
-  ≈S     : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
-             S ∙ x ∙ y ∙ z ≈ (x ∙ z) ∙ (y ∙ z)
-  ∙-cong : ∀ {α β} {x₁ x₂ : Tm (α ⇒ β)} {y₁ y₂ : Tm α} →
-             x₁ ≈ x₂ → y₁ ≈ y₂ → x₁ ∙ y₁ ≈ x₂ ∙ y₂
-
-≈setoid : {α : Ty} → Setoid _ _
-
-≈setoid {α} = record
-  { Carrier = Tm α
-  ; _≈_ = _≈_
-  ; isEquivalence = record
-    { refl = ≈refl
-    ; sym = ≈sym
-    ; trans = ≈trans } }
-
-module ≈-Reasoning {α : Ty} = EqReasoning (≈setoid {α})
 
 --
 -- Soundness: the normal forms of two convertible terms are equal
@@ -375,3 +336,58 @@ norm-complete (x ∙ y) = begin
   norm (x ∙ y)
   ∎
   where open ≈-Reasoning
+
+
+--
+-- Reduction.
+--
+
+infix 4 _⟶_
+
+data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
+  ⟶K : ∀ {α β} {x : Tm α} {y : Tm β} →
+            K ∙ x ∙ y ⟶ x
+  ⟶S : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
+            S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
+  ⟶AL : ∀ {α β} {x x′ : Tm (α ⇒ β)} {y   : Tm α} →
+            x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
+  ⟶AR : ∀ {α β} {x : Tm (α ⇒ β)} {y y′ : Tm α} →
+            y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
+
+-- Reflexive and transitive closure of _⟶_ .
+
+infix 4 _⟶*_
+
+data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
+  here  : ∀ {α} {t : Tm α} →
+            t ⟶* t
+  there : ∀ {α} {t1 t2 t3 : Tm α} →
+            t1 ⟶  t2  →  t2 ⟶* t3  →  t1 ⟶* t3
+
+-- Example: the behavior of I .
+
+reduction-example : ∀ {α} (x : Tm α) → (I {α}) ∙ x ⟶* x
+reduction-example x = there ⟶S (there ⟶K here)
+
+--
+-- `reify u` does return a term that cannot be reduced).
+--
+
+Normal-form : ∀ {α} (x : Tm α) → Set
+Normal-form x = ∄ (λ y → x ⟶ y)
+
+reify→nf : ∀ {α} (u : Nf α) → Normal-form (reify u)
+
+reify→nf K0 (y , ())
+reify→nf (K1 u) (._ , ⟶AL ())
+reify→nf (K1 u) (._ , ⟶AR ⟶y) =
+  reify→nf u (, ⟶y)
+reify→nf S0 (y , ())
+reify→nf (S1 u) (._ , ⟶AL ())
+reify→nf (S1 u) (._ , ⟶AR ⟶y) =
+  reify→nf u (, ⟶y)
+reify→nf (S2 u v) (._ , ⟶AL (⟶AL ()))
+reify→nf (S2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
+  reify→nf u (, ⟶y)
+reify→nf (S2 u v) (._ , ⟶AR ⟶y) =
+  reify→nf v (, ⟶y)
