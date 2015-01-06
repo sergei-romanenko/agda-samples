@@ -183,14 +183,14 @@ III = I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})
 infix 4 _⟶_
 
 data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
-  ⟶K :  ∀ {α β} {x : Tm α} {y : Tm β} →
-             K ∙ x ∙ y ⟶ x
-  ⟶S :  ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
-             S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
+  ⟶K : ∀ {α β} {x : Tm α} {y : Tm β} →
+            K ∙ x ∙ y ⟶ x
+  ⟶S : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
+            S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
   ⟶AL : ∀ {α β} {x x′ : Tm (α ⇒ β)} {y   : Tm α} →
-             x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
+            x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
   ⟶AR : ∀ {α β} {x : Tm (α ⇒ β)} {y y′ : Tm α} →
-             y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
+            y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
 
 -- Reflexive and transitive closure of _⟶_ .
 
@@ -238,6 +238,7 @@ Normal-form : ∀ {α} (x : Tm α) → Set
 Normal-form x = ∄ (λ y → x ⟶ y)
 
 reify→nf : ∀ {α} (u : Nf α) → Normal-form (reify u)
+
 reify→nf K0 (y , ())
 reify→nf (K1 u) (._ , ⟶AL ())
 reify→nf (K1 u) (._ , ⟶AR ⟶y) =
@@ -261,11 +262,12 @@ module NaiveNorm where
   infixl 5 _⟨∙⟩_
 
   {-# TERMINATING #-}
+
   _⟨∙⟩_ : ∀ {α β} (u : Nf (α ⇒ β)) (w : Nf α) → Nf β
-  K0 ⟨∙⟩ w       = K1 w
-  K1 u ⟨∙⟩ w    = u
-  S0 ⟨∙⟩ w       = S1 w
-  S1 u ⟨∙⟩ w    = S2 u w
+  K0 ⟨∙⟩ w = K1 w
+  K1 u ⟨∙⟩ w = u
+  S0 ⟨∙⟩ w = S1 w
+  S1 u ⟨∙⟩ w = S2 u w
   S2 u v ⟨∙⟩ w = (u ⟨∙⟩ w) ⟨∙⟩ (v ⟨∙⟩ w)
 
   ⟦_⟧ : ∀ {α} (x : Tm α) → Nf α

@@ -27,6 +27,8 @@ open import Function
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to ≡[_])
 
+import Function.Related as Related
+
 open import CmdLang
 open import CmdLang-PartMonad
 
@@ -38,7 +40,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- C⟦_⟧
 
   C⟦_⟧ : ∀ {i} (c : Cmd) (σ : State) → Delay i State
-  ♯seq : ∀ {i} (c₁ c₂ : Cmd) (σ : State) → ∞Delay i State
+  ∞seq : ∀ {i} (c₁ c₂ : Cmd) (σ : State) → ∞Delay i State
 
   C⟦ skip ⟧ σ =
     return σ
@@ -54,10 +56,10 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   ... | false = C⟦ c₂ ⟧ σ
 
   C⟦ while b c ⟧ σ with B⟦ b ⟧ σ
-  ... | true  = later (♯seq c (while b c) σ)
+  ... | true  = later (∞seq c (while b c) σ)
   ... | false = return σ
 
-  force (♯seq c₁ c₂ σ) =
+  force (∞seq c₁ c₂ σ) =
     C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
 
   --
@@ -107,8 +109,15 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   ⇩⇒C ⇩-assign =
     now⇓
 
-  ⇩⇒C {seq c₁ c₂} (⇩-seq h₁ h₂) =
-    bind⇓ C⟦ c₂ ⟧ (⇩⇒C h₁) (⇩⇒C h₂)
+  ⇩⇒C {seq c₁ c₂} (⇩-seq {σ} {σ′} {σ′′} h₁ h₂) =
+    --bind⇓ C⟦ c₂ ⟧ (⇩⇒C h₁) (⇩⇒C h₂)
+    c₂ / σ′ ⇩ σ′′
+      ∼⟨ ⇩⇒C ⟩
+    C⟦ c₂ ⟧ σ′ ⇓ σ′′
+      ∼⟨ bind⇓ _ {-C⟦ c₂ ⟧-} (⇩⇒C h₁) ⟩
+    (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ⇓ σ′′
+    ∎ $ h₂
+    where open Related.EquationalReasoning
 
   ⇩⇒C (⇩-if-true b≡t h) rewrite b≡t =
     ⇩⇒C h
@@ -188,7 +197,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     -- ⇧⇒seq₁
 
     ⇧⇒seq₁ : {i : Size} {c₁ c₂ : Cmd} {σ : State} →
-      c₁ / σ ⇧⟨ i ⟩ → ♯seq c₁ c₂ σ ∞⇑⟨ i ⟩
+      c₁ / σ ⇧⟨ i ⟩ → ∞seq c₁ c₂ σ ∞⇑⟨ i ⟩
 
     ⇑force (⇧⇒seq₁ {c₂ = c₂} h⇧) =
       bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C h⇧)
@@ -196,7 +205,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     -- ∞⇧⇒seq₂
 
     ∞⇧⇒seq₂ : {i : Size} {c₁ c₂ : Cmd} {σ σ′ : State} →
-      c₁ / σ ⇩ σ′ → c₂ ∞/ σ′ ⇧⟨ i ⟩ → ♯seq c₁ c₂ σ ∞⇑⟨ i ⟩
+      c₁ / σ ⇩ σ′ → c₂ ∞/ σ′ ⇧⟨ i ⟩ → ∞seq c₁ c₂ σ ∞⇑⟨ i ⟩
 
     ⇑force (∞⇧⇒seq₂ {c₂ = c₂} h⇩ h⇧) =
       bind⇑₂ C⟦ c₂ ⟧ (⇩⇒C h⇩) (⇧⇒C (⇧force h⇧))
@@ -239,8 +248,8 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
         ⇧-if-false b≡f (C⇒⇧ c₂ σ h)
 
       C⇒⇧ (while b c) σ h  with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
-      C⇒⇧ (while b c) σ (later⇑ ♯seq∞⇑) | true | ≡[ b≡t ]
-        with bind⇑-inv C⟦ while b c ⟧ {C⟦ c ⟧ σ} (⇑force ♯seq∞⇑)
+      C⇒⇧ (while b c) σ (later⇑ ∞seq∞⇑) | true | ≡[ b≡t ]
+        with bind⇑-inv C⟦ while b c ⟧ {C⟦ c ⟧ σ} (⇑force ∞seq∞⇑)
       ... | inj₁ c⇑ =
         ⇧-while-true₁ b≡t (C⇒⇧ c σ c⇑)
       ... | inj₂ (σ′ , c⇓σ′ , w⇑) =

@@ -78,14 +78,14 @@ III = I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})
 infix 4 _⟶_
 
 data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
-  ⟶K :  ∀ {α β} {x : Tm α} {y : Tm β} →
-             K ∙ x ∙ y ⟶ x
-  ⟶S :  ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
-             S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
+  ⟶K : ∀ {α β} {x : Tm α} {y : Tm β} →
+            K ∙ x ∙ y ⟶ x
+  ⟶S : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
+            S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
   ⟶AL : ∀ {α β} {x x′ : Tm (α ⇒ β)} {y   : Tm α} →
-             x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
+            x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
   ⟶AR : ∀ {α β} {x : Tm (α ⇒ β)} {y y′ : Tm α} →
-             y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
+            y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
 
 -- Reflexive and transitive closure of _⟶_ .
 
@@ -133,6 +133,7 @@ Normal-form : ∀ {α} (x : Tm α) → Set
 Normal-form x = ∄ (λ y → x ⟶ y)
 
 reify→nf : ∀ {α} (u : Nf α) → Normal-form (reify u)
+
 reify→nf K0 (y , ())
 reify→nf (K1 u) (._ , ⟶AL ())
 reify→nf (K1 u) (._ , ⟶AR ⟶y) =
@@ -158,10 +159,10 @@ module NaiveNorm where
   {-# TERMINATING #-}
 
   _⟨∙⟩_ : ∀ {α β} (u : Nf (α ⇒ β)) (w : Nf α) → Nf β
-  K0 ⟨∙⟩ w       = K1 w
-  K1 u ⟨∙⟩  w   = u
-  S0 ⟨∙⟩ w       = S1 w
-  S1 u ⟨∙⟩ w    = S2 u w
+  K0 ⟨∙⟩ w = K1 w
+  K1 u ⟨∙⟩ w = u
+  S0 ⟨∙⟩ w = S1 w
+  S1 u ⟨∙⟩ w = S2 u w
   S2 u v ⟨∙⟩ w = (u ⟨∙⟩ w) ⟨∙⟩ (v ⟨∙⟩ w)
 
   ⟦_⟧ : ∀ {α} (x : Tm α) → Nf α
@@ -204,16 +205,16 @@ G (α ⇒ β) = Nf (α ⇒ β) × (G α → G β)
 
 -- ⌈_⌉
 
-⌈_⌉ : ∀ {α} (g : G α) → Nf α
+⌈_⌉ : ∀ {α} (p : G α) → Nf α
 ⌈_⌉ {⋆} ()
-⌈_⌉ {α ⇒ β} (n , f) = n
+⌈_⌉ {α ⇒ β} p = proj₁ p
 
 -- ⟪_⟫
 
 ⟪_⟫ : ∀ {α} (p : G α) → Tm α
 ⟪_⟫ = reify ∘ ⌈_⌉
 
--- Application for glued values
+-- Application for glued values.
 
 infixl 5 _⟨∙⟩_
 
@@ -221,7 +222,7 @@ _⟨∙⟩_ : ∀ {α β} (p : G (α ⇒ β)) (q : G α) → G β
 p ⟨∙⟩ q = proj₂ p q
 
 --
--- Now `reflect` terminates!
+-- Now ⟦_⟧ terminates!
 --
 
 ⟦_⟧ : ∀ {α} (x : Tm α) → G α
@@ -284,21 +285,30 @@ module ≈-Reasoning {α : Ty} = EqReasoning (≈setoid {α})
 --     x₁ ≈ x₂ → norm x₁ ≡ norm x₂
 --
 
-≈→≡gl : ∀ {α} {x₁ x₂ : Tm α} → x₁ ≈ x₂ → ⟦ x₁ ⟧ ≡ ⟦ x₂ ⟧
-≈→≡gl ≈refl = refl
-≈→≡gl (≈sym x₂≈x₁) =
-  sym (≈→≡gl x₂≈x₁)
-≈→≡gl (≈trans x≈y y≈z) =
-  trans (≈→≡gl x≈y) (≈→≡gl y≈z)
-≈→≡gl ≈K = refl
-≈→≡gl ≈S = refl
-≈→≡gl (∙-cong {α} {β} x₁≈x₂ y₁≈y₂) =
-  cong₂ _⟨∙⟩_ (≈→≡gl x₁≈x₂) (≈→≡gl y₁≈y₂)
+≈→⟦⟧≡⟦⟧ : ∀ {α} {x₁ x₂ : Tm α} → x₁ ≈ x₂ → ⟦ x₁ ⟧ ≡ ⟦ x₂ ⟧
+
+≈→⟦⟧≡⟦⟧ ≈refl = refl
+≈→⟦⟧≡⟦⟧ (≈sym x₂≈x₁) =
+  sym (≈→⟦⟧≡⟦⟧ x₂≈x₁)
+≈→⟦⟧≡⟦⟧ (≈trans x≈y y≈z) =
+  trans (≈→⟦⟧≡⟦⟧ x≈y) (≈→⟦⟧≡⟦⟧ y≈z)
+≈→⟦⟧≡⟦⟧ ≈K = refl
+≈→⟦⟧≡⟦⟧ ≈S = refl
+≈→⟦⟧≡⟦⟧ (∙-cong {α} {β} {x₁} {x₂} {y₁} {y₂} x₁≈x₂ y₁≈y₂) = begin
+  ⟦ x₁ ∙ y₁ ⟧
+    ≡⟨⟩
+  ⟦ x₁ ⟧ ⟨∙⟩ ⟦ y₁ ⟧
+    ≡⟨ cong₂ _⟨∙⟩_ (≈→⟦⟧≡⟦⟧ x₁≈x₂) (≈→⟦⟧≡⟦⟧ y₁≈y₂) ⟩
+  ⟦ x₂ ⟧ ⟨∙⟩ ⟦ y₂ ⟧
+    ≡⟨⟩
+  ⟦ x₂ ∙ y₂ ⟧
+  ∎
+  where open ≡-Reasoning
 
 norm-sound : ∀ {α} {x₁ x₂ : Tm α} →
   x₁ ≈ x₂ → norm x₁ ≡ norm x₂
 norm-sound x₁≈x₂ =
-  cong ⟪_⟫ (≈→≡gl x₁≈x₂)
+  cong ⟪_⟫ (≈→⟦⟧≡⟦⟧ x₁≈x₂)
 
 --
 -- Completeness: terms are convertible to their normal forms
@@ -326,16 +336,14 @@ mutual
     (p : G (α ⇒ β)) (f : H p) (q : G α) (g : H q) → H (p ⟨∙⟩ q)
   all-H∙ p f q g = proj₁ (f q g)
 
-  all-H-S₁ : ∀ {α β γ}
-    (p : G (α ⇒ β ⇒ γ)) (f : H p)
+  all-H-S₁ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
     (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
       H ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
   all-H-S₁ p f q g r h =
     all-H∙ (p ⟨∙⟩ r) (all-H∙ p f r h)
            (q ⟨∙⟩ r) (all-H∙ q g r h)
 
-  all-H-S₂ : ∀ {α β γ}
-    (p : G (α ⇒ β ⇒ γ)) (f : H p)
+  all-H-S₂ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
     (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
       S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫ ≈ ⟪ p ⟨∙⟩ r ⟨∙⟩ (q ⟨∙⟩ r) ⟫
   all-H-S₂ p f q g r h = begin
@@ -358,8 +366,12 @@ norm-complete S = ≈refl
 norm-complete (x ∙ y) = begin
   x ∙ y
     ≈⟨ ∙-cong (norm-complete x) (norm-complete y) ⟩
+  norm x ∙ norm y
+    ≡⟨⟩
   ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
     ≈⟨ proj₂ (all-H x ⟦ y ⟧ (all-H y)) ⟩
   ⟪ ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧ ⟫
+    ≡⟨⟩
+  norm (x ∙ y)
   ∎
   where open ≈-Reasoning

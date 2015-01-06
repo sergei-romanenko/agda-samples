@@ -264,8 +264,6 @@ rec x f (suc n) = f n (rec x f n)
 
 module DenotationalNorm where
 
-  open import Data.Nat
-
   D : (α : Ty) → Set
   D N = ℕ
   D (α ⇒ β) = D α → D β
@@ -302,7 +300,7 @@ G (α ⇒ β) = Nf (α ⇒ β) × (G α → G β)
 ⟪_⟫ : ∀ {α} (p : G α) → Tm α
 ⟪_⟫ = reify ∘ ⌈_⌉
 
--- Application for glued values
+-- Application for glued values.
 
 infixl 5 _⟨∙⟩_
 
@@ -330,9 +328,9 @@ p ⟨∙⟩ q = proj₂ p q
 ⟦ SUC ⟧ =
   SUC0 , suc
 ⟦ R ⟧ =
-  R0 , (λ p →
-    R1 ⌈ p ⌉ , (λ q →
-      (R2 ⌈ p ⌉ ⌈ q ⌉) , rec p (λ n r → q ⟨∙⟩ n ⟨∙⟩ r)))
+  R0 , λ p →
+    R1 ⌈ p ⌉ , λ q →
+      R2 ⌈ p ⌉ ⌈ q ⌉ , rec p (λ n r → q ⟨∙⟩ n ⟨∙⟩ r)
 
 --
 -- Normalization.
@@ -388,28 +386,36 @@ module ≈-Reasoning {α : Ty} = EqReasoning (≈setoid {α})
 --     x₁ ≈ x₂ → norm x₁ ≡ norm x₂
 --
 
-≈→≡gl : ∀ {α} {x₁ x₂ : Tm α} → x₁ ≈ x₂ → ⟦ x₁ ⟧ ≡ ⟦ x₂ ⟧
+≈→⟦⟧≡⟦⟧ : ∀ {α} {x₁ x₂ : Tm α} → x₁ ≈ x₂ → ⟦ x₁ ⟧ ≡ ⟦ x₂ ⟧
 
-≈→≡gl ≈refl = refl
-≈→≡gl (≈sym x₂≈x₁) =
-  sym (≈→≡gl x₂≈x₁)
-≈→≡gl (≈trans x≈y y≈z) =
-  trans (≈→≡gl x≈y) (≈→≡gl y≈z)
-≈→≡gl ≈K = refl
-≈→≡gl ≈S = refl
-≈→≡gl (∙-cong {α} {β} x₁≈x₂ y₁≈y₂) =
-  cong₂ _⟨∙⟩_ (≈→≡gl x₁≈x₂) (≈→≡gl y₁≈y₂)
-≈→≡gl ≈RZ = refl
-≈→≡gl ≈RS = refl
+≈→⟦⟧≡⟦⟧ ≈refl = refl
+≈→⟦⟧≡⟦⟧ (≈sym x₂≈x₁) =
+  sym (≈→⟦⟧≡⟦⟧ x₂≈x₁)
+≈→⟦⟧≡⟦⟧ (≈trans x≈y y≈z) =
+  trans (≈→⟦⟧≡⟦⟧ x≈y) (≈→⟦⟧≡⟦⟧ y≈z)
+≈→⟦⟧≡⟦⟧ ≈K = refl
+≈→⟦⟧≡⟦⟧ ≈S = refl
+≈→⟦⟧≡⟦⟧ (∙-cong {α} {β} {x₁} {x₂} {y₁} {y₂} x₁≈x₂ y₁≈y₂) = begin
+  ⟦ x₁ ∙ y₁ ⟧
+    ≡⟨⟩
+  ⟦ x₁ ⟧ ⟨∙⟩ ⟦ y₁ ⟧
+    ≡⟨ cong₂ _⟨∙⟩_ (≈→⟦⟧≡⟦⟧ x₁≈x₂) (≈→⟦⟧≡⟦⟧ y₁≈y₂) ⟩
+  ⟦ x₂ ⟧ ⟨∙⟩ ⟦ y₂ ⟧
+    ≡⟨⟩
+  ⟦ x₂ ∙ y₂ ⟧
+  ∎
+  where open ≡-Reasoning
+≈→⟦⟧≡⟦⟧ ≈RZ = refl
+≈→⟦⟧≡⟦⟧ ≈RS = refl
 
 norm-sound : ∀ {α} {x₁ x₂ : Tm α} →
   x₁ ≈ x₂ → norm x₁ ≡ norm x₂
 norm-sound x₁≈x₂ =
-  cong ⟪_⟫ (≈→≡gl x₁≈x₂)
+  cong ⟪_⟫ (≈→⟦⟧≡⟦⟧ x₁≈x₂)
 
 --
 -- Completeness: terms are convertible to their normal forms
---     norm x ≈ x
+--     x ≈ norm x
 -- 
 
 H : {α : Ty} (p : G α) → Set
@@ -443,7 +449,7 @@ mutual
   all-H-S₁ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
     (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
       H ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
-  all-H-S₁ {α} {β} {γ} p f q g r h =
+  all-H-S₁ p f q g r h =
     all-H∙ (p ⟨∙⟩ r) (all-H∙ p f r h)
            (q ⟨∙⟩ r) (all-H∙ q g r h)
 
@@ -509,9 +515,13 @@ norm-complete S = ≈refl
 norm-complete (x ∙ y) = begin
   x ∙ y
     ≈⟨ ∙-cong (norm-complete x) (norm-complete y) ⟩
+  norm x ∙ norm y
+    ≡⟨⟩
   ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
     ≈⟨ proj₂ (all-H x ⟦ y ⟧ (all-H y)) ⟩
   ⟪ ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧ ⟫
+    ≡⟨⟩
+  norm (x ∙ y)
   ∎
   where open ≈-Reasoning
 norm-complete ZERO = ≈refl

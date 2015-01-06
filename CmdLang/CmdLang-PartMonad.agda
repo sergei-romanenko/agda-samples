@@ -116,6 +116,14 @@ bind⇓-inv i f {later a?} (later⇓ {j} h) =
   let a , ⇓a , ⇓b =  bind⇓-inv j f {force a?} h
   in a , later⇓ ⇓a , ⇓b
 
+-- ⇓bind
+
+⇓bind : ∀ {A B} (f : A → Delay ∞ B)
+  {?a : Delay ∞ A} {a : A} → ?a ⇓ a →
+  {b : B} → (?a >>= f) ⇓ b → f a ⇓ b
+⇓bind f now⇓ q = q
+⇓bind f (later⇓ p) (later⇓ q) = ⇓bind f p q
+
 
 -- _⇑_
 
