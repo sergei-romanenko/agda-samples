@@ -279,44 +279,48 @@ norm-sound x₁≈x₂ =
 H : {α : Ty} (p : G α) → Set
 H {⋆} p = ⊥
 H {α ⇒ β} p = ∀ (q : G α) → H q →
-  H (p ⟨∙⟩ q)
-    × ⟪ p ⟫ ∙ ⟪ q ⟫ ≈ ⟪ p ⟨∙⟩ q ⟫
+  ⟪ p ⟫ ∙ ⟪ q ⟫ ≈ ⟪ p ⟨∙⟩ q ⟫
+    × H (p ⟨∙⟩ q)
 
 mutual
 
   all-H : ∀ {α} (x : Tm α) → H {α} ⟦ x ⟧
   all-H K p f =
-    (λ q g → f , ≈K) , ≈refl
+    ≈refl , λ q g →
+      ≈K , f
   all-H S p f =
-    (λ q g → (λ r h → all-H-S₁ p f q g r h , all-H-S₂ p f q g r h)
-      , ≈refl) , ≈refl
+    ≈refl , λ q g →
+      ≈refl , λ r h →
+        all-H-S₁ p f q g r h , all-H-S₂ p f q g r h
   all-H (x ∙ y) =
     all-H∙ ⟦ x ⟧ (all-H x) ⟦ y ⟧ (all-H y)
 
   all-H∙ : ∀ {α β}
     (p : G (α ⇒ β)) (f : H p) (q : G α) (g : H q) → H (p ⟨∙⟩ q)
-  all-H∙ p f q g = proj₁ (f q g)
+  all-H∙ p f q g = proj₂ (f q g)
 
   all-H-S₁ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
     (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
-      H ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
-  all-H-S₁ p f q g r h =
-    all-H∙ (p ⟨∙⟩ r) (all-H∙ p f r h)
-           (q ⟨∙⟩ r) (all-H∙ q g r h)
-
-  all-H-S₂ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
-    (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
       S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫ ≈ ⟪ p ⟨∙⟩ r ⟨∙⟩ (q ⟨∙⟩ r) ⟫
-  all-H-S₂ p f q g r h = begin
+  all-H-S₁ p f q g r h =
+    begin
     S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
       ≈⟨ ≈S ⟩
     (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
-      ≈⟨ ∙-cong (proj₂ (f r h)) (proj₂ (g r h)) ⟩
+      ≈⟨ ∙-cong (proj₁ (f r h)) (proj₁ (g r h)) ⟩
     ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
-      ≈⟨ proj₂ ((all-H∙ p f r h) (q ⟨∙⟩ r) (all-H∙ q g r h)) ⟩
+      ≈⟨ proj₁ ((all-H∙ p f r h) (q ⟨∙⟩ r) (all-H∙ q g r h)) ⟩
     ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
     ∎
     where open ≈-Reasoning
+
+  all-H-S₂ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
+    (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
+      H ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
+  all-H-S₂ p f q g r h =
+    all-H∙ (p ⟨∙⟩ r) (all-H∙ p f r h)
+           (q ⟨∙⟩ r) (all-H∙ q g r h)
+
 
 -- x ≈ norm x
 
@@ -330,7 +334,8 @@ norm-complete (x ∙ y) = begin
   norm x ∙ norm y
     ≡⟨⟩
   ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
-    ≈⟨ proj₂ (all-H x ⟦ y ⟧ (all-H y)) ⟩
+    --≈⟨ proj₂ (all-H x ⟦ y ⟧ (all-H y)) ⟩
+    ≈⟨ {!!} ⟩
   ⟪ ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧ ⟫
     ≡⟨⟩
   norm (x ∙ y)
