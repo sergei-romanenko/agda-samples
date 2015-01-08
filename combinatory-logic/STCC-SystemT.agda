@@ -60,7 +60,7 @@ data Tm : Ty → Set where
   _∙_ : ∀ {α β} → Tm (α ⇒ β) → Tm α → Tm β
   ZERO : Tm N
   SUC  : Tm (N ⇒ N)
-  R    : ∀ {α} → Tm (α ⇒ (N ⇒ α ⇒ α) ⇒ N ⇒ α)
+  REC  : ∀ {α} → Tm (α ⇒ (N ⇒ α ⇒ α) ⇒ N ⇒ α)
 
 --
 -- Example terms.
@@ -91,7 +91,7 @@ suc2 = K ∙ SUC
 -- add x y = x + y
 
 add : Tm N → Tm N → Tm N
-add m n = R ∙ n ∙ (K ∙ SUC) ∙ m
+add m n = REC ∙ n ∙ (K ∙ SUC) ∙ m
 
 --
 -- Convertibility
@@ -113,9 +113,9 @@ data _≈_  : {α : Ty} (x y : Tm α) → Set where
   ∙-cong : ∀ {α β} {x₁ x₂ : Tm (α ⇒ β)} {y₁ y₂ : Tm α} →
              x₁ ≈ x₂ → y₁ ≈ y₂ → x₁ ∙ y₁ ≈ x₂ ∙ y₂
   ≈RZ    : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} →
-             R ∙ x ∙ y ∙ ZERO ≈ x 
+             REC ∙ x ∙ y ∙ ZERO ≈ x 
   ≈RS    : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} {z : Tm N} →
-            R ∙ x ∙ y ∙ (SUC ∙ z) ≈ y ∙ z ∙ (R ∙ x ∙ y ∙ z)
+            REC ∙ x ∙ y ∙ (SUC ∙ z) ≈ y ∙ z ∙ (REC ∙ x ∙ y ∙ z)
 
 ≈setoid : {α : Ty} → Setoid _ _
 
@@ -148,11 +148,11 @@ data Nf : Ty → Set where
   SUC0  : Nf (N ⇒ N)
   SUC1  : ∀ (u : Nf N) →
             Nf N
-  R0    : ∀ {α} →
+  REC0  : ∀ {α} →
             Nf (α ⇒ (N ⇒ α ⇒ α) ⇒ N ⇒ α)
-  R1    : ∀ {α} (u : Nf α) →
+  REC1  : ∀ {α} (u : Nf α) →
             Nf ((N ⇒ α ⇒ α) ⇒ N ⇒ α)
-  R2    : ∀ {α} (u : Nf α) (v : Nf (N ⇒ α ⇒ α)) →
+  REC2  : ∀ {α} (u : Nf α) (v : Nf (N ⇒ α ⇒ α)) →
             Nf (N ⇒ α)
 
 
@@ -166,9 +166,9 @@ reify (S2 u v) = S ∙ reify u ∙ reify v
 reify ZERO0 = ZERO
 reify SUC0 = SUC
 reify (SUC1 u) = SUC ∙ reify u
-reify R0 = R
-reify (R1 u) = R ∙ reify u
-reify (R2 u v) = R ∙ reify u ∙ reify v
+reify REC0 = REC
+reify (REC1 u) = REC ∙ reify u
+reify (REC2 u v) = REC ∙ reify u ∙ reify v
 
 --
 -- A "naive" big-step normalization function.
@@ -187,10 +187,10 @@ module NaiveNorm where
   S1 u ⟨∙⟩ w = S2 u w
   S2 u v ⟨∙⟩ w = (u ⟨∙⟩ w) ⟨∙⟩ (v ⟨∙⟩ w)
   SUC0 ⟨∙⟩ w = SUC1 w
-  R0 ⟨∙⟩ w = R1 w
-  R1 u ⟨∙⟩ w = R2 u w
-  R2 u v ⟨∙⟩ ZERO0 = u
-  R2 u v ⟨∙⟩ SUC1 w = v ⟨∙⟩ w ⟨∙⟩ (R2 u v ⟨∙⟩ w)
+  REC0 ⟨∙⟩ w = REC1 w
+  REC1 u ⟨∙⟩ w = REC2 u w
+  REC2 u v ⟨∙⟩ ZERO0 = u
+  REC2 u v ⟨∙⟩ SUC1 w = v ⟨∙⟩ w ⟨∙⟩ (REC2 u v ⟨∙⟩ w)
 
   ⟦_⟧ : ∀ {α} (x : Tm α) → Nf α
   ⟦ K ⟧ = K0
@@ -198,7 +198,7 @@ module NaiveNorm where
   ⟦ x ∙ y ⟧ = ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧
   ⟦ ZERO ⟧ = ZERO0
   ⟦ SUC ⟧ = SUC0
-  ⟦ R ⟧ = R0
+  ⟦ REC ⟧ = REC0
 
   norm : ∀ {α} → Tm α → Tm α
   norm = reify ∘ ⟦_⟧
@@ -233,7 +233,7 @@ module DenotationalNorm where
   ⟦ x ∙ y ⟧ = ⟦ x ⟧ ⟦ y ⟧
   ⟦ ZERO ⟧ = zero
   ⟦ SUC ⟧ = suc
-  ⟦ R ⟧ = rec
+  ⟦ REC ⟧ = rec
 
   -- The problem is how to "reify" D-values?
   -- (= How to go back to first-order terms?)
@@ -286,10 +286,10 @@ p ⟨∙⟩ q = proj₂ p q
   zero
 ⟦ SUC ⟧ =
   SUC0 , suc
-⟦ R ⟧ =
-  R0 , λ p →
-    R1 ⌈ p ⌉ , λ q →
-      R2 ⌈ p ⌉ ⌈ q ⌉ , rec p (λ n r → q ⟨∙⟩ n ⟨∙⟩ r)
+⟦ REC ⟧ =
+  REC0 , λ p →
+    REC1 ⌈ p ⌉ , λ q →
+      REC2 ⌈ p ⌉ ⌈ q ⌉ , rec p (λ n r → q ⟨∙⟩ n ⟨∙⟩ r)
 
 --
 -- Normalization.
@@ -337,7 +337,8 @@ norm-sound x₁≈x₂ =
   cong ⟪_⟫ (≈→⟦⟧≡⟦⟧ x₁≈x₂)
 
 --
--- Completeness: terms are convertible to their normal forms
+-- Now we are going to prove "completeness":
+-- terms are convertible to their normal forms
 --     x ≈ norm x
 -- 
 
@@ -347,92 +348,104 @@ H {α ⇒ β} p = ∀ (q : G α) → H q →
   ⟪ p ⟫ ∙ ⟪ q ⟫ ≈ ⟪ p ⟨∙⟩ q ⟫
     × H (p ⟨∙⟩ q)
 
-mutual
+-- "Application" for H-values.
 
-  all-H : ∀ {α} (x : Tm α) → H {α} ⟦ x ⟧
-  all-H K p f =
-    ≈refl , λ q g →
-      ≈K , f
-  all-H S p f =
-    ≈refl , λ q g →
-      ≈refl , λ r h →
-        all-H-S₁ p f q g r h , all-H-S₂ p f q g r h
-  all-H (x ∙ y) =
-    all-H∙ ⟦ x ⟧ (all-H x) ⟦ y ⟧ (all-H y)
-  all-H ZERO =
-    tt
-  all-H SUC =
-    λ p _ → ≈refl , tt
-  all-H R p f =
-    ≈refl , λ q g →
-      ≈refl , λ n r →
-        all-H-R₁ p f q g n , all-H-R₂ p f q g n
+|∙| : ∀ {α β}
+  (p : G (α ⇒ β)) (f : H p) (q : G α) (g : H q) → H (p ⟨∙⟩ q)
+|∙| p f q g = proj₂ (f q g)
 
-  all-H∙ : ∀ {α β}
-    (p : G (α ⇒ β)) (f : H p) (q : G α) (g : H q) → H (p ⟨∙⟩ q)
-  all-H∙ p f q g = proj₂ (f q g)
+-- all-H-R∙
 
-  all-H-S₁ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
-    (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
-      S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫ ≈ ⟪ p ⟨∙⟩ r ⟨∙⟩ (q ⟨∙⟩ r) ⟫
-  all-H-S₁ p f q g r h = begin
-    S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
-      ≈⟨ ≈S ⟩
-    (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
-      ≈⟨ ∙-cong (proj₁ (f r h)) (proj₁ (g r h)) ⟩
-    ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
-      ≈⟨ proj₁ ((all-H∙ p f r h) (q ⟨∙⟩ r) (all-H∙ q g r h)) ⟩
-    ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
-    ∎
-    where open ≈-Reasoning
+all-H-R∙ : ∀ {α} (p : G α) (f : H p)
+  (q : G (N ⇒ α ⇒ α)) (g : H q) (n : ℕ) →
+    H (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ n)
 
-  all-H-S₂ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
-    (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
-      H ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
-  all-H-S₂ p f q g r h =
-    all-H∙ (p ⟨∙⟩ r) (all-H∙ p f r h)
-           (q ⟨∙⟩ r) (all-H∙ q g r h)
+all-H-R∙ p f q g zero =
+  H p ∋ f
 
-  all-H-R₁ : ∀ {α} (p : G α) (f : H p)
-    (q : G (N ⇒ α ⇒ α)) (g : H q) (m : ℕ) →
-      ⟪ ⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ m ⟫ ≈ ⟪ ⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m ⟫
-  all-H-R₁ p f q g zero = begin
-    ⟪ ⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ zero ⟫
-      ≡⟨⟩
-    R ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ZERO
-      ≈⟨ ≈RZ ⟩
-    ⟪ p ⟫
-      ≡⟨⟩
-    ⟪ ⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ zero ⟫
-    ∎
-    where open ≈-Reasoning
-  all-H-R₁ p f q g (suc m) = begin
-    ⟪ ⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ suc m ⟫
-      ≡⟨⟩
-    R ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ (SUC ∙ ⟪ m ⟫)
-      ≈⟨ ≈RS ⟩
-    (⟪ q ⟫ ∙ ⟪ m ⟫) ∙ (R ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ m ⟫)
-      ≈⟨ ∙-cong (proj₁ $ g m tt) (all-H-R₁ p f q g m) ⟩
-    ⟪ (q ⟨∙⟩ m) ⟫ ∙ ⟪ ⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m ⟫
-      ≈⟨ proj₁ $ all-H∙ q g m tt (⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m)
-                 (all-H-R₂ p f q g m) ⟩
-    ⟪ (q ⟨∙⟩ m) ⟨∙⟩ (⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m) ⟫
-      ≡⟨⟩
-    ⟪ ⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ suc m ⟫
-    ∎
-    where open ≈-Reasoning
+all-H-R∙ p f q g (suc m) =
+  H (q ⟨∙⟩ m ⟨∙⟩ (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m))
+    ∋ |∙| (q ⟨∙⟩ m) (|∙| q g m tt)
+          (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m) (all-H-R∙ p f q g m)
 
-  all-H-R₂ : ∀ {α} (p : G α) (f : H p)
-    (q : G (N ⇒ α ⇒ α)) (g : H q) (n : ℕ) →
-      H (⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ n)
-  all-H-R₂ p f q g zero =
-    H p ∋ f
-  all-H-R₂ p f q g (suc m) =
-    H (q ⟨∙⟩ m ⟨∙⟩ (⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m))
-      ∋ all-H∙ (q ⟨∙⟩ m) (all-H∙ q g m tt)
-               (⟦ R ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m) (all-H-R₂ p f q g m)
+-- all-H-R≈
 
--- x ≈ norm x
+all-H-R≈ : ∀ {α} (p : G α) (f : H p)
+  (q : G (N ⇒ α ⇒ α)) (g : H q) (m : ℕ) →
+    ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ m ⟫ ≈ ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m ⟫
+
+all-H-R≈ p f q g zero = begin
+  ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ zero ⟫
+    ≡⟨⟩
+  REC ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ZERO
+    ≈⟨ ≈RZ ⟩
+  ⟪ p ⟫
+    ≡⟨⟩
+  ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ zero ⟫
+  ∎
+  where open ≈-Reasoning
+
+all-H-R≈ p f q g (suc m) = begin
+  ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ suc m ⟫
+    ≡⟨⟩
+  REC ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ (SUC ∙ ⟪ m ⟫)
+    ≈⟨ ≈RS ⟩
+  (⟪ q ⟫ ∙ ⟪ m ⟫) ∙ (REC ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ m ⟫)
+    ≈⟨ ∙-cong (proj₁ $ g m tt) (all-H-R≈ p f q g m) ⟩
+  ⟪ (q ⟨∙⟩ m) ⟫ ∙ ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m ⟫
+    ≈⟨ proj₁ $ |∙| q g m tt (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m)
+               (all-H-R∙ p f q g m) ⟩
+  ⟪ (q ⟨∙⟩ m) ⟨∙⟩ (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m) ⟫
+    ≡⟨⟩
+  ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ suc m ⟫
+  ∎
+  where open ≈-Reasoning
+
+--
+-- Any G-value produced from a term is an H-value!
+--
+
+all-H : ∀ {α} (x : Tm α) → H ⟦ x ⟧
+
+all-H K p f =
+  ≈refl , λ q g →
+    ≈K , f
+
+all-H S p f =
+  ≈refl , λ q g →
+    ≈refl , λ r h →
+      (begin
+        S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
+          ≈⟨ ≈S ⟩
+        (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
+          ≈⟨ ∙-cong (proj₁ (f r h)) (proj₁ (g r h)) ⟩
+        ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
+          ≈⟨ proj₁ ((|∙| p f r h) (q ⟨∙⟩ r) (|∙| q g r h)) ⟩
+        ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
+      ∎)
+      ,
+      |∙| (p ⟨∙⟩ r) (|∙| p f r h)
+          (q ⟨∙⟩ r) (|∙| q g r h)
+  where open ≈-Reasoning
+
+all-H (x ∙ y) =
+  |∙| ⟦ x ⟧ (all-H x) ⟦ y ⟧ (all-H y)
+
+all-H ZERO =
+  tt
+
+all-H SUC =
+  λ p _ → ≈refl , tt
+
+all-H REC p f =
+  ≈refl , λ q g →
+    ≈refl , λ n r →
+      all-H-R≈ p f q g n , all-H-R∙ p f q g n
+
+--
+-- Completeness: terms are convertible to their normal forms
+--     x ≈ norm x
+-- 
 
 norm-complete : ∀ {α} (x : Tm α) → x ≈ norm x
 
@@ -452,7 +465,7 @@ norm-complete (x ∙ y) = begin
   where open ≈-Reasoning
 norm-complete ZERO = ≈refl
 norm-complete SUC = ≈refl
-norm-complete R = ≈refl
+norm-complete REC = ≈refl
 
 
 --
@@ -471,9 +484,9 @@ data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
   ⟶AR : ∀ {α β} {x : Tm (α ⇒ β)} {y y′ : Tm α} →
             y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
   ⟶RZ : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} →
-            R ∙ x ∙ y ∙ ZERO ⟶ x 
+            REC ∙ x ∙ y ∙ ZERO ⟶ x 
   ⟶RS : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} {z : Tm N} →
-            R ∙ x ∙ y ∙ (SUC ∙ z) ⟶ y ∙ z ∙ (R ∙ x ∙ y ∙ z)
+            REC ∙ x ∙ y ∙ (SUC ∙ z) ⟶ y ∙ z ∙ (REC ∙ x ∙ y ∙ z)
 
 -- Reflexive and transitive closure of _⟶_ .
 
@@ -522,12 +535,12 @@ reify→nf SUC0 (y , ())
 reify→nf (SUC1 u) (._ , ⟶AL ())
 reify→nf (SUC1 u) (._ , ⟶AR ⟶y) =
  reify→nf u (, ⟶y)
-reify→nf R0 (y , ())
-reify→nf (R1 u) (._ , ⟶AL ())
-reify→nf (R1 u) (._ , ⟶AR ⟶y) =
+reify→nf REC0 (y , ())
+reify→nf (REC1 u) (._ , ⟶AL ())
+reify→nf (REC1 u) (._ , ⟶AR ⟶y) =
   reify→nf u (, ⟶y)
-reify→nf (R2 u v) (._ , ⟶AL (⟶AL ()))
-reify→nf (R2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
+reify→nf (REC2 u v) (._ , ⟶AL (⟶AL ()))
+reify→nf (REC2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
   reify→nf u (, ⟶y)
-reify→nf (R2 u v) (._ , ⟶AR ⟶y) =
+reify→nf (REC2 u v) (._ , ⟶AR ⟶y) =
   reify→nf v (, ⟶y)

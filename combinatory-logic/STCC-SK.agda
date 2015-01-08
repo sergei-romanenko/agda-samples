@@ -272,7 +272,8 @@ norm-sound x₁≈x₂ =
   cong ⟪_⟫ (≈→⟦⟧≡⟦⟧ x₁≈x₂)
 
 --
--- Completeness: terms are convertible to their normal forms
+-- Now we are going to prove "completeness":
+-- terms are convertible to their normal forms
 --     x ≈ norm x
 -- 
 
@@ -282,47 +283,46 @@ H {α ⇒ β} p = ∀ (q : G α) → H q →
   ⟪ p ⟫ ∙ ⟪ q ⟫ ≈ ⟪ p ⟨∙⟩ q ⟫
     × H (p ⟨∙⟩ q)
 
-mutual
+-- "Application" for H-values.
 
-  all-H : ∀ {α} (x : Tm α) → H {α} ⟦ x ⟧
-  all-H K p f =
-    ≈refl , λ q g →
-      ≈K , f
-  all-H S p f =
-    ≈refl , λ q g →
-      ≈refl , λ r h →
-        all-H-S₁ p f q g r h , all-H-S₂ p f q g r h
-  all-H (x ∙ y) =
-    all-H∙ ⟦ x ⟧ (all-H x) ⟦ y ⟧ (all-H y)
+|∙| : ∀ {α β}
+  (p : G (α ⇒ β)) (f : H p) (q : G α) (g : H q) → H (p ⟨∙⟩ q)
+|∙| p f q g = proj₂ (f q g)
 
-  all-H∙ : ∀ {α β}
-    (p : G (α ⇒ β)) (f : H p) (q : G α) (g : H q) → H (p ⟨∙⟩ q)
-  all-H∙ p f q g = proj₂ (f q g)
+--
+-- Any G-value produced from a term is an H-value!
+--
 
-  all-H-S₁ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
-    (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
-      S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫ ≈ ⟪ p ⟨∙⟩ r ⟨∙⟩ (q ⟨∙⟩ r) ⟫
-  all-H-S₁ p f q g r h =
-    begin
-    S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
-      ≈⟨ ≈S ⟩
-    (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
-      ≈⟨ ∙-cong (proj₁ (f r h)) (proj₁ (g r h)) ⟩
-    ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
-      ≈⟨ proj₁ ((all-H∙ p f r h) (q ⟨∙⟩ r) (all-H∙ q g r h)) ⟩
-    ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
-    ∎
-    where open ≈-Reasoning
+all-H : ∀ {α} (x : Tm α) → H ⟦ x ⟧
 
-  all-H-S₂ : ∀ {α β γ} (p : G (α ⇒ β ⇒ γ)) (f : H p)
-    (q : G (α ⇒ β)) (g : H q) (r : G α) (h : H r) →
-      H ((p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r))
-  all-H-S₂ p f q g r h =
-    all-H∙ (p ⟨∙⟩ r) (all-H∙ p f r h)
-           (q ⟨∙⟩ r) (all-H∙ q g r h)
+all-H K p f =
+  ≈refl , λ q g →
+    ≈K , f
 
+all-H S p f =
+  ≈refl , λ q g →
+    ≈refl , λ r h →
+      (begin
+        S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
+          ≈⟨ ≈S ⟩
+        (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
+          ≈⟨ ∙-cong (proj₁ (f r h)) (proj₁ (g r h)) ⟩
+        ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
+          ≈⟨ proj₁ ((|∙| p f r h) (q ⟨∙⟩ r) (|∙| q g r h)) ⟩
+        ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
+      ∎)
+      ,
+      |∙| (p ⟨∙⟩ r) (|∙| p f r h)
+          (q ⟨∙⟩ r) (|∙| q g r h)
+  where open ≈-Reasoning
 
--- x ≈ norm x
+all-H (x ∙ y) =
+  |∙| ⟦ x ⟧ (all-H x) ⟦ y ⟧ (all-H y)
+
+--
+-- Completeness: terms are convertible to their normal forms
+--     x ≈ norm x
+-- 
 
 norm-complete : ∀ {α} (x : Tm α) → x ≈ norm x
 
@@ -334,8 +334,7 @@ norm-complete (x ∙ y) = begin
   norm x ∙ norm y
     ≡⟨⟩
   ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
-    --≈⟨ proj₂ (all-H x ⟦ y ⟧ (all-H y)) ⟩
-    ≈⟨ {!!} ⟩
+    ≈⟨ proj₁ (all-H x ⟦ y ⟧ (all-H y)) ⟩
   ⟪ ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧ ⟫
     ≡⟨⟩
   norm (x ∙ y)
