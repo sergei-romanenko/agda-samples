@@ -30,6 +30,7 @@ open import Data.Product
 
 open import Function
 
+open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to ≡[_])
 
@@ -115,7 +116,7 @@ data _≈_  : {α : Ty} (x y : Tm α) → Set where
   ≈RZ    : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} →
              REC ∙ x ∙ y ∙ ZERO ≈ x 
   ≈RS    : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} {z : Tm N} →
-            REC ∙ x ∙ y ∙ (SUC ∙ z) ≈ y ∙ z ∙ (REC ∙ x ∙ y ∙ z)
+             REC ∙ x ∙ y ∙ (SUC ∙ z) ≈ y ∙ z ∙ (REC ∙ x ∙ y ∙ z)
 
 ≈setoid : {α : Ty} → Setoid _ _
 
@@ -305,7 +306,7 @@ norm-1+1 : norm (add (SUC ∙ ZERO) (SUC ∙ ZERO)) ≡ SUC ∙ (SUC ∙ ZERO)
 norm-1+1 = refl
 
 --
--- Soundness: the normal forms of two convertible terms are equal
+-- Completeness: the normal forms of two convertible terms are equal
 --     x₁ ≈ x₂ → norm x₁ ≡ norm x₂
 --
 
@@ -331,14 +332,14 @@ norm-1+1 = refl
 ≈→⟦⟧≡⟦⟧ ≈RZ = refl
 ≈→⟦⟧≡⟦⟧ ≈RS = refl
 
-norm-sound : ∀ {α} {x₁ x₂ : Tm α} →
+norm-complete : ∀ {α} {x₁ x₂ : Tm α} →
   x₁ ≈ x₂ → norm x₁ ≡ norm x₂
-norm-sound x₁≈x₂ =
+norm-complete x₁≈x₂ =
   cong ⟪_⟫ (≈→⟦⟧≡⟦⟧ x₁≈x₂)
 
 --
--- Now we are going to prove "completeness":
--- terms are convertible to their normal forms
+-- Now we are going to prove "soundness" -
+-- normalization preserves convertibility:
 --     x ≈ norm x
 -- 
 
@@ -443,17 +444,17 @@ all-H REC p f =
       all-H-R≈ p f q g n , all-H-R∙ p f q g n
 
 --
--- Completeness: terms are convertible to their normal forms
+-- Soundness: terms are convertible to their normal forms
 --     x ≈ norm x
 -- 
 
-norm-complete : ∀ {α} (x : Tm α) → x ≈ norm x
+norm-sound : ∀ {α} (x : Tm α) → x ≈ norm x
 
-norm-complete K = ≈refl
-norm-complete S = ≈refl
-norm-complete (x ∙ y) = begin
+norm-sound K = ≈refl
+norm-sound S = ≈refl
+norm-sound (x ∙ y) = begin
   x ∙ y
-    ≈⟨ ∙-cong (norm-complete x) (norm-complete y) ⟩
+    ≈⟨ ∙-cong (norm-sound x) (norm-sound y) ⟩
   norm x ∙ norm y
     ≡⟨⟩
   ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
@@ -463,10 +464,9 @@ norm-complete (x ∙ y) = begin
   norm (x ∙ y)
   ∎
   where open ≈-Reasoning
-norm-complete ZERO = ≈refl
-norm-complete SUC = ≈refl
-norm-complete REC = ≈refl
-
+norm-sound ZERO = ≈refl
+norm-sound SUC = ≈refl
+norm-sound REC = ≈refl
 
 --
 -- Reduction.

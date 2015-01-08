@@ -242,7 +242,7 @@ norm-III : norm III ≡ S ∙ K ∙ K
 norm-III = refl
 
 --
--- Soundness: the normal forms of two convertible terms are equal
+-- Completeness: the normal forms of two convertible terms are equal
 --     x₁ ≈ x₂ → norm x₁ ≡ norm x₂
 --
 
@@ -266,14 +266,14 @@ norm-III = refl
   ∎
   where open ≡-Reasoning
 
-norm-sound : ∀ {α} {x₁ x₂ : Tm α} →
+norm-complete : ∀ {α} {x₁ x₂ : Tm α} →
   x₁ ≈ x₂ → norm x₁ ≡ norm x₂
-norm-sound x₁≈x₂ =
+norm-complete x₁≈x₂ =
   cong ⟪_⟫ (≈→⟦⟧≡⟦⟧ x₁≈x₂)
 
 --
--- Now we are going to prove "completeness":
--- terms are convertible to their normal forms
+-- Now we are going to prove "soundness" -
+-- normalization preserves convertibility:
 --     x ≈ norm x
 -- 
 
@@ -320,17 +320,17 @@ all-H (x ∙ y) =
   |∙| ⟦ x ⟧ (all-H x) ⟦ y ⟧ (all-H y)
 
 --
--- Completeness: terms are convertible to their normal forms
+-- Soundness: terms are convertible to their normal forms
 --     x ≈ norm x
 -- 
 
-norm-complete : ∀ {α} (x : Tm α) → x ≈ norm x
+norm-sound : ∀ {α} (x : Tm α) → x ≈ norm x
 
-norm-complete K = ≈refl
-norm-complete S = ≈refl
-norm-complete (x ∙ y) = begin
+norm-sound K = ≈refl
+norm-sound S = ≈refl
+norm-sound (x ∙ y) = begin
   x ∙ y
-    ≈⟨ ∙-cong (norm-complete x) (norm-complete y) ⟩
+    ≈⟨ ∙-cong (norm-sound x) (norm-sound y) ⟩
   norm x ∙ norm y
     ≡⟨⟩
   ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
