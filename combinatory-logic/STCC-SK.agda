@@ -341,7 +341,6 @@ norm-sound (x ∙ y) = begin
   ∎
   where open ≈-Reasoning
 
-
 --
 -- Reduction.
 --
@@ -377,10 +376,10 @@ reduction-example x = there ⟶S (there ⟶K here)
 -- `reify u` does return a term that cannot be reduced).
 --
 
-Normal-form : ∀ {α} (x : Tm α) → Set
-Normal-form x = ∄ (λ y → x ⟶ y)
+Irreducible : ∀ {α} (x : Tm α) → Set
+Irreducible x = ∄ (λ y → x ⟶ y)
 
-reify→nf : ∀ {α} (u : Nf α) → Normal-form (reify u)
+reify→nf : ∀ {α} (u : Nf α) → Irreducible (reify u)
 
 reify→nf K0 (y , ())
 reify→nf (K1 u) (._ , ⟶AL ())
