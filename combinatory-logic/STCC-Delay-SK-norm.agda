@@ -31,7 +31,7 @@
 
 {-# OPTIONS --copatterns #-}
 
-module STCC-SK-Delay where
+module STCC-Delay-SK-norm where
 
 open import Agda.Primitive
 open import Size
@@ -176,6 +176,7 @@ KI α β = K ∙ (S ∙ K ∙ K {β = α})
 III : Tm (⋆ ⇒ ⋆)
 III = I {⋆ ⇒ ⋆} ∙ (I {⋆ ⇒ ⋆} ∙ I {⋆})
 
+{-
 --
 -- Reduction.
 --
@@ -206,6 +207,7 @@ data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
 
 reduction-example : ∀ {α} (x : Tm α) → (I {α}) ∙ x ⟶* x
 reduction-example x = there ⟶S (there ⟶K here)
+-}
 
 --
 -- Normal forms.
@@ -230,6 +232,7 @@ reify S0 = S
 reify (S1 u) = S ∙ reify u
 reify (S2 u v) = S ∙ reify u ∙ reify v
 
+{-
 --
 -- `reify u` does return a term that cannot be reduced).
 --
@@ -252,6 +255,7 @@ reify→nf (S2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
   reify→nf u (, ⟶y)
 reify→nf (S2 u v) (._ , ⟶AR ⟶y) =
   reify→nf v (, ⟶y)
+-}
 
 --
 -- A "naive" big-step normalization function.

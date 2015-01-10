@@ -21,7 +21,7 @@
 
 -}
 
-module STCC-SystemT where
+module STCC-SystemT-norm where
 
 open import Data.Nat
 open import Data.Empty
@@ -467,80 +467,3 @@ norm-sound (x ∙ y) = begin
 norm-sound ZERO = ≈refl
 norm-sound SUC = ≈refl
 norm-sound REC = ≈refl
-
---
--- Reduction.
---
-
-infix 4 _⟶_
-
-data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
-  ⟶K : ∀ {α β} {x : Tm α} {y : Tm β} →
-            K ∙ x ∙ y ⟶ x
-  ⟶S : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
-            S ∙ x ∙ y ∙ z ⟶ (x ∙ z) ∙ (y ∙ z)
-  ⟶AL : ∀ {α β} {x x′ : Tm (α ⇒ β)} {y   : Tm α} →
-            x ⟶ x′  →  x ∙ y ⟶ x′ ∙ y
-  ⟶AR : ∀ {α β} {x : Tm (α ⇒ β)} {y y′ : Tm α} →
-            y ⟶ y′  →  x ∙ y ⟶ x ∙ y′
-  ⟶RZ : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} →
-            REC ∙ x ∙ y ∙ ZERO ⟶ x 
-  ⟶RS : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} {z : Tm N} →
-            REC ∙ x ∙ y ∙ (SUC ∙ z) ⟶ y ∙ z ∙ (REC ∙ x ∙ y ∙ z)
-
--- Reflexive and transitive closure of _⟶_ .
-
-infix 4 _⟶*_
-
-data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
-  here  : ∀ {α} {t : Tm α} →
-            t ⟶* t
-  there : ∀ {α} {t1 t2 t3 : Tm α} →
-            t1 ⟶  t2  →  t2 ⟶* t3  →  t1 ⟶* t3
-
--- Example: the behavior of I .
-
-reduction-example : ∀ {α} (x : Tm α) → (I {α}) ∙ x ⟶* x
-reduction-example x = there ⟶S (there ⟶K here)
-
--- Example: 1 + 1.
-
-1+1 : add (SUC ∙ ZERO) (SUC ∙ ZERO) ⟶* SUC ∙ (SUC ∙ ZERO)
-1+1 = there ⟶RS (there (⟶AL ⟶K) (there (⟶AR ⟶RZ) here))
-
---
--- `reify u` does return a term that cannot be reduced).
---
-
-Irreducible : ∀ {α} (x : Tm α) → Set
-Irreducible x = ∄ (λ y → x ⟶ y)
-
-reify→nf : ∀ {α} (u : Nf α) → Irreducible (reify u)
-
-reify→nf K0 (y , ())
-reify→nf (K1 u) (._ , ⟶AL ())
-reify→nf (K1 u) (._ , ⟶AR ⟶y) =
-  reify→nf u (, ⟶y)
-reify→nf S0 (y , ())
-reify→nf (S1 u) (._ , ⟶AL ())
-reify→nf (S1 u) (._ , ⟶AR ⟶y) =
-  reify→nf u (, ⟶y)
-reify→nf (S2 u v) (._ , ⟶AL (⟶AL ()))
-reify→nf (S2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
-  reify→nf u (, ⟶y)
-reify→nf (S2 u v) (._ , ⟶AR ⟶y) =
-  reify→nf v (, ⟶y)
-reify→nf ZERO0 (y , ())
-reify→nf SUC0 (y , ())
-reify→nf (SUC1 u) (._ , ⟶AL ())
-reify→nf (SUC1 u) (._ , ⟶AR ⟶y) =
- reify→nf u (, ⟶y)
-reify→nf REC0 (y , ())
-reify→nf (REC1 u) (._ , ⟶AL ())
-reify→nf (REC1 u) (._ , ⟶AR ⟶y) =
-  reify→nf u (, ⟶y)
-reify→nf (REC2 u v) (._ , ⟶AL (⟶AL ()))
-reify→nf (REC2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
-  reify→nf u (, ⟶y)
-reify→nf (REC2 u v) (._ , ⟶AR ⟶y) =
-  reify→nf v (, ⟶y)

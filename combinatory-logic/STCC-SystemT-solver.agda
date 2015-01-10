@@ -40,7 +40,7 @@ open import Relation.Binary
 open import Relation.Binary.HeterogeneousEquality as H
   using (_≅_; _≇_; ≡-to-≅; ≅-to-≡; module ≅-Reasoning)
 
-open import STCC-SystemT
+open import STCC-SystemT-norm
 
 --
 -- Now the goal is to prove the decidability of ≈ :
