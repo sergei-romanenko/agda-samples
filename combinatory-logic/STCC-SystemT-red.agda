@@ -23,19 +23,24 @@
 
 module STCC-SystemT-red where
 
+open import Agda.Primitive
+
 open import Data.Nat
 open import Data.Empty
 open import Data.Unit
 open import Data.Product
+open import Data.Star as Star
+open import Data.Star.Properties
 
 open import Function
+import Function.Related as Related
 
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to ≡[_])
 
 open import Relation.Binary
-  using (Setoid)
+  using (Rel; Setoid)
 
 import Relation.Binary.EqReasoning as EqReasoning
 
@@ -61,59 +66,237 @@ data _⟶_ : ∀ {α} → Tm α → Tm α → Set where
   ⟶RS : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} {z : Tm N} →
             REC ∙ x ∙ y ∙ (SUC ∙ z) ⟶ y ∙ z ∙ (REC ∙ x ∙ y ∙ z)
 
--- Reflexive and transitive closure of _⟶_ .
-
-infix 4 _⟶*_
-
-data _⟶*_ : ∀ {α} → Tm α → Tm α → Set where
-  here  : ∀ {α} {t : Tm α} →
-            t ⟶* t
-  there : ∀ {α} {t1 t2 t3 : Tm α} →
-            t1 ⟶  t2  →  t2 ⟶* t3  →  t1 ⟶* t3
-
--- Example: the behavior of I .
-
-reduction-example : ∀ {α} (x : Tm α) → (I {α}) ∙ x ⟶* x
-reduction-example x = there ⟶S (there ⟶K here)
-
--- Example: 1 + 1.
-
-1+1 : add (SUC ∙ ZERO) (SUC ∙ ZERO) ⟶* SUC ∙ (SUC ∙ ZERO)
-1+1 = there ⟶RS (there (⟶AL ⟶K) (there (⟶AR ⟶RZ) here))
-
 --
--- `reify u` does return a term that cannot be reduced).
+-- `Irreducible x` means that no rule is applicable.
 --
 
 Irreducible : ∀ {α} (x : Tm α) → Set
 Irreducible x = ∄ (λ y → x ⟶ y)
 
-reify→nf : ∀ {α} (u : Nf α) → Irreducible (reify u)
+-- Irreducible (reify u)
 
-reify→nf K0 (y , ())
-reify→nf (K1 u) (._ , ⟶AL ())
-reify→nf (K1 u) (._ , ⟶AR ⟶y) =
-  reify→nf u (, ⟶y)
-reify→nf S0 (y , ())
-reify→nf (S1 u) (._ , ⟶AL ())
-reify→nf (S1 u) (._ , ⟶AR ⟶y) =
-  reify→nf u (, ⟶y)
-reify→nf (S2 u v) (._ , ⟶AL (⟶AL ()))
-reify→nf (S2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
-  reify→nf u (, ⟶y)
-reify→nf (S2 u v) (._ , ⟶AR ⟶y) =
-  reify→nf v (, ⟶y)
-reify→nf ZERO0 (y , ())
-reify→nf SUC0 (y , ())
-reify→nf (SUC1 u) (._ , ⟶AL ())
-reify→nf (SUC1 u) (._ , ⟶AR ⟶y) =
- reify→nf u (, ⟶y)
-reify→nf REC0 (y , ())
-reify→nf (REC1 u) (._ , ⟶AL ())
-reify→nf (REC1 u) (._ , ⟶AR ⟶y) =
-  reify→nf u (, ⟶y)
-reify→nf (REC2 u v) (._ , ⟶AL (⟶AL ()))
-reify→nf (REC2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
-  reify→nf u (, ⟶y)
-reify→nf (REC2 u v) (._ , ⟶AR ⟶y) =
-  reify→nf v (, ⟶y)
+reify→irr : ∀ {α} (u : Nf α) → Irreducible (reify u)
+
+reify→irr K0 (y , ())
+
+reify→irr (K1 u) (._ , ⟶AL ())
+reify→irr (K1 u) (._ , ⟶AR ⟶y) =
+  reify→irr u (, ⟶y)
+reify→irr S0 (y , ())
+reify→irr (S1 u) (._ , ⟶AL ())
+reify→irr (S1 u) (._ , ⟶AR ⟶y) =
+  reify→irr u (, ⟶y)
+reify→irr (S2 u v) (._ , ⟶AL (⟶AL ()))
+reify→irr (S2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
+  reify→irr u (, ⟶y)
+reify→irr (S2 u v) (._ , ⟶AR ⟶y) =
+  reify→irr v (, ⟶y)
+reify→irr ZERO0 (y , ())
+reify→irr SUC0 (y , ())
+reify→irr (SUC1 u) (._ , ⟶AL ())
+reify→irr (SUC1 u) (._ , ⟶AR ⟶y) =
+ reify→irr u (, ⟶y)
+reify→irr REC0 (y , ())
+reify→irr (REC1 u) (._ , ⟶AL ())
+reify→irr (REC1 u) (._ , ⟶AR ⟶y) =
+  reify→irr u (, ⟶y)
+reify→irr (REC2 u v) (._ , ⟶AL (⟶AL ()))
+reify→irr (REC2 u v) (._ , ⟶AL (⟶AR ⟶y)) =
+  reify→irr u (, ⟶y)
+reify→irr (REC2 u v) (._ , ⟶AR ⟶y) =
+  reify→irr v (, ⟶y)
+
+-- Irreducible (norm x)
+
+norm→irr : ∀ {α} (x : Tm α) → Irreducible (norm x)
+norm→irr x = reify→irr ⌈ ⟦ x ⟧ ⌉
+
+-- Reflexive and transitive closure of _⟶_ .
+
+infix 4 _⟶⋆_
+
+_⟶⋆_ : ∀ {α} → Rel (Tm α) lzero
+_⟶⋆_ {α} = Star (_⟶_ {α})
+
+-- Example: the behavior of I .
+
+reduction-example : ∀ {α} (x : Tm α) → I {α} ∙ x ⟶⋆ x
+reduction-example x = ⟶S ◅ ⟶K ◅ ε
+
+-- Example: 1 + 1.
+
+1+1 : add (SUC ∙ ZERO) (SUC ∙ ZERO) ⟶⋆ SUC ∙ (SUC ∙ ZERO)
+1+1 = ⟶RS ◅ ⟶AL ⟶K ◅ ⟶AR ⟶RZ ◅ ε
+
+⟶⋆-∙-cong : ∀ {α β} {x₁ x₂ : Tm (α ⇒ β)} {y₁ y₂ : Tm α} →
+             x₁ ⟶⋆ x₂ → y₁ ⟶⋆ y₂ → x₁ ∙ y₁ ⟶⋆ x₂ ∙ y₂
+⟶⋆-∙-cong x₁⟶⋆x₂ y₁⟶⋆y₂ =
+  gmap (flip _∙_ _) ⟶AL x₁⟶⋆x₂
+    ◅◅ gmap (_∙_ _) ⟶AR y₁⟶⋆y₂
+
+--
+-- _⟶⋆_ implies _≈_ .
+--
+
+mutual
+
+  ⟶→≈ : ∀ {α} {x y : Tm α} → x ⟶ y → x ≈ y
+
+  ⟶→≈ ⟶K = ≈K
+  ⟶→≈ ⟶S = ≈S
+  ⟶→≈ (⟶AL x⟶y) = ∙-cong (⟶→≈ x⟶y) ≈refl
+  ⟶→≈ (⟶AR x⟶y) = ∙-cong ≈refl (⟶→≈ x⟶y)
+  ⟶→≈ ⟶RZ = ≈RZ
+  ⟶→≈ ⟶RS = ≈RS
+
+  ⟶⋆→≈ : ∀ {α} {x y : Tm α} → x ⟶⋆ y → x ≈ y
+
+  ⟶⋆→≈ ε = ≈refl
+  ⟶⋆→≈ (x⟶x′ ◅ x′⟶⋆y) = ≈trans (⟶→≈ x⟶x′) (⟶⋆→≈ x′⟶⋆y)
+
+RH : {α : Ty} (p : G α) → Set
+RH {N} p = ⊤
+RH {α ⇒ β} p = ∀ (q : G α) → RH q →
+  ⟪ p ⟫ ∙ ⟪ q ⟫ ⟶⋆ ⟪ p ⟨∙⟩ q ⟫
+    × RH (p ⟨∙⟩ q)
+
+-- "Application" for RH-values.
+
+||∙|| : ∀ {α β}
+  (p : G (α ⇒ β)) (f : RH p) (q : G α) (g : RH q) → RH (p ⟨∙⟩ q)
+||∙|| p f q g = proj₂ (f q g)
+
+-- all-RH-R∙
+
+all-RH-R∙ : ∀ {α} (p : G α) (f : RH p)
+  (q : G (N ⇒ α ⇒ α)) (g : RH q) (n : ℕ) →
+    RH (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ n)
+
+all-RH-R∙ p f q g zero =
+  RH p ∋ f
+
+all-RH-R∙ p f q g (suc m) =
+  RH (q ⟨∙⟩ m ⟨∙⟩ (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m))
+    ∋ ||∙|| (q ⟨∙⟩ m) (||∙|| q g m tt) (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m)
+            (all-RH-R∙ p f q g m)
+
+-- all-RH-R⟶⋆
+
+all-RH-R⟶⋆ : ∀ {α} (p : G α) (f : RH p)
+  (q : G (N ⇒ α ⇒ α)) (g : RH q) (m : ℕ) →
+    ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ m ⟫ ⟶⋆ ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m ⟫
+
+all-RH-R⟶⋆ p f q g zero = begin
+  ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ zero ⟫
+    ≡⟨ refl ⟩
+  REC ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ZERO
+    ⟶⟨ ⟶RZ ⟩
+  ⟪ p ⟫
+    ≡⟨ refl ⟩
+  ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ zero ⟫
+  ∎
+  where open StarReasoning _⟶_
+
+all-RH-R⟶⋆ p f q g (suc m) = begin
+  ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟫ ∙ ⟪ suc m ⟫
+    ≡⟨ refl ⟩
+  REC ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ (SUC ∙ ⟪ m ⟫)
+    ⟶⟨ ⟶RS ⟩
+  (⟪ q ⟫ ∙ ⟪ m ⟫) ∙ (REC ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ m ⟫)
+    ⟶⋆⟨ ⟶⋆-∙-cong (proj₁ $ g m tt) (all-RH-R⟶⋆ p f q g m) ⟩
+  ⟪ (q ⟨∙⟩ m) ⟫ ∙ ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m ⟫
+    ⟶⋆⟨ proj₁ $ (||∙|| q g m tt)
+                       (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m) (all-RH-R∙ p f q g m) ⟩
+  ⟪ (q ⟨∙⟩ m) ⟨∙⟩ (⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ m) ⟫
+    ≡⟨ refl ⟩
+  ⟪ ⟦ REC ⟧ ⟨∙⟩ p ⟨∙⟩ q ⟨∙⟩ suc m ⟫
+  ∎  
+  where open StarReasoning _⟶_
+
+--
+-- Any G-value produced from a term is an RH-value!
+--
+
+all-RH : ∀ {α} (x : Tm α) → RH ⟦ x ⟧
+
+all-RH K p f =
+  ε , λ q g →
+    ⟶K ◅ ε , f
+
+all-RH S p f =
+  ε , (λ q g →
+    ε , (λ r h →
+      (begin
+        S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
+          ⟶⟨ ⟶S ⟩
+        (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
+          ⟶⋆⟨ ⟶⋆-∙-cong (proj₁ $ f r h) (proj₁ $ g r h) ⟩
+        ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
+          ⟶⋆⟨ proj₁ $ (||∙|| p f r h) (q ⟨∙⟩ r) (||∙|| q g r h) ⟩
+        ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
+      ∎)
+      ,
+      ||∙|| (p ⟨∙⟩ r) (||∙|| p f r h)
+            (q ⟨∙⟩ r) (||∙|| q g r h)))
+  where open StarReasoning _⟶_
+
+all-RH (x ∙ y) =
+  ||∙|| ⟦ x ⟧ (all-RH x) ⟦ y ⟧ (all-RH y)
+
+all-RH ZERO =
+  tt
+
+all-RH SUC p f =
+  ε , tt
+
+all-RH REC p f =
+  ε , λ q g →
+    ε , λ n r →
+      all-RH-R⟶⋆ p f q g n , all-RH-R∙ p f q g n
+
+--
+-- x ⟶⋆ norm x
+--
+
+⟶⋆norm : ∀ {α} (x : Tm α) → x ⟶⋆ norm x
+
+⟶⋆norm K = ε
+⟶⋆norm S = ε
+⟶⋆norm (x ∙ y) = begin
+  x ∙ y
+    ⟶⋆⟨ ⟶⋆-∙-cong (⟶⋆norm x) (⟶⋆norm y) ⟩
+  norm x ∙ norm y
+    ≡⟨ refl ⟩
+  ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
+    ⟶⋆⟨ proj₁ $ all-RH x ⟦ y ⟧ (all-RH y) ⟩
+  ⟪ ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧ ⟫
+    ≡⟨ refl ⟩
+  norm (x ∙ y)
+  ∎
+  where open StarReasoning _⟶_
+⟶⋆norm ZERO = ε
+⟶⋆norm SUC = ε
+⟶⋆norm REC = ε
+
+--
+-- Church-Rosser:
+--     x ⟶⋆ y′  →  x ⟶⋆ y′′  →  ∃ λ y → y′ ⟶⋆ y × y′′ ⟶⋆ y
+--
+
+confluence : ∀ {α} {x y′ y′′ : Tm α} →
+  x ⟶⋆ y′  →  x ⟶⋆ y′′  →  ∃ λ y → y′ ⟶⋆ y × y′′ ⟶⋆ y
+confluence {α} {x} {y′} {y′′} x⟶⋆y′ x⟶⋆y′′ =
+  norm y′ , (⟶⋆norm y′) , subst (_⟶⋆_ y′′) ny′′≡ny′ (⟶⋆norm y′′)
+  where
+
+  y′′≈y′ : y′′ ≈ y′
+  y′′≈y′ = begin
+    y′′
+      ≈⟨ ≈sym $ ⟶⋆→≈ x⟶⋆y′′ ⟩
+    x
+      ≈⟨ ⟶⋆→≈ x⟶⋆y′ ⟩
+    y′
+    ∎ where open ≈-Reasoning
+
+  ny′′≡ny′ : norm y′′ ≡ norm y′
+  ny′′≡ny′ = norm-complete y′′≈y′

@@ -147,6 +147,7 @@ all-RH : ∀ {α} (x : Tm α) → RH ⟦ x ⟧
 all-RH K p f =
   ε , λ q g →
     ⟶K ◅ ε , f
+
 all-RH S p f =
   ε , (λ q g →
     ε , (λ r h →
@@ -180,7 +181,7 @@ all-RH (x ∙ y) =
   norm x ∙ norm y
     ≡⟨ refl ⟩
   ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
-    ⟶⋆⟨ proj₁ (all-RH x ⟦ y ⟧ (all-RH y)) ⟩
+    ⟶⋆⟨ proj₁ $ all-RH x ⟦ y ⟧ (all-RH y) ⟩
   ⟪ ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧ ⟫
     ≡⟨ refl ⟩
   norm (x ∙ y)

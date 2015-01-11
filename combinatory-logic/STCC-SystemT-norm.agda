@@ -419,9 +419,9 @@ all-H S p f =
         S ∙ ⟪ p ⟫ ∙ ⟪ q ⟫ ∙ ⟪ r ⟫
           ≈⟨ ≈S ⟩
         (⟪ p ⟫ ∙ ⟪ r ⟫) ∙ (⟪ q ⟫ ∙ ⟪ r ⟫)
-          ≈⟨ ∙-cong (proj₁ (f r h)) (proj₁ (g r h)) ⟩
+          ≈⟨ ∙-cong (proj₁ $ f r h) (proj₁ $ g r h) ⟩
         ⟪ p ⟨∙⟩ r ⟫ ∙ ⟪ q ⟨∙⟩ r ⟫
-          ≈⟨ proj₁ ((|∙| p f r h) (q ⟨∙⟩ r) (|∙| q g r h)) ⟩
+          ≈⟨ proj₁ $ (|∙| p f r h) (q ⟨∙⟩ r) (|∙| q g r h) ⟩
         ⟪ (p ⟨∙⟩ r) ⟨∙⟩ (q ⟨∙⟩ r) ⟫
       ∎)
       ,
@@ -435,8 +435,8 @@ all-H (x ∙ y) =
 all-H ZERO =
   tt
 
-all-H SUC =
-  λ p _ → ≈refl , tt
+all-H SUC p f =
+  ≈refl , tt
 
 all-H REC p f =
   ≈refl , λ q g →
@@ -458,7 +458,7 @@ norm-sound (x ∙ y) = begin
   norm x ∙ norm y
     ≡⟨⟩
   ⟪ ⟦ x ⟧ ⟫ ∙ ⟪ ⟦ y ⟧ ⟫
-    ≈⟨ proj₁ (all-H x ⟦ y ⟧ (all-H y)) ⟩
+    ≈⟨ proj₁ $ all-H x ⟦ y ⟧ (all-H y) ⟩
   ⟪ ⟦ x ⟧ ⟨∙⟩ ⟦ y ⟧ ⟫
     ≡⟨⟩
   norm (x ∙ y)
