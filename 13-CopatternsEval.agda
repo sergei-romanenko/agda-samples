@@ -13,7 +13,6 @@ Based on the presentation
 module 13-CopatternsEval where
 
 open import Size
---open import Function
 open import Data.Nat
 open import Data.Fin
 open import Data.Vec using (Vec; []; _∷_; lookup)
@@ -146,7 +145,7 @@ mutual
 -- Sized corecursive evaluator
 --
 
--- Now termination checker is happy!
+-- Now the termination checker is happy!
 
 mutual
   ⟦_⟧_ : ∀ {i n} → Tm n → Env n → Delay {i} Val

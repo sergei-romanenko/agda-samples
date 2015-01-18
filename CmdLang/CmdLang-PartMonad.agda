@@ -131,7 +131,7 @@ mutual
 
   data _⇑ {i : Size} {A : Set} : (a? : Delay ∞ A) → Set where
     later⇑ : ∀ {a∞ : ∞Delay ∞ A} → _∞⇑ {i} {A} a∞ →
-      later a∞ ⇑
+      _⇑ {i} (later a∞)
 
   record _∞⇑ {i : Size} {A : Set} (a∞ : ∞Delay ∞ A) : Set where
     coinductive
@@ -195,21 +195,12 @@ mutual
 
   ⇑force (∞bind⇑₂ f h⇩ h⇧) = bind⇑₂ f h⇩ h⇧
 
--- not-⇓-and-⇑
-
-not-⇓-and-⇑ : ∀ {i} {j : Size< (↑ i)}  {A} {a? : Delay ∞ A} {a : A} →
-            a? ⇓⟨ j ⟩ a → a? ⇑⟨ i ⟩ → ⊥
-not-⇓-and-⇑ now⇓ ()
-not-⇓-and-⇑ (later⇓ h⇓) (later⇑ h∞⇑) =
-  not-⇓-and-⇑ h⇓ (⇑force h∞⇑)
-
--- ⇑⇓⊥
-
-⇑⇓⊥ : ∀ {i} {j : Size< (↑ i)} {A} {a? : Delay ∞ A} {a : A} →
-            a? ⇑⟨ i ⟩ → a? ⇓⟨ j ⟩ a → ⊥
-⇑⇓⊥ () now⇓
-⇑⇓⊥ (later⇑ h∞⇑) (later⇓ h⇓) =
-    ⇑⇓⊥ (⇑force h∞⇑) h⇓
+⇑bind₂ : ∀ {A B}
+  (f : A → Delay ∞ B) {a? : Delay ∞ A} {a : A} →
+  a? ⇓ a → (a? >>= f) ⇑ → f a ⇑
+⇑bind₂ f {now a} now⇓ h⇑ = h⇑
+⇑bind₂ f {later a∞} (later⇓ ⇓a) (later⇑ h∞⇑) =
+  ⇑bind₂ f {force a∞} ⇓a (⇑force h∞⇑)
 
 mutual
 
@@ -240,28 +231,5 @@ mutual
     helper : Dec (a? ⇓) → a? ⇓ ⊎ a? ⇑
     helper (yes h⇓) = inj₁ h⇓
     helper (no ¬h⇓) = inj₂ (not-⇓-implies-⇑ ¬h⇓)
-
--- EM
-
-EM : Set₁
-EM = (A : Set) → A ⊎ ¬ A
-
-EM⇑⇓ = ∀ {i : Size} {A} (a? : Delay ∞ A) →
-            a? ⇑⟨ i ⟩ ⊎ a? ⇓⟨ i ⟩
-
-module Bind⇑-inv (em : EM⇑⇓) where
-
-  bind⇑-inv : ∀ {A B} (f : A → Delay ∞ B) {a? : Delay ∞ A} →
-      (a? >>= f) ⇑ →
-        a? ⇑ ⊎ ∃ λ a → a? ⇓ a × f a ⇑
-
-  bind⇑-inv f {a?} h with em a?
-  bind⇑-inv f h | inj₁ a?⇑ =
-    inj₁ a?⇑
-  bind⇑-inv f h | inj₂ (a , a?⇓a) with em (f a)
-  bind⇑-inv f h | inj₂ (a′ , a?⇓a) | inj₁ fa⇑ =
-    inj₂ (a′ , a?⇓a , fa⇑)
-  bind⇑-inv f {a?} h | inj₂ (a′ , a?⇓a) | inj₂ (b , fa⇓b) =
-    ⊥-elim (⇑⇓⊥ h (bind⇓ f a?⇓a fa⇓b))
 
 --

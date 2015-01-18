@@ -161,9 +161,9 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
       field
         ⇧force : {j : Size< i} → _/_⇧ {j} c σ
 
-    _/_⇧⟨_⟩ = λ c σ i  → _/_⇧ {i} c σ 
+    _/_⇧⟨_⟩ = λ c σ i  → _/_⇧ {i} c σ
 
-    _∞/_⇧⟨_⟩ = λ c σ i → _∞/_⇧ {i} c σ 
+    _∞/_⇧⟨_⟩ = λ c σ i → _∞/_⇧ {i} c σ
 
   open _∞/_⇧ public
 
@@ -215,18 +215,16 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- C⇒⇧
   --
 
-  module C⇒⇧-em (em : EM⇑⇓)
+  -- This is not a "fair", finished proof, as it contains a `postulate`.
+  -- There is a problem with sizes... Presently? there is no addition
+  -- for sizes, but we need to express the fact that
+  --     c / σ ⇩ σ′⟨ i ⟩  → while b c ∞/ σ′ ⇧⟨ j ⟩ → while b c / σ ⇧⟨ i + j ⟩
+
+  module C⇒⇧-em
+      (⇑⊎⇓ : ∀ {i : Size} {A} (a? : Delay ∞ A) → a? ⇑⟨ i ⟩ ⊎ ∃ λ a → a? ⇓ a)
     where 
 
-    open Bind⇑-inv em
-
     mutual
-
-
-      {-
-      C⇒⇧ : {i : Size} (c : Cmd) (σ : State) →
-        C⟦ c ⟧ σ ⇑⟨ i ⟩ → c / σ ⇧
-      -}
 
       C⇒⇧ : (c : Cmd) (σ : State) →
         C⟦ c ⟧ σ ⇑ → c / σ ⇧
@@ -235,11 +233,11 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
       C⇒⇧ (assign v a) σ ()
 
-      C⇒⇧ (seq c₁ c₂) σ h with bind⇑-inv C⟦ c₂ ⟧ {C⟦ c₁ ⟧ σ} h
+      C⇒⇧ (seq c₁ c₂) σ h with ⇑⊎⇓ (C⟦ c₁ ⟧ σ)
       ... | inj₁ c₁⇑ =
         ⇧-seq₁ (C⇒⇧ c₁ σ c₁⇑)
-      ... | inj₂ (σ′ , c₁⇓σ′ , c₂⇑) =
-        ⇧-seq₂ (C⇒⇩ ∞ c₁ c₁⇓σ′) (C⇒⇧ c₂ σ′ c₂⇑)
+      ... | inj₂ (σ′ , c₁⇓σ′) =
+        ⇧-seq₂ (C⇒⇩ ∞ c₁ c₁⇓σ′) (C⇒⇧ c₂ σ′ (⇑bind₂ C⟦ c₂ ⟧ c₁⇓σ′ h))
 
       C⇒⇧ (if b c₁ c₂) σ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
       C⇒⇧ (if b c₁ c₂) σ h | true  | ≡[ b≡t ] =
@@ -249,16 +247,18 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
       C⇒⇧ (while b c) σ h  with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
       C⇒⇧ (while b c) σ (later⇑ ∞seq∞⇑) | true | ≡[ b≡t ]
-        with bind⇑-inv C⟦ while b c ⟧ {C⟦ c ⟧ σ} (⇑force ∞seq∞⇑)
+        with ⇑⊎⇓ (C⟦ c ⟧ σ)
       ... | inj₁ c⇑ =
         ⇧-while-true₁ b≡t (C⇒⇧ c σ c⇑)
-      ... | inj₂ (σ′ , c⇓σ′ , w⇑) =
-        ⇧-while-true₂ b≡t (C⇒⇩ ∞ c c⇓σ′) (C⇒∞⇧ (while b c) σ′ w⇑)
+      ... | inj₂ (σ′ , c⇓σ′) =
+        ⇧-while-true₂ b≡t
+          (C⇒⇩ ∞ c c⇓σ′)
+          (C⇒∞⇧ (while b c) σ′ (⇑bind₂ C⟦ while b c ⟧ c⇓σ′ (⇑force ∞seq∞⇑)))
       C⇒⇧ (while b c) σ () | false | ≡[ b≡f ]
 
-      C⇒∞⇧ : (c : Cmd) (σ : State) →
-        C⟦ c ⟧ σ ⇑ → c ∞/ σ ⇧
-
-      ⇧force (C⇒∞⇧ c σ h⇑) {j} = {!!} -- C⇒⇧ c σ h⇑
+      postulate
+        C⇒∞⇧ : {i : Size} (c : Cmd) (σ : State) →
+          C⟦ c ⟧ σ ⇑⟨ i ⟩ → c ∞/ σ ⇧⟨ i ⟩
+      --⇧force (C⇒∞⇧ c σ h⇑) {j} = C⇒⇧ c σ h⇑
 
 --

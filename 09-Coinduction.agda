@@ -154,12 +154,13 @@ module fib-good where
   whnf (x ∷P xs) = x ∷W ♭ xs
   whnf (zipWithP f xs ys) = zipWithW f (whnf xs) (whnf ys)
 
-  ⟦_⟧W : ∀ {A} → StreamW A → Stream A
-  ⟦_⟧P : ∀ {A} → StreamP A → Stream A
+  mutual
 
-  ⟦ x ∷W xs ⟧W = x ∷ ♯ ⟦ xs ⟧P
+    ⟦_⟧P : ∀ {A} → StreamP A → Stream A
+    ⟦ xs ⟧P = ⟦ whnf xs ⟧W
 
-  ⟦ xs ⟧P = ⟦ whnf xs ⟧W
+    ⟦_⟧W : ∀ {A} → StreamW A → Stream A
+    ⟦ x ∷W xs ⟧W = x ∷ ♯ ⟦ xs ⟧P
 
   -- fib
 
@@ -181,15 +182,15 @@ module fib-good where
   ... | x ∷W xs' | y ∷W ys' =
     refl ∷ ♯ (zipWith-hom f xs' ys')
 
-{-
+  {-
   zipWith-cong : ∀ {A B C} (_∙_ : A → B → C) {xs xs′ ys ys′} →
     xs ≈ xs′ → ys ≈ ys′ → zipWith _∙_ xs ys ≈ zipWith _∙_ xs′ ys′
--}
+  -}
 
   fib-correct : fib ≈ 0 ∷ ♯ zipWith _+_ fib (1 ∷ ♯ fib)
   fib-correct =
     refl ∷ ♯ ≈-trans (zipWith-hom _+_ fibP (1 ∷P ♯ fibP))
-                  (zipWith-cong _+_ (≈-refl fib) (refl ∷ ♯ ≈-refl fib))
+                     (zipWith-cong _+_ (≈-refl fib) (refl ∷ ♯ ≈-refl fib))
 
 --
 -- ≈-reasoning (a DSL)
@@ -295,6 +296,5 @@ module ≈-Reasoning-test {A : Set}  where
     map suc zeros
       ≈⟨ ones′ ∎ ⟩
     ones′ ∎
-
 
 --
