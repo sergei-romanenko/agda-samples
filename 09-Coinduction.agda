@@ -2,10 +2,9 @@ module 09-Coinduction where
 
 open import Function
 open import Data.Nat
-open import Data.Vec
-  renaming (take to takeV; map to mapV; zipWith to zipWithV)
+open import Data.Vec as Vec
+  using (Vec; []; _∷_)
 open import Relation.Binary.PropositionalEquality
-open ≡-Reasoning
 
 open import Coinduction
 
@@ -134,6 +133,9 @@ module fib-bad where
   fib : Stream ℕ
   fib = 0 ∷ ♯ zipWith _+_ fib (1 ∷ ♯ fib)
 
+  7-fib : take 7 fib ≡ 0 ∷ 1 ∷ 1 ∷ 2 ∷ 3 ∷ 5 ∷ 8 ∷ []
+  7-fib = refl
+
 module fib-good where
 
   data StreamP : Set → Set₁ where
@@ -167,8 +169,8 @@ module fib-good where
   fib : Stream ℕ
   fib = ⟦ fibP ⟧P
 
-  5-fib : take 7 fib ≡ 0 ∷ 1 ∷ 1 ∷ 2 ∷ 3 ∷ 5 ∷ 8 ∷ []
-  5-fib = refl
+  7-fib : take 7 fib ≡ 0 ∷ 1 ∷ 1 ∷ 2 ∷ 3 ∷ 5 ∷ 8 ∷ []
+  7-fib = refl
 
   -- zipWith-hom
 
@@ -195,14 +197,14 @@ module fib-good where
 
 module ≈-Reasoning-bad {A : Set}  where
 
-  infix  2 _□
+  infix  2 _∎
   infixr 2 _≈⟨_⟩_
 
   _≈⟨_⟩_ : ∀ xs {ys zs : Stream A} → xs ≈ ys → ys ≈ zs → xs ≈ zs
   _ ≈⟨ xs≈ys ⟩ ys≈zs = ≈-trans xs≈ys ys≈zs
 
-  _□ : ∀ (xs : Stream A) → xs ≈ xs
-  xs □ = ≈-refl xs
+  _∎ : ∀ (xs : Stream A) → xs ≈ xs
+  xs ∎ = ≈-refl xs
 
 module ≈-Reasoning-bad-test {A : Set}  where
 
@@ -223,14 +225,14 @@ module ≈-Reasoning-bad-test {A : Set}  where
       ≈⟨ refl ∷ ♯ ≈-refl ones′ ⟩
     map suc zeros
       ≈⟨ ≈-refl ones′ ⟩
-    ones′ □
+    ones′ ∎
     where open ≈-Reasoning-bad
 
 module ≈-Reasoning  where
 
   infix 4 _≈P_ _≈W_
   infixr 5 _∷_
-  infix  3 _□
+  infix  3 _∎
   infixr 2 _≈⟨_⟩_
 
   data _≈P_ {A : Set} : Stream A → Stream A → Set where
@@ -238,7 +240,7 @@ module ≈-Reasoning  where
       (xs≈ys : ∞ (♭ xs ≈P ♭ ys)) → x ∷ xs ≈P y ∷ ys
     _≈⟨_⟩_ : ∀ (xs : Stream A) {ys zs}
       (xs≈ys : xs ≈P ys) → (ys≈zs : ys ≈P zs) → xs ≈P zs
-    _□ : ∀ (xs : Stream A) → xs ≈P xs
+    _∎ : ∀ (xs : Stream A) → xs ≈P xs
 
   data _≈W_ {A : Set} : Stream A → Stream A → Set where
     _∷_ : ∀ {x y xs ys} (x≡y : x ≡ y)
@@ -257,20 +259,22 @@ module ≈-Reasoning  where
     trans x≡y y≡z ∷ (♭ xs ≈⟨ xs≈ys ⟩ ys≈zs)
 
   reflW : {A : Set} (xs : Stream A) → xs ≈W xs
-  reflW (x ∷ xs) = refl ∷ (♭ xs □)
+  reflW (x ∷ xs) = refl ∷ (♭ xs ∎)
 
   whnf : {A : Set} {xs ys : Stream A} → xs ≈P ys → xs ≈W ys
   whnf {A} {x ∷ xs} {y ∷ ys} (x≡y ∷ xs≈ys) = x≡y ∷ ♭ xs≈ys
   whnf (xs ≈⟨ xs≈ys ⟩ ys≈zs) = transW (whnf xs≈ys) (whnf ys≈zs)
-  whnf ((x ∷ xs) □) = refl ∷ (♭ xs □)
+  whnf ((x ∷ xs) ∎) = refl ∷ (♭ xs ∎)
 
   -- Soundness
 
-  soundW : {A : Set} {xs ys : Stream A} → xs ≈W ys → xs ≈ ys
-  soundP : {A : Set} {xs ys : Stream A} → xs ≈P ys → xs ≈ ys
+  mutual
 
-  soundW (x≡y ∷ xs≈ys) = x≡y ∷ ♯ (soundP xs≈ys)
-  soundP xs≈ys = soundW (whnf xs≈ys)
+    soundP : {A : Set} {xs ys : Stream A} → xs ≈P ys → xs ≈ ys
+    soundP xs≈ys = soundW (whnf xs≈ys)
+
+    soundW : {A : Set} {xs ys : Stream A} → xs ≈W ys → xs ≈ ys
+    soundW (x≡y ∷ xs≈ys) = x≡y ∷ ♯ (soundP xs≈ys)
 
 module ≈-Reasoning-test {A : Set}  where
 
@@ -279,18 +283,18 @@ module ≈-Reasoning-test {A : Set}  where
   ones≈ones′₁ : ones ≈P ones′
   ones≈ones′₁ =
     ones
-      ≈⟨ refl ∷ ♯ (ones □) ⟩
+      ≈⟨ refl ∷ ♯ (ones ∎) ⟩
     1 ∷ ♯ ones
       ≈⟨ refl ∷ ♯ ones≈ones′₁ ⟩
     1 ∷ ♯ ones′
-      ≈⟨ refl ∷ ♯ (ones′ □) ⟩
+      ≈⟨ refl ∷ ♯ (ones′ ∎) ⟩
     1 ∷ ♯ map suc zeros
-      ≈⟨ refl ∷ ♯ (ones′ □) ⟩
+      ≈⟨ refl ∷ ♯ (ones′ ∎) ⟩
     map suc (0 ∷ ♯ zeros)
-      ≈⟨ refl ∷ ♯ (ones′ □) ⟩
+      ≈⟨ refl ∷ ♯ (ones′ ∎) ⟩
     map suc zeros
-      ≈⟨ ones′ □ ⟩
-    ones′ □
+      ≈⟨ ones′ ∎ ⟩
+    ones′ ∎
 
 
 --

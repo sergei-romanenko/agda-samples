@@ -29,7 +29,7 @@ open import Data.Nat
 open import Data.Bool using (Bool; true; false; not)
 open import Data.Bool.Properties using (not-involutive)
 open import Data.List as List using (List; module List; []; _∷_)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; ∃)
 open import Data.Empty
 open import Data.String using (String; _++_)
 open import Relation.Binary.PropositionalEquality renaming ([_] to ≡[_])
@@ -74,6 +74,9 @@ s≡s s = refl
 -- A constraint solver for a set of inequalities x + n ≤ y, x ≤ y + m .
 -- Subtyping: T {i} ≤ T {↑ i} ≤ T {∞}
 --
+
+∞<∞ : ∃ λ (s : Size< ∞) → s ≡ ∞
+∞<∞ = ∞ , refl
 
 --
 -- Values can be instrumented with "sizes".

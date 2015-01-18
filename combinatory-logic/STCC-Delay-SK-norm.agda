@@ -270,7 +270,7 @@ mutual
   -- "Computability"
 
   Comp : ∀ {α} (u? : Delay ∞ (Nf α)) → Set
-  Comp {α} u? = ∃ (λ u → u? ⇓ u × Stab u)
+  Comp {α} u? = ∃ λ u → u? ⇓ u × Stab u
 
   -- "Stability"
 

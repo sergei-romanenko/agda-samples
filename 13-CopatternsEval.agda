@@ -60,8 +60,8 @@ module Coinductive-delay-monad where
   mutual
 
     data Delay (A : Set) : Set where
-      return : (a : A) → Delay A
-      later  : (a∞ : ∞Delay A) → Delay A
+      now   : (a : A) → Delay A
+      later : (a∞ : ∞Delay A) → Delay A
 
     record ∞Delay (A : Set) : Set where
       coinductive
@@ -80,7 +80,7 @@ module Coinductive-delay-monad where
 
   mutual
     _>>=_ : ∀ {A B} → Delay A → (A → Delay B) → Delay B
-    return a >>= f = f a
+    now a >>= f = f a
     later a∞ >>= f = later (a∞ ∞>>= f)
 
     _∞>>=_ : ∀ {A B} → ∞Delay A → (A → Delay B) → ∞Delay B
@@ -93,15 +93,15 @@ module Coinductive-delay-monad where
   {-# TERMINATING #-}
   mutual
     ⟦_⟧_ : ∀ {n} → Tm n → Env n → Delay Val
-    ⟦ var x ⟧ ρ = return (lookup x ρ)
-    ⟦ abs t ⟧ ρ = return (clos t ρ)
+    ⟦ var x ⟧ ρ = now (lookup x ρ)
+    ⟦ abs t ⟧ ρ = now (clos t ρ)
     ⟦ app r s ⟧ ρ = apply (⟦ r ⟧ ρ) (⟦ s ⟧ ρ)
 
     apply : Delay Val → Delay Val → Delay Val
     apply u? v? =
-      u? >>= (λ u →
-      v? >>= (λ v →
-        later (∞apply u v)))
+      u? >>= λ u →
+      v? >>= λ v →
+        later (∞apply u v)
 
     ∞apply : Val → Val → ∞Delay Val
     force (∞apply (clos t ρ) v) = ⟦ t ⟧ (v ∷ ρ)
@@ -114,8 +114,8 @@ module Coinductive-delay-monad where
 mutual
 
   data Delay {i : Size} (A : Set) : Set where
-    return : (a : A) → Delay {i} A
-    later  : (a∞ : ∞Delay {i} A) → Delay {i} A
+    now   : (a : A) → Delay {i} A
+    later : (a∞ : ∞Delay {i} A) → Delay {i} A
 
   record ∞Delay {i : Size} (A : Set) : Set where
     coinductive
@@ -136,7 +136,7 @@ force (forever {i}) {j} = later (forever {j})
 
 mutual
   _>>=_ : ∀ {i A B} → Delay {i} A → (A → Delay {i} B) → Delay {i} B
-  return a >>= f = f a
+  now a >>= f = f a
   later a∞ >>= f = later (a∞ ∞>>= f)
 
   _∞>>=_ : ∀ {i A B} → ∞Delay {i} A → (A → Delay {i} B) → ∞Delay {i} B
@@ -150,15 +150,15 @@ mutual
 
 mutual
   ⟦_⟧_ : ∀ {i n} → Tm n → Env n → Delay {i} Val
-  ⟦ var x ⟧ ρ = return (lookup x ρ)
-  ⟦ abs t ⟧ ρ = return (clos t ρ)
+  ⟦ var x ⟧ ρ = now (lookup x ρ)
+  ⟦ abs t ⟧ ρ = now (clos t ρ)
   ⟦ app r s ⟧ ρ = apply (⟦ r ⟧ ρ) (⟦ s ⟧ ρ)
 
   apply : ∀ {i} → Delay {i} Val → Delay {i} Val → Delay {i} Val
   apply u? v? =
-    u? >>= (λ u →
-    v? >>= (λ v →
-      later (∞apply u v)))
+    u? >>= λ u →
+    v? >>= λ v →
+      later (∞apply u v)
 
   ∞apply : ∀ {i} → Val → Val → ∞Delay {i} Val
   force (∞apply (clos t ρ) v) = ⟦ t ⟧ (v ∷ ρ)
