@@ -3,7 +3,8 @@
 {-
 Based on the presentation
 
-* Andreas Abel  with James Chapman, Brigitte Pientka, Anton Setzer, David Thibodeau.
+* Andreas Abel  with James Chapman, Brigitte Pientka, Anton Setzer,
+  David Thibodeau.
   Coinduction in Agda using Copatterns and Sized Types.
   15 May 2014, Types for Proofs and Programs (TYPES 2014).
   http://www2.tcs.ifi.lmu.de/~abel/talkTYPES14.pdf

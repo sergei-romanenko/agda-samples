@@ -111,8 +111,8 @@ data _≈_  : {α : Ty} (x y : Tm α) → Set where
              K ∙ x ∙ y ≈ x
   ≈S     : ∀ {α β γ} {x : Tm (α ⇒ β ⇒ γ)} {y : Tm (α ⇒ β)} {z : Tm α} →
              S ∙ x ∙ y ∙ z ≈ (x ∙ z) ∙ (y ∙ z)
-  ∙-cong : ∀ {α β} {x₁ x₂ : Tm (α ⇒ β)} {y₁ y₂ : Tm α} →
-             x₁ ≈ x₂ → y₁ ≈ y₂ → x₁ ∙ y₁ ≈ x₂ ∙ y₂
+  ∙-cong : ∀ {α β} {x y : Tm (α ⇒ β)} {x′ y′ : Tm α} →
+             x ≈ y → x′ ≈ y′ → x ∙ x′ ≈ y ∙ y′
   ≈RZ    : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} →
              REC ∙ x ∙ y ∙ ZERO ≈ x 
   ≈RS    : ∀ {α} {x : Tm α} {y : Tm (N ⇒ α ⇒ α)} {z : Tm N} →
@@ -307,35 +307,35 @@ norm-1+1 = refl
 
 --
 -- Completeness: the normal forms of two convertible terms are equal
---     x₁ ≈ x₂ → norm x₁ ≡ norm x₂
+--     x ≈ y → norm x ≡ norm y
 --
 
-≈→⟦⟧≡⟦⟧ : ∀ {α} {x₁ x₂ : Tm α} → x₁ ≈ x₂ → ⟦ x₁ ⟧ ≡ ⟦ x₂ ⟧
+≈→⟦⟧≡⟦⟧ : ∀ {α} {x y : Tm α} → x ≈ y → ⟦ x ⟧ ≡ ⟦ y ⟧
 
 ≈→⟦⟧≡⟦⟧ ≈refl = refl
-≈→⟦⟧≡⟦⟧ (≈sym x₂≈x₁) =
-  sym (≈→⟦⟧≡⟦⟧ x₂≈x₁)
+≈→⟦⟧≡⟦⟧ (≈sym y≈x) =
+  sym (≈→⟦⟧≡⟦⟧ y≈x)
 ≈→⟦⟧≡⟦⟧ (≈trans x≈y y≈z) =
   trans (≈→⟦⟧≡⟦⟧ x≈y) (≈→⟦⟧≡⟦⟧ y≈z)
 ≈→⟦⟧≡⟦⟧ ≈K = refl
 ≈→⟦⟧≡⟦⟧ ≈S = refl
-≈→⟦⟧≡⟦⟧ (∙-cong {α} {β} {x₁} {x₂} {y₁} {y₂} x₁≈x₂ y₁≈y₂) = begin
-  ⟦ x₁ ∙ y₁ ⟧
+≈→⟦⟧≡⟦⟧ (∙-cong {α} {β} {x} {y} {x′} {y′} x≈y x′≈y′) = begin
+  ⟦ x ∙ x′ ⟧
     ≡⟨⟩
-  ⟦ x₁ ⟧ ⟨∙⟩ ⟦ y₁ ⟧
-    ≡⟨ cong₂ _⟨∙⟩_ (≈→⟦⟧≡⟦⟧ x₁≈x₂) (≈→⟦⟧≡⟦⟧ y₁≈y₂) ⟩
-  ⟦ x₂ ⟧ ⟨∙⟩ ⟦ y₂ ⟧
+  ⟦ x ⟧ ⟨∙⟩ ⟦ x′ ⟧
+    ≡⟨ cong₂ _⟨∙⟩_ (≈→⟦⟧≡⟦⟧ x≈y) (≈→⟦⟧≡⟦⟧ x′≈y′) ⟩
+  ⟦ y ⟧ ⟨∙⟩ ⟦ y′ ⟧
     ≡⟨⟩
-  ⟦ x₂ ∙ y₂ ⟧
+  ⟦ y ∙ y′ ⟧
   ∎
   where open ≡-Reasoning
 ≈→⟦⟧≡⟦⟧ ≈RZ = refl
 ≈→⟦⟧≡⟦⟧ ≈RS = refl
 
-norm-complete : ∀ {α} {x₁ x₂ : Tm α} →
-  x₁ ≈ x₂ → norm x₁ ≡ norm x₂
-norm-complete x₁≈x₂ =
-  cong ⟪_⟫ (≈→⟦⟧≡⟦⟧ x₁≈x₂)
+norm-complete : ∀ {α} {x y : Tm α} →
+  x ≈ y → norm x ≡ norm y
+norm-complete x≈y =
+  cong ⟪_⟫ (≈→⟦⟧≡⟦⟧ x≈y)
 
 --
 -- Now we are going to prove "soundness" -

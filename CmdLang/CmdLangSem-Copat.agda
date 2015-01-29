@@ -39,28 +39,38 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 
   -- C⟦_⟧
 
-  C⟦_⟧ : ∀ {i} (c : Cmd) (σ : State) → Delay i State
-  ∞seq : ∀ {i} (c₁ c₂ : Cmd) (σ : State) → ∞Delay i State
+  mutual
 
-  C⟦ skip ⟧ σ =
-    return σ
+    C⟦_⟧ : ∀ {i} (c : Cmd) (σ : State) → Delay i State
 
-  C⟦ assign v a ⟧ σ =
-    return (update σ v (A⟦ a ⟧ σ))
+    C⟦ skip ⟧ σ =
+      return σ
 
-  C⟦ seq c₁ c₂ ⟧ σ =
-    C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
+    C⟦ assign v a ⟧ σ =
+      return (update σ v (A⟦ a ⟧ σ))
 
-  C⟦ if b c₁ c₂ ⟧ σ with B⟦ b ⟧ σ
-  ... | true =  C⟦ c₁ ⟧ σ
-  ... | false = C⟦ c₂ ⟧ σ
+    C⟦ seq c₁ c₂ ⟧ σ =
+      C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
 
-  C⟦ while b c ⟧ σ with B⟦ b ⟧ σ
-  ... | true  = later (∞seq c (while b c) σ)
-  ... | false = return σ
+    {-
+    C⟦ if b c₁ c₂ ⟧ σ with B⟦ b ⟧ σ
+    ... | true =  C⟦ c₁ ⟧ σ
+    ... | false = C⟦ c₂ ⟧ σ
+    -}
+    C⟦ if b c₁ c₂ ⟧ σ =
+      C⟦if⟧ (B⟦ b ⟧ σ) c₁ c₂ σ
 
-  force (∞seq c₁ c₂ σ) =
-    C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
+    C⟦ while b c ⟧ σ with B⟦ b ⟧ σ
+    ... | true  = later (∞seq c (while b c) σ)
+    ... | false = return σ
+
+    C⟦if⟧ : ∀ {i} (b : Bool ) (c₁ c₂ : Cmd) (σ : State) → Delay i State
+    C⟦if⟧ true c₁ c₂ σ = C⟦ c₁ ⟧ σ
+    C⟦if⟧ false c₁ c₂ σ = C⟦ c₂ ⟧ σ
+
+    ∞seq : ∀ {i} (c₁ c₂ : Cmd) (σ : State) → ∞Delay i State
+    force (∞seq c₁ c₂ σ) =
+      C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧
 
   --
   -- Correctness
@@ -119,8 +129,20 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     ∎ $ h₂
     where open Related.EquationalReasoning
 
+  {-
   ⇩⇒C (⇩-if-true b≡t h) rewrite b≡t =
     ⇩⇒C h
+  -}
+  ⇩⇒C (⇩-if-true {σ} {σ′} {b} {c₁} {c₂} b≡t h) =
+    C⟦ c₁ ⟧ σ ⇓ σ′
+      ≡⟨ refl ⟩
+    C⟦if⟧ true c₁ c₂ σ ⇓ σ′
+      ≡⟨ cong (λ b → C⟦if⟧ b c₁ c₂ σ ⇓ σ′) (P.sym $ b≡t) ⟩
+    C⟦if⟧ (B⟦ b ⟧ σ) c₁ c₂ σ ⇓ σ′
+      ≡⟨ refl ⟩
+    C⟦ if b c₁ c₂ ⟧ σ ⇓ σ′
+    ∎ $ ⇩⇒C h
+    where open Related.EquationalReasoning
 
   ⇩⇒C (⇩-if-false b≡f h) rewrite b≡f =
     ⇩⇒C h
@@ -136,8 +158,43 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- Divergence
   --
 
+  steps : {A : Set} {a? : Delay ∞ A} {a : A} → a? ⇓ a → ℕ
+  steps now⇓ = zero
+  steps (later⇓ a⇓) = suc (steps a⇓)
+
+  steps⇩ : {c : Cmd} {σ σ′ : State} → c / σ ⇩ σ′ → ℕ
+  steps⇩ ⇩-skip = zero
+  steps⇩ ⇩-assign = zero
+  steps⇩ (⇩-seq ⇩σ′′ ⇩σ′) = steps⇩ ⇩σ′′ + steps⇩ ⇩σ′
+  steps⇩ (⇩-if-true b≡t ⇩σ′) = steps⇩ ⇩σ′
+  steps⇩ (⇩-if-false b≡f ⇩σ′) = steps⇩ ⇩σ′
+  steps⇩ (⇩-while-true b≡t ⇩σ′′ ⇩σ′) = suc (steps⇩ ⇩σ′′ + steps⇩ ⇩σ′)
+  steps⇩ (⇩-while-false b≡f) = zero
+
+  steps⇩≡steps :{c : Cmd} {σ σ′ : State} (h⇩ : c / σ ⇩ σ′) →
+    steps⇩ h⇩ ≡ steps (⇩⇒C h⇩)
+  steps⇩≡steps ⇩-skip = refl
+  steps⇩≡steps ⇩-assign = refl
+  steps⇩≡steps (⇩-seq h⇩₁ h⇩₂) = {!!}
+  steps⇩≡steps (⇩-if-true {σ} {σ′} {b} {c₁} {c₂} b≡t h⇩) rewrite b≡t =
+    {!refl!}
+  {-
+  ... | true = {!!}
+  ... | false = ?
+  -}
+  steps⇩≡steps (⇩-if-false b≡f h⇩) = {!!}
+  steps⇩≡steps (⇩-while-true b≡t h⇩ h⇩₁) = {!!}
+  steps⇩≡steps (⇩-while-false b≡f) = {!!}
+
+  _+ˢ_ : ℕ → Size → Size
+  zero +ˢ s = s
+  suc n +ˢ s = ↑ (n +ˢ s)
+
+  
+
   mutual
 
+    {-
     data _/_⇧ {i : Size} : (c : Cmd) (σ : State) → Set where
       ⇧-seq₁ :
         ∀ {σ c₁ c₂} → c₁ / σ ⇧ → seq c₁ c₂ / σ ⇧
@@ -155,110 +212,117 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
       ⇧-while-true₂ :
         ∀ {σ σ′ b c} → (b≡t : B⟦ b ⟧ σ ≡ true) →
           c / σ ⇩ σ′ → while b c ∞/ σ′ ⇧ → while b c / σ ⇧
+      -}
+    data ⟨_⟩_/_⇧ : (i : Size) (c : Cmd) (σ : State) → Set where
+      ⇧-seq₁ :
+        ∀ {σ c₁ c₂} i → ⟨ i ⟩ c₁ / σ ⇧ → ⟨ i ⟩ seq c₁ c₂ / σ ⇧
+      ⇧-seq₂ :
+        ∀ {σ σ′ c₁ c₂} i → (c₁⇩ : c₁ / σ ⇩ σ′) → ⟨ i ⟩ c₂ / σ′ ⇧ →
+          ⟨ i ⟩ seq c₁ c₂ / σ ⇧
 
-    record _∞/_⇧ {i : Size} (c : Cmd) (σ : State) : Set where
-      coinductive
-      field
-        ⇧force : {j : Size< i} → _/_⇧ {j} c σ
+--     record _∞/_⇧ {i : Size} (c : Cmd) (σ : State) : Set where
+--       coinductive
+--       field
+--         ⇧force : {j : Size< i} → _/_⇧ {j} c σ
 
-    _/_⇧⟨_⟩ = λ c σ i  → _/_⇧ {i} c σ
+--     _/_⇧⟨_⟩ = λ c σ i  → _/_⇧ {i} c σ
 
-    _∞/_⇧⟨_⟩ = λ c σ i → _∞/_⇧ {i} c σ
+--     _∞/_⇧⟨_⟩ = λ c σ i → _∞/_⇧ {i} c σ
 
-  open _∞/_⇧ public
+--   open _∞/_⇧ public
 
-  --
-  -- ⇧⇒C
-  --
+--   --
+--   -- ⇧⇒C
+--   --
 
-  mutual
+--   mutual
 
-    ⇧⇒C : {i : Size} {c : Cmd} {σ : State} →
-      c / σ ⇧⟨ i ⟩ → C⟦ c ⟧ σ ⇑⟨ i ⟩
+--     ⇧⇒C : {i : Size} {c : Cmd} {σ : State} →
+--       c / σ ⇧⟨ i ⟩ → C⟦ c ⟧ σ ⇑⟨ i ⟩
 
-    ⇧⇒C {i} {seq c₁ c₂} (⇧-seq₁ h⇧) =
-      bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C h⇧)
+--     ⇧⇒C {i} {seq c₁ c₂} (⇧-seq₁ h⇧) =
+--       bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C h⇧)
 
-    ⇧⇒C  {i} {seq c₁ c₂} (⇧-seq₂ h⇩ h⇧) =
-      bind⇑₂ C⟦ c₂ ⟧ (⇩⇒C h⇩) (⇧⇒C h⇧)
+--     ⇧⇒C  {i} {seq c₁ c₂} (⇧-seq₂ h⇩ h⇧) =
+--       bind⇑₂ C⟦ c₂ ⟧ (⇩⇒C h⇩) (⇧⇒C h⇧)
 
-    ⇧⇒C (⇧-if-true b≡t h⇧) rewrite b≡t =
-      ⇧⇒C h⇧
+--     ⇧⇒C (⇧-if-true b≡t h⇧) rewrite b≡t =
+--       ⇧⇒C h⇧
 
-    ⇧⇒C (⇧-if-false b≡f h⇧) rewrite b≡f =
-      ⇧⇒C h⇧
+--     ⇧⇒C (⇧-if-false b≡f h⇧) rewrite b≡f =
+--       ⇧⇒C h⇧
 
-    ⇧⇒C (⇧-while-true₁ b≡t h⇧) rewrite b≡t =
-      later⇑ (⇧⇒seq₁ h⇧)
+--     ⇧⇒C (⇧-while-true₁ b≡t h⇧) rewrite b≡t =
+--       later⇑ (⇧⇒seq₁ h⇧)
 
-    ⇧⇒C (⇧-while-true₂ b≡t h⇩ h⇧) rewrite b≡t =
-      later⇑ (∞⇧⇒seq₂ h⇩ h⇧)
+--     ⇧⇒C (⇧-while-true₂ b≡t h⇩ h⇧) rewrite b≡t =
+--       later⇑ (∞⇧⇒seq₂ h⇩ h⇧)
 
-    -- ⇧⇒seq₁
+--     -- ⇧⇒seq₁
 
-    ⇧⇒seq₁ : {i : Size} {c₁ c₂ : Cmd} {σ : State} →
-      c₁ / σ ⇧⟨ i ⟩ → ∞seq c₁ c₂ σ ∞⇑⟨ i ⟩
+--     ⇧⇒seq₁ : {i : Size} {c₁ c₂ : Cmd} {σ : State} →
+--       c₁ / σ ⇧⟨ i ⟩ → ∞seq c₁ c₂ σ ∞⇑⟨ i ⟩
 
-    ⇑force (⇧⇒seq₁ {c₂ = c₂} h⇧) =
-      bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C h⇧)
+--     ⇑force (⇧⇒seq₁ {c₂ = c₂} h⇧) =
+--       bind⇑₁ C⟦ c₂ ⟧ (⇧⇒C h⇧)
 
-    -- ∞⇧⇒seq₂
+--     -- ∞⇧⇒seq₂
 
-    ∞⇧⇒seq₂ : {i : Size} {c₁ c₂ : Cmd} {σ σ′ : State} →
-      c₁ / σ ⇩ σ′ → c₂ ∞/ σ′ ⇧⟨ i ⟩ → ∞seq c₁ c₂ σ ∞⇑⟨ i ⟩
+--     ∞⇧⇒seq₂ : {i : Size} {c₁ c₂ : Cmd} {σ σ′ : State} →
+--       c₁ / σ ⇩ σ′ → c₂ ∞/ σ′ ⇧⟨ i ⟩ → ∞seq c₁ c₂ σ ∞⇑⟨ i ⟩
 
-    ⇑force (∞⇧⇒seq₂ {c₂ = c₂} h⇩ h⇧) =
-      bind⇑₂ C⟦ c₂ ⟧ (⇩⇒C h⇩) (⇧⇒C (⇧force h⇧))
+--     ⇑force (∞⇧⇒seq₂ {c₂ = c₂} h⇩ h⇧) =
+--       bind⇑₂ C⟦ c₂ ⟧ (⇩⇒C h⇩) (⇧⇒C (⇧force h⇧))
 
 
-  --
-  -- C⇒⇧
-  --
+--   --
+--   -- C⇒⇧
+--   --
 
-  -- This is not a "fair", finished proof, as it contains a `postulate`.
-  -- There is a problem with sizes... Presently? there is no addition
-  -- for sizes, but we need to express the fact that
-  --     c / σ ⇩ σ′⟨ i ⟩  → while b c ∞/ σ′ ⇧⟨ j ⟩ → while b c / σ ⇧⟨ i + j ⟩
+--   -- This is not a "fair", finished proof, as it contains a `postulate`.
+--   -- There is a problem with sizes... Presently, there is no addition
+--   -- for sizes, but we need to express the fact that
+--   --     c / σ ⇩ σ′⟨ i ⟩  → while b c ∞/ σ′ ⇧⟨ j ⟩ → while b c / σ ⇧⟨ i + j ⟩
 
-  module C⇒⇧-em
-      (⇑⊎⇓ : ∀ {i : Size} {A} (a? : Delay ∞ A) → a? ⇑⟨ i ⟩ ⊎ ∃ λ a → a? ⇓ a)
-    where 
+--   module C⇒⇧-em
+--       (⇑⊎⇓ : ∀ {i : Size} {A} (a? : Delay ∞ A) → a? ⇑⟨ i ⟩ ⊎ ∃ λ a → a? ⇓ a)
+--     where 
 
-    mutual
+--     mutual
 
-      C⇒⇧ : (c : Cmd) (σ : State) →
-        C⟦ c ⟧ σ ⇑ → c / σ ⇧
+--       C⇒⇧ : (c : Cmd) (σ : State) →
+--         C⟦ c ⟧ σ ⇑ → c / σ ⇧
 
-      C⇒⇧ skip σ ()
+--       C⇒⇧ skip σ ()
 
-      C⇒⇧ (assign v a) σ ()
+--       C⇒⇧ (assign v a) σ ()
 
-      C⇒⇧ (seq c₁ c₂) σ h with ⇑⊎⇓ (C⟦ c₁ ⟧ σ)
-      ... | inj₁ c₁⇑ =
-        ⇧-seq₁ (C⇒⇧ c₁ σ c₁⇑)
-      ... | inj₂ (σ′ , c₁⇓σ′) =
-        ⇧-seq₂ (C⇒⇩ ∞ c₁ c₁⇓σ′) (C⇒⇧ c₂ σ′ (⇑bind₂ C⟦ c₂ ⟧ c₁⇓σ′ h))
+--       C⇒⇧ (seq c₁ c₂) σ h with ⇑⊎⇓ (C⟦ c₁ ⟧ σ)
+--       ... | inj₁ c₁⇑ =
+--         ⇧-seq₁ (C⇒⇧ c₁ σ c₁⇑)
+--       ... | inj₂ (σ′ , c₁⇓σ′) =
+--         ⇧-seq₂ (C⇒⇩ ∞ c₁ c₁⇓σ′) (C⇒⇧ c₂ σ′ (⇑bind₂ C⟦ c₂ ⟧ c₁⇓σ′ h))
 
-      C⇒⇧ (if b c₁ c₂) σ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
-      C⇒⇧ (if b c₁ c₂) σ h | true  | ≡[ b≡t ] =
-        ⇧-if-true b≡t (C⇒⇧ c₁ σ h)
-      C⇒⇧ (if b c₁ c₂) σ h | false | ≡[ b≡f ] =
-        ⇧-if-false b≡f (C⇒⇧ c₂ σ h)
+--       C⇒⇧ (if b c₁ c₂) σ h with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+--       C⇒⇧ (if b c₁ c₂) σ h | true  | ≡[ b≡t ] =
+--         ⇧-if-true b≡t (C⇒⇧ c₁ σ h)
+--       C⇒⇧ (if b c₁ c₂) σ h | false | ≡[ b≡f ] =
+--         ⇧-if-false b≡f (C⇒⇧ c₂ σ h)
 
-      C⇒⇧ (while b c) σ h  with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
-      C⇒⇧ (while b c) σ (later⇑ ∞seq∞⇑) | true | ≡[ b≡t ]
-        with ⇑⊎⇓ (C⟦ c ⟧ σ)
-      ... | inj₁ c⇑ =
-        ⇧-while-true₁ b≡t (C⇒⇧ c σ c⇑)
-      ... | inj₂ (σ′ , c⇓σ′) =
-        ⇧-while-true₂ b≡t
-          (C⇒⇩ ∞ c c⇓σ′)
-          (C⇒∞⇧ (while b c) σ′ (⇑bind₂ C⟦ while b c ⟧ c⇓σ′ (⇑force ∞seq∞⇑)))
-      C⇒⇧ (while b c) σ () | false | ≡[ b≡f ]
+--       C⇒⇧ (while b c) σ h  with B⟦ b ⟧ σ | inspect (B⟦ b ⟧) σ
+--       C⇒⇧ (while b c) σ (later⇑ ∞seq∞⇑) | true | ≡[ b≡t ]
+--         with ⇑⊎⇓ (C⟦ c ⟧ σ)
+--       ... | inj₁ c⇑ =
+--         ⇧-while-true₁ b≡t (C⇒⇧ c σ c⇑)
+--       ... | inj₂ (σ′ , c⇓σ′) =
+--         ⇧-while-true₂ b≡t
+--           (C⇒⇩ ∞ c c⇓σ′)
+--           (C⇒∞⇧ (while b c) σ′ (⇑bind₂ C⟦ while b c ⟧ c⇓σ′ (⇑force ∞seq∞⇑)))
+--       C⇒⇧ (while b c) σ () | false | ≡[ b≡f ]
 
-      postulate
-        C⇒∞⇧ : {i : Size} (c : Cmd) (σ : State) →
-          C⟦ c ⟧ σ ⇑⟨ i ⟩ → c ∞/ σ ⇧⟨ i ⟩
-      --⇧force (C⇒∞⇧ c σ h⇑) {j} = C⇒⇧ c σ h⇑
+--       postulate
+--         C⇒∞⇧ : {i : Size} (c : Cmd) (σ : State) →
+--           C⟦ c ⟧ σ ⇑⟨ i ⟩ → c ∞/ σ ⇧⟨ i ⟩
+--       --⇧force (C⇒∞⇧ c σ h⇑) {j} = C⇒⇧ c σ h⇑
 
---
+-- --

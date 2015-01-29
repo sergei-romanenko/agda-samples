@@ -275,7 +275,7 @@ mutual
   -- "Stability"
 
   Stab : ∀ {α} (u : Nf α) → Set
-  Stab {⋆} u = ⊥
+  Stab {⋆} ()
   Stab {α ⇒ β} u = ∀ (v : Nf α) (q : Stab v) → Comp {β} (u ⟨∙⟩ v)
 
 mutual

@@ -22,8 +22,7 @@ open import Relation.Binary.PropositionalEquality as P
 open import CmdLang
 
 --
--- CmdLangSem-Bad
--- Coinductive evaluation function
+-- Coinductive evaluation function.
 -- (Problems with productivity.)
 --
 
@@ -64,8 +63,8 @@ record CmdLangSem-Bad (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set�
     return σ
 
 --
--- CmdLangSem
--- Step-indexed evaluation function
+-- Coinductive evaluation function.
+-- (A workaround solves the problem with productivity.)
 --
 
 record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
@@ -112,17 +111,10 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   -- Correctness
   --
 
-  private
-
-    open module M{f} = RawMonad (Partiality.monad {f})
-
-    open module PE {A : Set} = Partiality.Equality (_≡_ {A = A})
-
-    open module PR {A : Set} =
-      Partiality.Reasoning (P.isEquivalence {A = A})
-      renaming (_∎ to _□)
-
-    open Equivalence
+  open module PM{f} = RawMonad (Partiality.monad {f})
+  open module PE {A : Set} = Partiality.Equality (_≡_ {A = A})
+  module PR {A : Set} =
+    Partiality.Reasoning (P.isEquivalence {A = A})
 
   --
   -- C⇒⇩
@@ -181,8 +173,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   C⇒⇩′-seq c₁ c₂ σ σ′′ (laterˡ h) (acc p) =
     helper seq-inv
     where
-      bind-hom : (C⟦ c₁ ⟧ σ >>= (λ σ′ → C⟦ c₂ ⟧ σ′)) ≅
-                     ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
+      bind-hom : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≅ ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
       bind-hom = PR.sym (Correct.>>=-hom (C⟦ c₁ ⟧′ σ) C⟦ c₂ ⟧′)
 
       seq-comp : (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧) ≈ now σ′′
@@ -195,7 +186,8 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
         ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
           ≈⟨ h ⟩
         now σ′′
-        □
+        ∎
+        where open PR
       -}
 
       seq-inv : ∃ λ σ′ →
@@ -259,24 +251,26 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   ⟦seq⟧-cong : ∀ {k} {v₁ v₂ : State ⊥} {f : State → State ⊥} →
     Rel k v₁ v₂ → Rel k (v₁ >>= f) (v₂ >>= f)
   ⟦seq⟧-cong {f = f} v₁≈v₂ =
-    v₁≈v₂ ≡->>=-cong (λ σ → f σ □)
+    v₁≈v₂ ≡->>=-cong (λ σ → f σ ∎)
+    where open PR
 
   ⇩⇒C⟦seq⟧ c₁ c₂ σ σ′ σ′′ h₁ h₂ =
     C⟦ seq c₁ c₂ ⟧ σ
-      ≅⟨ _ □ ⟩
+      ≅⟨ _ ∎ ⟩
     ⟦ later (♯ (C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′)) ⟧P
-      ≅⟨ later (♯ (_ □)) ⟩
+      ≅⟨ later (♯ (_ ∎)) ⟩
     later (♯ ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P )
-      ≳⟨ laterˡ (_ □) ⟩
+      ≳⟨ laterˡ (_ ∎) ⟩
     ⟦ C⟦ c₁ ⟧′ σ >>=′ C⟦ c₂ ⟧′ ⟧P
       ≅⟨ Correct.>>=-hom (C⟦ c₁ ⟧′ σ) C⟦ c₂ ⟧′ ⟩
     (C⟦ c₁ ⟧ σ >>= C⟦ c₂ ⟧)
       ≈⟨ ⟦seq⟧-cong (⇩⇒C c₁ σ σ′ h₁) ⟩
     (now σ′ >>= C⟦ c₂ ⟧)
-      ≅⟨ _ □ ⟩
+      ≅⟨ _ ∎ ⟩
     C⟦ c₂ ⟧ σ′
       ≈⟨ ⇩⇒C c₂ σ′ σ′′ h₂ ⟩
     now σ′′
-    □
+    ∎
+    where open PR
 
 --
