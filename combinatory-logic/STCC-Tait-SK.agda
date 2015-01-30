@@ -25,6 +25,7 @@
 
 
 module STCC-Tait-SK where
+
 open import Data.Empty
 open import Data.Product
 
@@ -389,32 +390,42 @@ module TerminatingNorm where
 -- Since, unlike Coq, Agda doesn't make a distinction
 -- between `Set` and `Prop`, it's not clear if the trick
 -- by Bove and Capretta makes sense (for Agda)?
--- 
+--
+-- Probably, the answer is that, informally, it is easy to see that
+-- the (following) function `eval` is an "instrumented" version of
+-- the "naive" function `⟦_⟧`. And `eval` uses the propositional argument
+-- neither for making decisions nor for producing the normal form.
+-- Hence, the propositional argument can be removed to produce
+-- the original function `⟦_⟧` (and `⟦_⟧` is total).
+--
 
-⟨∙⟩⇓-subst : ∀ {α β} {u u′ : Nf (α ⇒ β)} {v v′ : Nf α} {w} →
-  u′ ≡ u → v′ ≡ v → u ⟨∙⟩ v ⇓ w → u′ ⟨∙⟩ v′ ⇓ w
-⟨∙⟩⇓-subst refl refl h = h
+-- apply
 
-{-# TERMINATING #-}
+mutual
 
-apply : ∀ {α β} (u : Nf (α ⇒ β)) (v : Nf α)
-  {w} (uv⇓ : u ⟨∙⟩ v ⇓ w) → ∃ λ w′ → w′ ≡ w
-apply K0 u K0⇓ = K1 u , refl
-apply (K1 u) v K1⇓ = u , refl
-apply S0 u S0⇓ = S1 u , refl
-apply (S1 u) v S1⇓ = S2 u v , refl
-apply (S2 u v) w (S2⇓ {uwvw = uwvw} uw⇓ vw⇓ uwvw⇓) =
-  let uw′ , uw′≡uw = apply u w uw⇓
-      vw′ , vw′≡vw = apply v w vw⇓
-  in apply uw′ vw′ (⟨∙⟩⇓-subst uw′≡uw vw′≡vw uwvw⇓)
+  apply : ∀ {α β} (u : Nf (α ⇒ β)) (v : Nf α)
+    {w} (uv⇓ : u ⟨∙⟩ v ⇓ w) → ∃ λ w′ → w′ ≡ w
+  apply K0 u K0⇓ = K1 u , refl
+  apply (K1 u) v K1⇓ = u , refl
+  apply S0 u S0⇓ = S1 u , refl
+  apply (S1 u) v S1⇓ = S2 u v , refl
+  apply (S2 u v) w (S2⇓ uw⇓ vw⇓ uwvw⇓) =
+    apply-S (apply u w uw⇓) (apply v w vw⇓) uwvw⇓
+
+  apply-S : ∀ {α β} {u : Nf (α ⇒ β)} {v : Nf α}
+    (p : ∃ λ u′ → u′ ≡ u) (q : ∃ λ v′ → v′ ≡ v) {w} →
+    u ⟨∙⟩ v ⇓ w → ∃ (λ w′ → w′ ≡ w)
+  apply-S (u′ , u′≡u) (v′ , v′≡v) ⇓w
+    rewrite sym $ u′≡u | sym $ v′≡v
+    = apply u′ v′ ⇓w
+
+-- eval
 
 eval : ∀ {α} (x : Tm α) {u} (x⇓ : x ⇓ u) → ∃ λ u′ → u′ ≡ u
 eval K K⇓ = K0 , refl
 eval S S⇓ = S0 , refl
 eval (x ∙ y) (∙⇓ {uv = uv} x⇓ y⇓ ⇓uv) =
-  let u′ , u′≡u = eval x x⇓
-      v′ , v′≡v = eval y y⇓
-  in apply u′ v′ (⟨∙⟩⇓-subst u′≡u v′≡v ⇓uv)
+  apply-S (eval x x⇓) (eval y y⇓) ⇓uv
 
 
 module BoveCaprettaNorm where
