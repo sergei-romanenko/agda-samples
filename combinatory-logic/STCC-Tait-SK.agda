@@ -374,10 +374,22 @@ all-⇓ x =
   let u , ⇓u , p = all-sc x
   in u , ⇓u
 
+module TerminatingNorm where
+
+  norm : ∀ {α} → Tm α → Tm α
+  norm x = reify (proj₁ (all-⇓ x))
+
+  norm-III : norm III ≡ S ∙ K ∙ K
+  norm-III = refl
+
 --
 -- Now, as suggested by Bove and Capretta, we add to the normalization function
 -- an additional argument: a proof of the existence of the normal form.
 --
+-- Since, unlike Coq, Agda doesn't make a distinction
+-- between `Set` and `Prop`, it's not clear if the trick
+-- by Bove and Capretta makes sense (for Agda)?
+-- 
 
 ⟨∙⟩⇓-subst : ∀ {α β} {u u′ : Nf (α ⇒ β)} {v v′ : Nf α} {w} →
   u′ ≡ u → v′ ≡ v → u ⟨∙⟩ v ⇓ w → u′ ⟨∙⟩ v′ ⇓ w
@@ -404,10 +416,13 @@ eval (x ∙ y) (∙⇓ {uv = uv} x⇓ y⇓ ⇓uv) =
       v′ , v′≡v = eval y y⇓
   in apply u′ v′ (⟨∙⟩⇓-subst u′≡u v′≡v ⇓uv)
 
-norm : ∀ {α} → Tm α → Tm α
-norm x =
-  let u , x⇓ = all-⇓ x
-  in reify (proj₁ (eval x {u} x⇓))
 
-norm-III : norm III ≡ S ∙ K ∙ K
-norm-III = refl
+module BoveCaprettaNorm where
+
+  norm : ∀ {α} → Tm α → Tm α
+  norm x =
+    let u , x⇓ = all-⇓ x
+    in reify (proj₁ (eval x {u} x⇓))
+
+  norm-III : norm III ≡ S ∙ K ∙ K
+  norm-III = refl
