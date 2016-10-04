@@ -198,7 +198,7 @@ module fib-good where
 
 module ≈-Reasoning-bad {A : Set}  where
 
-  infix  2 _∎
+  infix  3 _∎
   infixr 2 _≈⟨_⟩_
 
   _≈⟨_⟩_ : ∀ xs {ys zs : Stream A} → xs ≈ ys → ys ≈ zs → xs ≈ zs

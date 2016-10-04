@@ -164,25 +164,27 @@ module log2-good-wf-ind where
       helper : ∀ x → Acc _<_ x → P x
       helper x (acc rs) = step x (λ y y<x → helper y (rs y y<x))
 
-  <-well-founded : Well-founded _<′_
-  <-well-founded′ : ∀ n y →  y <′ n → Acc _<′_ y
+  mutual
 
-  <-well-founded n = acc (<-well-founded′ n)
+    <-well-founded : Well-founded _<′_
+    <-well-founded n = acc (<-acc n)
 
-  --<-well-founded′ n y y<′n = {!!}
-  <-well-founded′ .(suc y) y ≤′-refl = <-well-founded y
-  <-well-founded′ .(suc n) y (≤′-step {n} y<′n) = <-well-founded′ n y y<′n
+    <-acc : ∀ n y → y <′ n → Acc _<′_ y
+    --<-acc n y y<′n = {!!}
+    <-acc .(suc y) y ≤′-refl = <-well-founded y
+    <-acc .(suc n) y (≤′-step {n} y<′n) = <-acc n y y<′n
 
-  log2 : ℕ → ℕ
-  log2′ : (n : ℕ) → Acc _<′_ n → ℕ
+  mutual
 
-  log2 n = log2′ n (<-well-founded n)
+    log2 : ℕ → ℕ
+    log2 n = log2′ n (<-well-founded n)
 
-  log2′ zero a = zero
-  log2′ (suc zero) a = zero
-  log2′ (suc (suc n)) (acc rs) =
-    suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
-    where n′ = ⌊ n /2⌋
+    log2′ : (n : ℕ) → Acc _<′_ n → ℕ
+    log2′ zero a = zero
+    log2′ (suc zero) a = zero
+    log2′ (suc (suc n)) (acc rs) =
+      suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
+      where n′ = ⌊ n /2⌋
 
   log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
   log2-test = refl
@@ -192,16 +194,17 @@ module log2-good-lib where
   open Induction.WellFounded
   open Induction.Nat
 
-  log2 : ℕ → ℕ
-  log2′ : (n : ℕ) → Acc _<′_ n → ℕ
+  mutual
 
-  log2 n = log2′ n (<-well-founded n)
+    log2 : ℕ → ℕ
+    log2 n = log2′ n (<-well-founded n)
 
-  log2′ zero a = zero
-  log2′ (suc zero) a = zero
-  log2′ (suc (suc n)) (acc rs) =
-    suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
-    where n′ = ⌊ n /2⌋
+    log2′ : (n : ℕ) → Acc _<′_ n → ℕ
+    log2′ zero a = zero
+    log2′ (suc zero) a = zero
+    log2′ (suc (suc n)) (acc rs) =
+      suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
+      where n′ = ⌊ n /2⌋
 
   log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
   log2-test = refl
@@ -247,16 +250,17 @@ module log2-good-special-acc where
   log2′ (suc zero) _ = zero
   log2′ (suc (suc n)) (step a) = suc (log2′ (suc ⌊ n /2⌋) a)
 
-  ∀Log2 : (n : ℕ) → Log2 n
-  ∀Log2′ : (n : ℕ) → Acc _<′_ n → Log2 n
+  mutual
 
-  ∀Log2 n = ∀Log2′ n (<-well-founded n)
+    ∀Log2 : (n : ℕ) → Log2 n
+    ∀Log2 n = ∀Log2′ n (<-well-founded n)
 
-  ∀Log2′ zero a = stop0
-  ∀Log2′ (suc zero) a = stop1
-  ∀Log2′ (suc (suc n)) (acc rs) =
-    step (∀Log2′ (suc n′) (rs (suc n′) (log2<′ n)))
-    where n′ = ⌊ n /2⌋
+    ∀Log2′ : (n : ℕ) → Acc _<′_ n → Log2 n
+    ∀Log2′ zero a = stop0
+    ∀Log2′ (suc zero) a = stop1
+    ∀Log2′ (suc (suc n)) (acc rs) =
+      step (∀Log2′ (suc n′) (rs (suc n′) (log2<′ n)))
+      where n′ = ⌊ n /2⌋
 
   log2 : ℕ → ℕ
   log2 n = log2′ n (∀Log2 n)
@@ -357,20 +361,14 @@ module Quicksort-good-special-acc where
       Quicksort p (proj₂ (partition (p x) xs))→
       Quicksort p (x ∷ xs)
 
-  quicksort : {A : Set} (p : A → A → Bool) → List A → List A
   quicksort′ : {A : Set} (p : A → A → Bool) (xs : List A) →
     Quicksort p xs → List A
-  ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
-    Quicksort p xs
-
   quicksort′ p [] a = []
   quicksort′ p (x ∷ xs) (step a₁ a₂) with partition (p x) xs
   ... | (small , big) = small′ ++ [ x ] ++ big′
     where
       small′ = quicksort′ p small a₁
       big′   = quicksort′ p big a₂
-
-  quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
 
   open Induction.WellFounded
   open Induction.Nat
@@ -379,7 +377,6 @@ module Quicksort-good-special-acc where
 
   ∀Quicksort′ : {A : Set} (p : A → A → Bool) (xs : List A) →
     Acc _<′_ (length xs) → Quicksort p xs
-
   ∀Quicksort′ p [] a = stop
   ∀Quicksort′ p (x ∷ xs) (acc g) =
     step (∀Quicksort′ p small (g (length small) (s≤′s small≼xs)))
@@ -392,7 +389,12 @@ module Quicksort-good-special-acc where
       small≼xs = proj₁ ≼≼
       big≼xs   = proj₂ ≼≼
 
+  ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
+    Quicksort p xs
   ∀Quicksort p xs = ∀Quicksort′ p xs (<-well-founded (length xs))
+
+  quicksort : {A : Set} (p : A → A → Bool) → List A → List A
+  quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
 
 module Quicksort-good-special-acc-via-filter where
 
@@ -430,20 +432,14 @@ module Quicksort-good-special-acc-via-filter where
       Quicksort p (proj₂ (partition (p x) xs))→
       Quicksort p (x ∷ xs)
 
-  quicksort : {A : Set} (p : A → A → Bool) → List A → List A
   quicksort′ : {A : Set} (p : A → A → Bool) (xs : List A) →
     Quicksort p xs → List A
-  ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
-    Quicksort p xs
-
   quicksort′ p [] a = []
   quicksort′ p (x ∷ xs) (step a₁ a₂) with partition (p x) xs
   ... | (small , big) = small′ ++ [ x ] ++ big′
     where
       small′ = quicksort′ p small a₁
       big′   = quicksort′ p big a₂
-
-  quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
 
   open Induction.WellFounded
   open Induction.Nat
@@ -466,7 +462,12 @@ module Quicksort-good-special-acc-via-filter where
       big≼xs rewrite partition-as-filter₂ (p x) xs =
         filter-size (not ∘ (p x)) xs
 
+  ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
+    Quicksort p xs
   ∀Quicksort p xs = ∀Quicksort′ p xs (<-well-founded (length xs))
+
+  quicksort : {A : Set} (p : A → A → Bool) → List A → List A
+  quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
 
 module Quicksort-good-special-acc-via-filter₂ where
 
@@ -490,7 +491,6 @@ module Quicksort-good-special-acc-via-filter₂ where
 
   quicksort′ : {A : Set} (p : A → A → Bool) (xs : List A) →
     Quicksort p xs → List A
-
   quicksort′ p [] a = []
   quicksort′ p (x ∷ xs) (step a₁ a₂) =
     quicksort′ p small a₁ ++ [ x ] ++ quicksort′ p big a₂
@@ -498,19 +498,11 @@ module Quicksort-good-special-acc-via-filter₂ where
       small = filter (p x) xs
       big   = filter (not ∘ p x) xs
 
-  quicksort : {A : Set} (p : A → A → Bool) → List A → List A
-
-  ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
-    Quicksort p xs
-
-  quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
-
   open Induction.WellFounded
   open Induction.Nat
 
   ∀Quicksort′ : {A : Set} (p : A → A → Bool) (xs : List A) →
     Acc _<′_ (length xs) → Quicksort p xs
-
   ∀Quicksort′ p [] a = stop
   ∀Quicksort′ p (x ∷ xs) (acc g) =
     step (∀Quicksort′ p small (g (length small) (s≤′s small≼xs)))
@@ -521,6 +513,11 @@ module Quicksort-good-special-acc-via-filter₂ where
       small≼xs = small ≼ xs ∋ filter-size (p x) xs
       big≼xs   = big   ≼ xs ∋ filter-size (not ∘ (p x)) xs
 
+  ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
+    Quicksort p xs
   ∀Quicksort p xs = ∀Quicksort′ p xs (<-well-founded (length xs))
+
+  quicksort : {A : Set} (p : A → A → Bool) → List A → List A
+  quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
 
 --

@@ -256,7 +256,7 @@ em→frobenius-dual⇐ em =
   [ (λ q a → inj₁ q) , (λ p a → inj₂ (p a)) ]′
 
 em→frobenius-dual : em → ∀ {A : Set} {P : A → Set} {Q : Set} →
-                              (∀ x → Q ⊎ P x) ↔ Q ⊎ (∀ x → P x)
+                              (∀ x → Q ⊎ P x) ↔ (Q ⊎ (∀ x → P x))
 em→frobenius-dual em = em→frobenius-dual⇒ em , em→frobenius-dual⇐ em
 
 frobenius-dual→em : frobenius-dual → em

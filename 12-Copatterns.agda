@@ -431,10 +431,12 @@ module fib-good where
   5-fib : takeˢ 7 fib ≡ 0 ∷ 1 ∷ 1 ∷ 2 ∷ 3 ∷ 5 ∷ 8 ∷ []
   5-fib = refl
 
+  {-
   fib-correct : fib ∼ 0 ∷ 1 ∷ zipWith _+_ fib (tail fib)
   ∼head fib-correct = refl
   ∼head (∼tail fib-correct) = refl
   ∼tail (∼tail fib-correct) = ∼refl (zipWith _+_ fib (tail fib))
+  -}
 
 --
 -- ∼-reasoning (a DSL)
@@ -442,7 +444,7 @@ module fib-good where
 
 module ∼-Reasoning′ {A : Set}  where
 
-  infix  2 _□
+  infix  3 _□
   infixr 2 _∼⟨_⟩_
 
   _∼⟨_⟩_ : ∀ xs {ys zs : Stream A} → xs ∼ ys → ys ∼ zs → xs ∼ zs
