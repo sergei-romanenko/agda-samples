@@ -2,8 +2,12 @@ module 14-InfiniteDescent where
 
 open import Data.Nat
 open import Data.Sum as Sum
+open import Data.Product as Prod
+open import Data.Empty
 
 open import Function
+
+open import Relation.Nullary
 
 mutual
 
@@ -57,15 +61,53 @@ module Even⊎Odd-3 where
     even⊎odd zero =
       inj₁ even0
     even⊎odd (suc n) =
-      ([ inj₂ , inj₁ ]′ ∘ map odd1 even1) (even⊎odd n)
+      ([ inj₂ , inj₁ ]′ ∘ Sum.map odd1 even1) (even⊎odd n)
 
-data Silly : (x y : ℕ) → Set where
-  zy : ∀ {y} → Silly zero y
-  xz : ∀ {x} → Silly x zero
-  ss : ∀ {x y} → Silly (suc (suc x)) y → Silly (suc x) (suc y)
+-- The R example
 
-all-silly : ∀ x y → Silly x y
-all-silly x zero = xz
-all-silly zero (suc y) = zy
-all-silly (suc x) (suc y) =
-  ss (all-silly (suc (suc x)) y)
+data R : (x y : ℕ) → Set where
+  zy : ∀ {y} → R zero y
+  xz : ∀ {x} → R x zero
+  ss : ∀ {x y} → R (suc (suc x)) y → R (suc x) (suc y)
+
+all-r : ∀ x y → R x y
+all-r x zero = xz
+all-r zero (suc y) = zy
+all-r (suc x) (suc y) =
+  ss (all-r (suc (suc x)) y)
+
+-- The P & Q example
+
+mutual
+
+  data P : (x : ℕ) → Set where
+    pz : P zero
+    ps : ∀ {x} → P x → Q x (suc x) → P (suc x)
+
+  data Q : (x y : ℕ) → Set where
+    qz : ∀ {x} → Q x zero
+    qs : ∀ {x y} → P x → Q x y → Q x (suc y)
+
+mutual
+
+  all-q : ∀ x y → Q x y
+  all-q x zero = qz
+  all-q x (suc y) =
+    qs (all-p x) (all-q x y)
+
+  all-p : ∀ x → P x
+  all-p zero = pz
+  all-p (suc x) =
+    ps (all-p x) (all-q x (suc x))
+
+-- The N′ example
+
+  data N′ : (x y : ℕ) → Set where
+    nz : ∀ {y} → N′ zero y
+    ns : ∀ {x y} → N′ y x → N′ (suc x) y
+
+mutual
+
+  all-n : ∀ x y → N′ x y
+  all-n zero y = nz
+  all-n (suc x) y = ns (all-n y x)
