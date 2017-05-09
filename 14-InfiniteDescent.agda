@@ -39,11 +39,8 @@ module Even⊎Odd-1 where
     inj₁ even0
   even⊎odd (suc zero) =
     inj₂ (odd1 even0)
-  even⊎odd (suc (suc n)) with even⊎odd n
-  ... | inj₁ even-n =
-    inj₁ (even1 (odd1 even-n))
-  ... | inj₂ odd-n =
-    inj₂ (odd1 (even1 odd-n))
+  even⊎odd (suc (suc n)) =
+     Sum.map (even1 ∘ odd1) (odd1 ∘ even1) (even⊎odd n)
 
 module Even⊎Odd-2 where
 
@@ -167,11 +164,8 @@ module BE⊎BO-1 where
   be⊎bo : ∀ {n} (bn : BN n) → BE n ⊎ BO n
   be⊎bo zero = inj₁ be0
   be⊎bo (suc zero) = inj₂ (bo1 be0)
-  be⊎bo (suc (suc bn)) with be⊎bo bn
-  ... | inj₁ be-bs =
-    inj₁ (be1 (bo1 be-bs))
-  ... | inj₂ bo-bs =
-    inj₂ (bo1 (be1 bo-bs))
+  be⊎bo (suc (suc bn)) =
+    Sum.map (be1 ∘ bo1) (bo1 ∘ be1) (be⊎bo bn)
 
 module BE⊎BO-2 where
 
@@ -216,5 +210,80 @@ module BE⊎BO-BN-2 where
     bo-bn (bo1 be) = suc (be-bn be)
 
   be⊎bo-bn : ∀ {n} (beo : BE n ⊎ BO n) → BN n
-  be⊎bo-bn (inj₁ be) = be-bn be
-  be⊎bo-bn (inj₂ bo) = bo-bn bo
+  be⊎bo-bn = [ be-bn , bo-bn ]′
+
+-- Another variation: "dirty natuaral numbers".
+
+data D : Set where
+  zero : D
+  suc  : (d : D) → D
+  blah : (d : D) → D
+
+dn3 : D
+dn3 = suc (blah (suc zero))
+
+data N : (d : D) → Set where
+  n0 : N zero
+  n1 : ∀ {d} → N d → N (suc d)
+
+pn3 : N (suc (suc (suc zero)))
+pn3 = n1 (n1 (n1 n0))
+
+mutual
+
+  data E : (d : D) → Set where
+    e0 : E zero
+    e1 : ∀ {d} → O d → E (suc d)
+
+  data O : (d : D) → Set where
+    o1 : ∀ {d} → E d → O (suc d)
+
+module E⊎O-1 where
+
+  e⊎o : ∀ {d} (n : N d) → E d ⊎ O d
+  e⊎o n0 = inj₁ e0
+  e⊎o (n1 n0) = inj₂ (o1 e0)
+  e⊎o (n1 (n1 n)) =
+    Sum.map (e1 ∘ o1) (o1 ∘ e1) (e⊎o n)
+
+module E⊎O-2 where
+
+  mutual
+
+    e⊎o : ∀ {d} (n : N d) → E d ⊎ O d
+    e⊎o n0 = inj₁ e0
+    e⊎o (n1 n) = Sum.map e1 o1 (o⊎e n)
+
+    o⊎e : ∀ {d} (n : N d) → O d ⊎ E d
+    o⊎e n0 = inj₂ e0
+    o⊎e (n1 n) = Sum.map o1 e1 (e⊎o n)
+
+module E⊎O-3 where
+
+  e⊎o : ∀ {d} (n : N d) → E d ⊎ O d
+  e⊎o n0 = inj₁ e0
+  e⊎o (n1 n) = [ inj₂ , inj₁ ]′ (Sum.map o1 e1 (e⊎o n))
+
+module E⊎O-N-1 where
+
+  e-n : ∀ {d} (ne : E d) → N d
+  e-n e0 = n0
+  e-n (e1 (o1 ne)) = n1 (n1 (e-n ne))
+
+  e⊎o-n : ∀ {d} (neo : E d ⊎ O d) → N d
+  e⊎o-n (inj₁ ne) = e-n ne
+  e⊎o-n (inj₂ (o1 ne)) = n1 (e-n ne)
+
+module E⊎O-N-2 where
+
+  mutual
+
+    e-n : ∀ {d} (n : E d) → N d
+    e-n e0 = n0
+    e-n (e1 n) = n1 (o-n n)
+
+    o-n : ∀ {d} (n : O d) → N d
+    o-n (o1 n) = n1 (e-n n)
+
+  e⊎o-n : ∀ {d} (eo : E d ⊎ O d) → N d
+  e⊎o-n = [ e-n , o-n ]′

@@ -170,21 +170,18 @@ module log2-good-wf-ind where
     <-well-founded n = acc (<-acc n)
 
     <-acc : ∀ n y → y <′ n → Acc _<′_ y
-    --<-acc n y y<′n = {!!}
     <-acc .(suc y) y ≤′-refl = <-well-founded y
     <-acc .(suc n) y (≤′-step {n} y<′n) = <-acc n y y<′n
 
-  mutual
+  log2′ : ∀ n → Acc _<′_ n → ℕ
+  log2′ zero a = zero
+  log2′ (suc zero) a = zero
+  log2′ (suc (suc n)) (acc rs) =
+    suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
+    where n′ = ⌊ n /2⌋
 
-    log2 : ℕ → ℕ
-    log2 n = log2′ n (<-well-founded n)
-
-    log2′ : (n : ℕ) → Acc _<′_ n → ℕ
-    log2′ zero a = zero
-    log2′ (suc zero) a = zero
-    log2′ (suc (suc n)) (acc rs) =
-      suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
-      where n′ = ⌊ n /2⌋
+  log2 : ℕ → ℕ
+  log2 n = log2′ n (<-well-founded n)
 
   log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
   log2-test = refl
@@ -194,17 +191,15 @@ module log2-good-lib where
   open Induction.WellFounded
   open Induction.Nat
 
-  mutual
+  log2′ : ∀ n → Acc _<′_ n → ℕ
+  log2′ zero a = zero
+  log2′ (suc zero) a = zero
+  log2′ (suc (suc n)) (acc rs) =
+    suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
+    where n′ = ⌊ n /2⌋
 
-    log2 : ℕ → ℕ
-    log2 n = log2′ n (<-well-founded n)
-
-    log2′ : (n : ℕ) → Acc _<′_ n → ℕ
-    log2′ zero a = zero
-    log2′ (suc zero) a = zero
-    log2′ (suc (suc n)) (acc rs) =
-      suc (log2′ (suc n′) (rs (suc n′) (log2<′ n)))
-      where n′ = ⌊ n /2⌋
+  log2 : ℕ → ℕ
+  log2 n = log2′ n (<-well-founded n)
 
   log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
   log2-test = refl
