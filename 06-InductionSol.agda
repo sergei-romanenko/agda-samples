@@ -25,12 +25,12 @@ import Function.Related as Related
 ℕ-ind₁ P base step (suc n) =
   ℕ-ind₁ (λ m → P (suc m)) (step zero base) (λ m → step (suc m)) n
 
-+s : ∀ n m → n + suc m ≡ suc (n + m)
-+s zero m = refl
-+s (suc n) m = cong suc (+s n m)
++-suc : ∀ n m → n + suc m ≡ suc (n + m)
++-suc zero m = refl
++-suc (suc n) m = cong suc (+-suc n m)
 
-+s₁ : ∀ m n → n + suc m ≡ suc (n + m)
-+s₁ m = ℕ-ind (λ n → n + suc m ≡ suc (n + m)) refl (λ n → cong suc)
++-suc₁ : ∀ m n → n + suc m ≡ suc (n + m)
++-suc₁ m = ℕ-ind (λ n → n + suc m ≡ suc (n + m)) refl (λ n → cong suc)
 
 mutual
 
@@ -61,25 +61,22 @@ odd4 = odd-step (ev-step (odd-step ev-base))
 even2n : ∀ n → Even (n + n)
 even2n zero = ev-base
 even2n (suc n) =
-  subst (Even ∘ suc)
-        (suc (n + n) ≡ n + suc n   ∋ sym (+s n n))
-        (Even (suc (suc (n + n)))  ∋ ev-step (odd-step (even2n n)))
+  subst (Even ∘ suc) (sym $ +-suc n n) (ev-step (odd-step (even2n n)))
 
 even2n′ : ∀ n → Even (n + n)
 even2n′ zero = ev-base
 even2n′ (suc n) = step (even2n′ n)
   where
-    open Related.EquationalReasoning
-      renaming (_∼⟨_⟩_ to _⇒⟨_⟩_; sym to ⇒-sym)
+    open Related.EquationalReasoning renaming (sym to ∼sym)
     step : Even (n + n) → Even (suc n + suc n)
     step = Even (n + n)
-             ⇒⟨ odd-step ⟩
+             ∼⟨ odd-step ⟩
            Odd (suc (n + n))
-             ⇒⟨ ev-step ⟩
+             ∼⟨ ev-step ⟩
            Even (suc (suc (n + n)))
-             ⇒⟨ subst (Even ∘ suc) (sym (+s n n)) ⟩
+             ≡⟨ cong (Even ∘ suc) (sym $ +-suc n n) ⟩
            Even (suc (n + suc n))
-             ⇒⟨ id ⟩
+             ≡⟨ refl ⟩
            Even (suc n + suc n) ∎
 
 even⊎odd : ∀ n → Even n ⊎ Odd n
@@ -101,80 +98,68 @@ even? n | inj₂ odd-n = no (odd→¬even odd-n)
 -- Trees
 
 data Tree (A : Set) : Set where
+  leaf : (a : A) → Tree A
+  node : (t₁ t₂ : Tree A) → Tree A
 
-  ● : Tree A
-  _<_>_ : (t1 : Tree A) → (a : A) → (t2 : Tree A) → Tree A
-
-Tree-ind : ∀ {A : Set} → (P : Tree A → Set) →
-              P (●{A}) →
-              (∀ (t1 t2 : Tree A) (a : A) →
-              P t1 → P t2 → P (t1 < a > t2)) →
+tree-ind :  ∀ {A : Set} (P : Tree A → Set) →
+              (∀ a → P (leaf a)) →
+              (∀ (t₁ t₂ : Tree A) → P t₁ → P t₂ → P (node t₁ t₂)) →
               ∀ t → P t
-Tree-ind P base step ● =
-  base
-Tree-ind P base step (t1 < a > t2 ) =
-  step t1 t2 a (Tree-ind P base step t1) (Tree-ind P base step t2)
+tree-ind P base step (leaf a) = base a
+tree-ind P base step (node t₁ t₂) =
+  step t₁ t₂ (tree-ind P base step t₁) (tree-ind P base step t₂)
 
-_⟱ : {A : Set} → Tree A → List A
-● ⟱ = []
-(t1 < a > t2 ) ⟱ = t1 ⟱ ++ a ∷ t2 ⟱
+flatten : {A : Set} → Tree A → List A
+flatten (leaf a) = a ∷ []
+flatten (node t₁ t₂) = flatten t₁ ++ flatten t₂
 
-_➥_ : {A : Set} → Tree A → List A → List A
-● ➥ xs = xs
-(t1 < a > t2) ➥ xs = t1 ➥ (a ∷ t2 ➥ xs)
+append : {A : Set} → Tree A → List A → List A
+append (leaf a) as = a ∷ as
+append (node t₁ t₂) as = append t₁ (append t₂ as)
 
-module Test⟱ {A : Set} (a b c : A) where
+module Test-flatten {A : Set} (a b c : A) where
 
-  t1 : ● {A} ⟱ ≡ []
+  t1 : flatten (leaf a) ≡ a ∷ []
   t1 = refl
 
-  t2 : ((● < a > (● < b > ●)) < c > ●) ⟱ ≡ a ∷ b ∷ c ∷ []
+  t2 : flatten (node (node (leaf a) (leaf b)) (leaf c)) ≡ a ∷ b ∷ c ∷ []
   t2 = refl
 
-  t3 : ● {A} ➥ [] ≡ []
+  t3 : append (leaf a) [] ≡ a ∷ []
   t3 = refl
 
-  t4 : ((● < a > (● < b > ●)) < c > ●) ➥ [] ≡ a ∷ b ∷ c ∷ []
+  t4 : append (node (node (leaf a) (leaf b)) (leaf c)) [] ≡ a ∷ b ∷ c ∷ []
   t4 = refl
-
-++-assoc : {A : Set} (xs ys zs : List A) → (xs ++ ys) ++ zs ≡ xs ++ (ys ++ zs)
-++-assoc [] ys zs = refl
-++-assoc (x ∷ xs) ys zs = cong (_∷_ x) (++-assoc xs ys zs)
-
-➥-correct' : {A : Set} (t : Tree A) (xs : List A) →
-  t ⟱ ++ xs ≡ t ➥ xs
-➥-correct' ● xs = refl
-➥-correct' (t1 < a > t2) xs =
-  begin
-    (t1 < a > t2) ⟱ ++ xs
-      ≡⟨ refl ⟩
-    (t1 ⟱ ++ a ∷ t2 ⟱) ++ xs
-      ≡⟨ ++-assoc (t1 ⟱) (a ∷ t2 ⟱) xs ⟩
-    t1 ⟱ ++ (a ∷ t2 ⟱ ++ xs)
-      ≡⟨ ➥-correct' t1 (a ∷ t2 ⟱ ++ xs) ⟩
-    t1 ➥ (a ∷ t2 ⟱ ++ xs)
-      ≡⟨ cong (λ z → t1 ➥ (a ∷ z)) (➥-correct' t2 xs) ⟩
-    t1 ➥ (a ∷ t2 ➥ xs)
-      ≡⟨ refl ⟩
-    (t1 < a > t2) ➥ xs
-  ∎
-  where open ≡-Reasoning
 
 ++-[] : {A : Set} (xs : List A) → xs ++ [] ≡ xs
 ++-[] [] = refl
 ++-[] (x ∷ xs) = cong (_∷_ x) (++-[] xs)
 
-➥-correct : {A : Set} (t : Tree A) →
-  t ⟱ ≡ t ➥ []
+++-assoc : {A : Set} (xs ys zs : List A) → (xs ++ ys) ++ zs ≡ xs ++ (ys ++ zs)
+++-assoc [] ys zs = refl
+++-assoc (x ∷ xs) ys zs = cong (_∷_ x) (++-assoc xs ys zs)
 
-➥-correct t =
-  begin
-    t ⟱
-      ≡⟨ sym (++-[] (t ⟱)) ⟩
-    t ⟱ ++ []
-      ≡⟨ ➥-correct' t [] ⟩
-    t ➥ []
+append-correct′ : {A : Set} (t : Tree A) (xs : List A) →
+  flatten t ++ xs ≡ append t xs
+append-correct′ (leaf a) xs = refl
+append-correct′ (node t₁ t₂) xs = begin
+  (flatten t₁ ++ flatten t₂) ++ xs
+    ≡⟨ ++-assoc (flatten t₁) (flatten t₂) xs ⟩
+  flatten t₁ ++ (flatten t₂ ++ xs)
+    ≡⟨ cong (_++_ (flatten t₁)) (append-correct′ t₂ xs) ⟩
+  flatten t₁ ++ (append t₂ xs)
+    ≡⟨ append-correct′ t₁ (append t₂ xs) ⟩
+  append t₁ (append t₂ xs)
   ∎
   where open ≡-Reasoning
 
---
+append-correct : {A : Set} (t : Tree A) →
+  flatten t ≡ append t []
+append-correct t =
+  flatten t
+    ≡⟨ sym $ ++-[] (flatten t) ⟩
+  flatten t ++ []
+    ≡⟨ append-correct′ t [] ⟩
+  append t []
+  ∎
+  where open ≡-Reasoning

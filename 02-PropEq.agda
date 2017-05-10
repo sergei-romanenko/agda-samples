@@ -56,16 +56,13 @@ ev2n₂ : ∀ n → Even (n + n)
 ev2n₂ zero = ev-z
 ev2n₂ (suc n) = step (ev2n₂ n)
   where
-    open Related.EquationalReasoning
-      renaming (_∼⟨_⟩_ to _⇒⟨_⟩_; sym to ⇒-sym)
+    open Related.EquationalReasoning renaming (sym to ∼sym)
     step : Even (n + n) → Even (suc n + suc n)
     step =
       Even (n + n)
-        ⇒⟨ ev-ss ⟩
+        ∼⟨ ev-ss ⟩
       Even (suc (suc (n + n)))
-        ⇒⟨ subst (Even ∘ suc) (sym $ n+sm n n) ⟩
+        ≡⟨ cong (Even ∘ suc) (sym $ n+sm n n) ⟩
       Even (suc (n + suc n))
-        ⇒⟨ id ⟩
+        ∼⟨ id ⟩
       Even (suc n + suc n) ∎
-
---
