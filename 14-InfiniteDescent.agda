@@ -46,60 +46,66 @@ even-suc (even1 odd-n) = odd-n
 odd-suc : ∀ {n} → Odd (suc n) → Even n
 odd-suc (odd1 even-n) = even-n
 
--- "Ordinary" induction.
+module Evn-2*-1 where
 
-even-2* : ∀ m → Even (m + m)
-even-2* zero = even0
-even-2* (suc n) = step (even-2* n)
-  where
-  open Related.EquationalReasoning renaming (sym to ∼sym)
-  step : Even (n + n) → Even (suc n + suc n) 
-  step =
-    Even (n + n)
-      ∼⟨ even1 ∘ odd1 ⟩
-    Even (suc (suc (n + n)))
-      ≡⟨ cong (Even ∘ suc) (sym $ +-suc n n) ⟩
-    Even (suc (n + suc n))
-      ≡⟨ refl ⟩
-    Even (suc n + suc n)
-    ∎
+  -- "Ordinary" induction.
 
--- "Infinite descent" in style of Fermat.
+  even-2* : ∀ m → Even (m + m)
+  even-2* zero = even0
+  even-2* (suc n) = step (even-2* n)
+    where
+    open Related.EquationalReasoning renaming (sym to ∼sym)
+    step : Even (n + n) → Even (suc n + suc n) 
+    step =
+      Even (n + n)
+        ∼⟨ even1 ∘ odd1 ⟩
+      Even (suc (suc (n + n)))
+        ≡⟨ cong (Even ∘ suc) (sym $ +-suc n n) ⟩
+      Even (suc (n + suc n))
+        ≡⟨ refl ⟩
+      Even (suc n + suc n)
+      ∎
 
-¬odd-2* : ∀ m → ¬ Odd (m + m)
-¬odd-2* zero odd-0 =
-  ¬odd-0 odd-0
-¬odd-2* (suc zero) odd-2 =
-  ¬odd-0 (even-suc (odd-suc odd-2))
-¬odd-2* (suc (suc n)) h = ¬odd-2n odd-2n
-  where
-  open Related.EquationalReasoning renaming (sym to ∼sym)
-  ¬odd-2n : ¬ Odd (n + n)
-  ¬odd-2n = ¬odd-2* n
-  down : Odd (suc (suc (n + suc (suc n)))) → Odd (n + n)
-  down =
-    Odd (suc (suc (n + suc (suc n))))
-      ∼⟨ even-suc ∘ odd-suc ⟩
-    Odd (n + suc (suc n))
-      ≡⟨ cong Odd (+-suc n (suc n)) ⟩
-    Odd (suc (n + suc n))
-      ≡⟨ cong (Odd ∘ suc) (+-suc n n) ⟩
-    Odd (suc (suc (n + n)))
-      ∼⟨ even-suc ∘ odd-suc ⟩
-    Odd (n + n)
-    ∎
-  odd-2n : Odd (n + n)
-  odd-2n = down h
+module Odd-2*-1 where
 
--- A more Agda-idiomatic style...
+  -- "Infinite descent" in style of Fermat.
 
-¬odd-2*′ : ∀ m → ¬ Odd (m + m)
-¬odd-2*′ zero ()
-¬odd-2*′ (suc zero) (odd1 (even1 ()))
-¬odd-2*′ (suc (suc n)) (odd1 (even1 h))
-  rewrite +-suc n (suc n)
-        | +-suc n n
-  = ¬odd-2*′ n $ even-suc (odd-suc h)
+  ¬odd-2* : ∀ m → ¬ Odd (m + m)
+  ¬odd-2* zero odd-0 =
+    ¬odd-0 odd-0
+  ¬odd-2* (suc zero) odd-2 =
+    ¬odd-0 (even-suc (odd-suc odd-2))
+  ¬odd-2* (suc (suc n)) h = ¬odd-2n odd-2n
+    where
+    open Related.EquationalReasoning renaming (sym to ∼sym)
+    ¬odd-2n : ¬ Odd (n + n)
+    ¬odd-2n = ¬odd-2* n
+    down : Odd (suc (suc (n + suc (suc n)))) → Odd (n + n)
+    down =
+      Odd (suc (suc (n + suc (suc n))))
+        ∼⟨ even-suc ∘ odd-suc ⟩
+      Odd (n + suc (suc n))
+        ≡⟨ cong Odd (+-suc n (suc n)) ⟩
+      Odd (suc (n + suc n))
+        ≡⟨ cong (Odd ∘ suc) (+-suc n n) ⟩
+      Odd (suc (suc (n + n)))
+        ∼⟨ even-suc ∘ odd-suc ⟩
+      Odd (n + n)
+      ∎
+    odd-2n : Odd (n + n)
+    odd-2n = down h
+
+module Odd-2*-2 where
+
+  -- A more Agda-idiomatic style...
+
+  ¬odd-2* : ∀ m → ¬ Odd (m + m)
+  ¬odd-2* zero ()
+  ¬odd-2* (suc zero) (odd1 (even1 ()))
+  ¬odd-2* (suc (suc n)) (odd1 (even1 h))
+    rewrite +-suc n (suc n)
+          | +-suc n n
+    = ¬odd-2* n $ even-suc (odd-suc h)
 
 module Even⊎Odd-1 where
 
@@ -147,6 +153,26 @@ module Even⊎Odd-4 where
   even⊎odd n =
     indℕ {λ n → Even n ⊎ Odd n}
       (inj₁ even0) (λ m → [ inj₂ ∘ odd1 , inj₁ ∘ even1 ]′) n
+
+module Even×Odd-1 where
+
+  -- "Infinite descent" in style of Fermat.
+
+  ¬even×odd : ∀ m → ¬ (Even m × Odd m)
+  ¬even×odd zero (even-0 , odd-0) =
+    ¬odd-0 odd-0
+  ¬even×odd (suc n) (even-suc-n , odd-suc-n) =
+    ¬even×odd n (odd-suc odd-suc-n , even-suc even-suc-n)
+
+module Even×Odd-2 where
+
+  -- A more Agda-idiomatic style...
+
+  ¬even×odd : ∀ m → Even m → Odd m → ⊥
+  ¬even×odd zero even-0 ()
+  ¬even×odd (suc n) (even1 odd-n) (odd1 even-n) =
+    ¬even×odd n even-n odd-n
+
 
 -- The R example
 
