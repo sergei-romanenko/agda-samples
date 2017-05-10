@@ -60,17 +60,17 @@ theorem1 = {!!}
 theorem2 : (n : ℕ) → 0 + n ≡ n
 theorem2 n = {!!}
 
--- n+0 : ∀ n → n + 0 ≡ n
--- n+0 n = ?
+-- +-right-identity : ∀ n → n + 0 ≡ n
+-- +-right-identity n = ?
 
 cong : ∀ {A B : Set} (f : A → B) {x y} → x ≡ y → f x ≡ f y
 cong f refl = refl
 
-n+0 : ∀ n → n + 0 ≡ n
-n+0 n = {!!}
++-right-identity : ∀ n → n + 0 ≡ n
++-right-identity n = {!!}
 
-n+sm : ∀ n m → n + suc m ≡ suc (n + m)
-n+sm n m = {!!}
++-suc : ∀ n m → n + suc m ≡ suc (n + m)
++-suc n m = {!!}
 
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym xy = {!!}

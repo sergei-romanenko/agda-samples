@@ -9,13 +9,16 @@ module 14-InfiniteDescent where
 --}
 
 open import Data.Nat
+open import Data.Nat.Properties.Simple
 open import Data.Sum as Sum
 open import Data.Product as Prod
 open import Data.Empty
 
 open import Function
+import Function.Related as Related
 
 open import Relation.Nullary
+open import Relation.Binary.PropositionalEquality
 
 mutual
 
@@ -31,6 +34,72 @@ odd-1 = odd1 even0
 
 even-2 : Even 2
 even-2 = even1 (odd1 even0)
+
+-- Inversion.
+
+¬odd-0 : ¬ Odd zero
+¬odd-0 ()
+
+even-suc : ∀ {n} → Even (suc n) → Odd n
+even-suc (even1 odd-n) = odd-n
+
+odd-suc : ∀ {n} → Odd (suc n) → Even n
+odd-suc (odd1 even-n) = even-n
+
+-- "Ordinary" induction.
+
+even-2* : ∀ m → Even (m + m)
+even-2* zero = even0
+even-2* (suc n) = step (even-2* n)
+  where
+  open Related.EquationalReasoning renaming (sym to ∼sym)
+  step : Even (n + n) → Even (suc n + suc n) 
+  step =
+    Even (n + n)
+      ∼⟨ even1 ∘ odd1 ⟩
+    Even (suc (suc (n + n)))
+      ≡⟨ cong (Even ∘ suc) (sym $ +-suc n n) ⟩
+    Even (suc (n + suc n))
+      ≡⟨ refl ⟩
+    Even (suc n + suc n)
+    ∎
+
+-- "Infinite descent" in style of Fermat.
+
+¬odd-2* : ∀ m → ¬ Odd (m + m)
+¬odd-2* zero odd-0 =
+  ¬odd-0 odd-0
+¬odd-2* (suc zero) odd-2 =
+  ¬odd-0 (even-suc (odd-suc odd-2))
+¬odd-2* (suc (suc n)) h = ¬odd-2n odd-2n
+  where
+  open Related.EquationalReasoning renaming (sym to ∼sym)
+  ¬odd-2n : ¬ Odd (n + n)
+  ¬odd-2n = ¬odd-2* n
+  down : Odd (suc (suc (n + suc (suc n)))) → Odd (n + n)
+  down =
+    Odd (suc (suc (n + suc (suc n))))
+      ∼⟨ even-suc ∘ odd-suc ⟩
+    Odd (n + suc (suc n))
+      ≡⟨ cong Odd (+-suc n (suc n)) ⟩
+    Odd (suc (n + suc n))
+      ≡⟨ cong (Odd ∘ suc) (+-suc n n) ⟩
+    Odd (suc (suc (n + n)))
+      ∼⟨ even-suc ∘ odd-suc ⟩
+    Odd (n + n)
+    ∎
+  odd-2n : Odd (n + n)
+  odd-2n = down h
+
+-- A more Agda-idiomatic style...
+
+¬odd-2*′ : ∀ m → ¬ Odd (m + m)
+¬odd-2*′ zero ()
+¬odd-2*′ (suc zero) (odd1 (even1 ()))
+¬odd-2*′ (suc (suc n)) (odd1 (even1 h))
+  rewrite +-suc n (suc n)
+        | +-suc n n
+  = ¬odd-2*′ n $ even-suc (odd-suc h)
 
 module Even⊎Odd-1 where
 
@@ -211,79 +280,3 @@ module BE⊎BO-BN-2 where
 
   be⊎bo-bn : ∀ {n} (beo : BE n ⊎ BO n) → BN n
   be⊎bo-bn = [ be-bn , bo-bn ]′
-
--- Another variation: "dirty natuaral numbers".
-
-data D : Set where
-  zero : D
-  suc  : (d : D) → D
-  blah : (d : D) → D
-
-dn3 : D
-dn3 = suc (blah (suc zero))
-
-data N : (d : D) → Set where
-  n0 : N zero
-  n1 : ∀ {d} → N d → N (suc d)
-
-pn3 : N (suc (suc (suc zero)))
-pn3 = n1 (n1 (n1 n0))
-
-mutual
-
-  data E : (d : D) → Set where
-    e0 : E zero
-    e1 : ∀ {d} → O d → E (suc d)
-
-  data O : (d : D) → Set where
-    o1 : ∀ {d} → E d → O (suc d)
-
-module E⊎O-1 where
-
-  e⊎o : ∀ {d} (n : N d) → E d ⊎ O d
-  e⊎o n0 = inj₁ e0
-  e⊎o (n1 n0) = inj₂ (o1 e0)
-  e⊎o (n1 (n1 n)) =
-    Sum.map (e1 ∘ o1) (o1 ∘ e1) (e⊎o n)
-
-module E⊎O-2 where
-
-  mutual
-
-    e⊎o : ∀ {d} (n : N d) → E d ⊎ O d
-    e⊎o n0 = inj₁ e0
-    e⊎o (n1 n) = Sum.map e1 o1 (o⊎e n)
-
-    o⊎e : ∀ {d} (n : N d) → O d ⊎ E d
-    o⊎e n0 = inj₂ e0
-    o⊎e (n1 n) = Sum.map o1 e1 (e⊎o n)
-
-module E⊎O-3 where
-
-  e⊎o : ∀ {d} (n : N d) → E d ⊎ O d
-  e⊎o n0 = inj₁ e0
-  e⊎o (n1 n) = [ inj₂ , inj₁ ]′ (Sum.map o1 e1 (e⊎o n))
-
-module E⊎O-N-1 where
-
-  e-n : ∀ {d} (ne : E d) → N d
-  e-n e0 = n0
-  e-n (e1 (o1 ne)) = n1 (n1 (e-n ne))
-
-  e⊎o-n : ∀ {d} (neo : E d ⊎ O d) → N d
-  e⊎o-n (inj₁ ne) = e-n ne
-  e⊎o-n (inj₂ (o1 ne)) = n1 (e-n ne)
-
-module E⊎O-N-2 where
-
-  mutual
-
-    e-n : ∀ {d} (n : E d) → N d
-    e-n e0 = n0
-    e-n (e1 n) = n1 (o-n n)
-
-    o-n : ∀ {d} (n : O d) → N d
-    o-n (o1 n) = n1 (e-n n)
-
-  e⊎o-n : ∀ {d} (eo : E d ⊎ O d) → N d
-  e⊎o-n = [ e-n , o-n ]′

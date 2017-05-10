@@ -75,19 +75,19 @@ theorem1 = refl
 theorem2 : (n : ℕ) → 0 + n ≡ n
 theorem2 n = refl
 
--- n+0 : ∀ n → n + 0 ≡ n
--- n+0 n = ?
+-- +-right-identity : ∀ n → n + 0 ≡ n
+-- +-right-identity n = ?
 
 cong : ∀ {A B : Set} (f : A → B) {x y} → x ≡ y → f x ≡ f y
 cong f refl = refl
 
-n+0 : ∀ n → n + 0 ≡ n
-n+0 zero = refl
-n+0 (suc n) = cong suc (n+0 n)
++-right-identity : ∀ n → n + 0 ≡ n
++-right-identity zero = refl
++-right-identity (suc n) = cong suc (+-right-identity n)
 
-n+sm : ∀ n m → n + suc m ≡ suc (n + m)
-n+sm zero m = refl
-n+sm (suc n) m = cong suc (n+sm n m)
++-suc : ∀ n m → n + suc m ≡ suc (n + m)
++-suc zero m = refl
++-suc (suc n) m = cong suc (+-suc n m)
 
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
@@ -97,10 +97,10 @@ trans refl refl = refl
 
 +-comm : ∀ n m → n + m ≡ m + n
 +-comm zero m =
-  sym (n+0 m)
+  sym (+-right-identity m)
 +-comm (suc n) m = trans p q
   where
     p : suc (n + m) ≡ suc (m + n)
     p = cong suc (+-comm n m)
     q : suc (m + n) ≡ m + suc n
-    q = sym (n+sm m n)
+    q = sym (+-suc m n)

@@ -10,8 +10,6 @@ open import Data.Sum
 open import Data.Product
   renaming (map to map×)
 
-open import Data.Nat.Properties
-
 open import Algebra
   using (module CommutativeSemiring)
 
@@ -32,13 +30,13 @@ import Function.Related as Related
 m+1+n≡1+m+n : ∀ m n → m + suc n ≡ suc (m + n)
 m+1+n≡1+m+n m n = begin
   m + suc n
-    ≡⟨ refl ⟩
+    ≡⟨⟩
   m + (1 + n)
     ≡⟨ P.sym (+-assoc m (suc zero) n) ⟩
   (m + 1) + n
     ≡⟨ +-comm m (suc zero) ⟨ cong₂ _+_ ⟩ refl ⟩
   (1 + m) + n
-    ≡⟨ refl ⟩
+    ≡⟨⟩
   suc (m + n)
   ∎
   where open ≡-Reasoning
@@ -47,13 +45,13 @@ m+1+n≡1+m+n m n = begin
 2*-correct zero = refl
 2*-correct (suc n) = begin
   2* (suc n)
-    ≡⟨ refl ⟩
+    ≡⟨⟩
   suc (suc (2* n))
     ≡⟨ cong (suc ∘ suc) (2*-correct n) ⟩
   suc (suc (n + n))
     ≡⟨ P.sym (m+1+n≡1+m+n (suc n) n) ⟩
   suc (n + suc n)
-    ≡⟨ refl ⟩
+    ≡⟨⟩
   suc n + suc n
   ∎
   where open ≡-Reasoning
@@ -61,12 +59,12 @@ m+1+n≡1+m+n m n = begin
 -- Now let us prove this:
 
 2*-injective : (n m : ℕ) → 2* n ≡ 2* m → n ≡ m
-2*-injective zero zero _ = refl
+2*-injective zero zero refl = refl
 2*-injective zero (suc n) ()
 2*-injective (suc n) zero ()
-2*-injective (suc n) (suc m) h =
+2*-injective (suc n) (suc m) 2+2n≡2+2m =
   -- This is shot, but looks like a mystery.
-  cong suc (2*-injective n m (cong (pred ∘ pred) h))
+  cong suc (2*-injective n m (cong (pred ∘ pred) 2+2n≡2+2m))
 
 -- Let us try to rewrite the above proof in a more "human-friendly" form
 -- by using "equational reasoning.
@@ -74,9 +72,9 @@ m+1+n≡1+m+n m n = begin
 -- we have to deal with a sequence of equations, rather than expressions.
 
 2*-injective′ : (n m : ℕ) → 2* n ≡ 2* m → n ≡ m
-2*-injective′ zero zero = λ _ → refl
-2*-injective′ zero (suc n) = λ ()
-2*-injective′ (suc n) zero = λ ()
+2*-injective′ zero zero refl = refl
+2*-injective′ zero (suc n) ()
+2*-injective′ (suc n) zero ()
 2*-injective′ (suc n) (suc m) =
   -- Here ∼ corresponds to implication.
   -- Note that ∼ is "Chinese" and is entered as \~ .
@@ -289,5 +287,3 @@ a-aa-li p = refl
     ↔⟨ sym $ proj₂ ×⊎.distrib (C ⊎ B) C A ⟩
   ((C ⊎ A) × (C ⊎ B)) ∎
   where open Related.EquationalReasoning
-
---

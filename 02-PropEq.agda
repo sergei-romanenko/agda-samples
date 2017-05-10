@@ -7,24 +7,24 @@ open import Relation.Binary.PropositionalEquality
 open import Function
 import Function.Related as Related
 
-n+0 : ∀ n → n + 0 ≡ n
-n+0 zero = refl
-n+0 (suc n) = cong suc (n+0 n)
++-right-identity : ∀ n → n + 0 ≡ n
++-right-identity zero = refl
++-right-identity (suc n) = cong suc (+-right-identity n)
 
-n+sm : ∀ n m → n + suc m ≡ suc (n + m)
-n+sm zero m = refl
-n+sm (suc n) m = cong suc (n+sm n m)
++-suc : ∀ m n → m + suc n ≡ suc (m + n)
++-suc zero n = refl
++-suc (suc m) n = cong suc (+-suc m n)
 
-+-comm : ∀ n m → n + m ≡ m + n
-+-comm zero m = sym (n+0 m)
-+-comm (suc n) m = begin
-  suc n + m
-    ≡⟨ refl ⟩
-  suc (n + m)
-    ≡⟨ cong suc (+-comm n m) ⟩
++-comm : ∀ m n → m + n ≡ n + m
++-comm zero n = sym (+-right-identity n)
++-comm (suc m) n = begin
+  suc m + n
+    ≡⟨⟩
   suc (m + n)
-    ≡⟨ sym (n+sm m n) ⟩
-  m + suc n
+    ≡⟨ cong suc (+-comm m n) ⟩
+  suc (n + m)
+    ≡⟨ sym (+-suc n m) ⟩
+  n + suc m
   ∎
   where open ≡-Reasoning
 
@@ -62,7 +62,7 @@ ev2n₂ (suc n) = step (ev2n₂ n)
       Even (n + n)
         ∼⟨ ev-ss ⟩
       Even (suc (suc (n + n)))
-        ≡⟨ cong (Even ∘ suc) (sym $ n+sm n n) ⟩
+        ≡⟨ cong (Even ∘ suc) (sym $ +-suc n n) ⟩
       Even (suc (n + suc n))
         ∼⟨ id ⟩
       Even (suc n + suc n) ∎

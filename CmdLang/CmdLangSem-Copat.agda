@@ -129,20 +129,8 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
     ∎ $ h₂
     where open Related.EquationalReasoning
 
-  {-
   ⇩⇒C (⇩-if-true b≡t h) rewrite b≡t =
     ⇩⇒C h
-  -}
-  ⇩⇒C (⇩-if-true {σ} {σ′} {b} {c₁} {c₂} b≡t h) =
-    C⟦ c₁ ⟧ σ ⇓ σ′
-      ≡⟨ refl ⟩
-    C⟦if⟧ true c₁ c₂ σ ⇓ σ′
-      ≡⟨ cong (λ b → C⟦if⟧ b c₁ c₂ σ ⇓ σ′) (P.sym $ b≡t) ⟩
-    C⟦if⟧ (B⟦ b ⟧ σ) c₁ c₂ σ ⇓ σ′
-      ≡⟨ refl ⟩
-    C⟦ if b c₁ c₂ ⟧ σ ⇓ σ′
-    ∎ $ ⇩⇒C h
-    where open Related.EquationalReasoning
 
   ⇩⇒C (⇩-if-false b≡f h) rewrite b≡f =
     ⇩⇒C h
@@ -176,12 +164,7 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
   steps⇩≡steps ⇩-skip = refl
   steps⇩≡steps ⇩-assign = refl
   steps⇩≡steps (⇩-seq h⇩₁ h⇩₂) = {!!}
-  steps⇩≡steps (⇩-if-true {σ} {σ′} {b} {c₁} {c₂} b≡t h⇩) rewrite b≡t =
-    {!refl!}
-  {-
-  ... | true = {!!}
-  ... | false = ?
-  -}
+  steps⇩≡steps (⇩-if-true b≡t h⇩) = {!refl!}
   steps⇩≡steps (⇩-if-false b≡f h⇩) = {!!}
   steps⇩≡steps (⇩-while-true b≡t h⇩ h⇩₁) = {!!}
   steps⇩≡steps (⇩-while-false b≡f) = {!!}
@@ -324,5 +307,3 @@ record CmdLangSem (memory : Memory) (absCmdLang : AbsCmdLang memory) : Set₁
 --         C⇒∞⇧ : {i : Size} (c : Cmd) (σ : State) →
 --           C⟦ c ⟧ σ ⇑⟨ i ⟩ → c ∞/ σ ⇧⟨ i ⟩
 --       --⇧force (C⇒∞⇧ c σ h⇑) {j} = C⇒⇧ c σ h⇑
-
--- --

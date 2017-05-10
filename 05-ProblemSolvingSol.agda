@@ -1,12 +1,18 @@
 module 05-ProblemSolvingSol where
 
 open import Data.Nat
+open import Data.Nat.Properties.Simple
+  using (+-right-identity; +-suc; +-comm)
 open import Data.Product
 
 open import Function
 
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
+
+-- +-right-identity : ∀ n → n + 0 ≡ n
+-- +-suc : ∀ m n → m + suc n ≡ suc (m + n)
+-- +-comm : ∀ m n → m + n ≡ n + m
 
 open ≡-Reasoning
 
@@ -27,25 +33,6 @@ m+?≡n .(suc m) .(suc n) (s≤s {m} {n} m≤n) with m+?≡n m n m≤n
 x+1≡3 : ∃ λ x → x + 1 ≡ 3
 x+1≡3 = suc (suc zero) , refl
 
----- m + n ≡ n + m
-
-+0 : ∀ m → m + 0 ≡ m
-+0 zero = refl
-+0 (suc n) = cong suc (+0 n)
-
-+s : ∀ m n → m + suc n ≡ suc (m + n)
-+s zero n = refl
-+s (suc m) n = cong suc (+s m n) 
-
-+-comm : ∀ m n → m + n ≡ n + m
-+-comm zero n = sym (+0 n)
-+-comm (suc m) n =
-  begin
-    suc (m + n) ≡⟨ cong suc (+-comm m n) ⟩
-    suc (n + m) ≡⟨ sym (+s n m) ⟩
-    n + suc m
-  ∎
-
 ---- Now x + m ≡  n can be reduced to m + x ≡ n
 
 ?+m≡n-comm : ∀ m n → m ≤ n →  ∃ λ x → (x + m ≡ n)
@@ -64,15 +51,15 @@ x+1≡3 = suc (suc zero) , refl
 -}
 
 ---- A direct proof looks as a fusion of +-comm and m+?≡n,
----- and uses +0 and +s directly .
+---- and uses +-right-identity and +-suc directly .
 
 ?+m≡n : ∀ m n → m ≤ n →  ∃ λ x → (x + m ≡ n)
-?+m≡n .0 n z≤n = n , +0 n
+?+m≡n .0 n z≤n = n , +-right-identity n
 ?+m≡n .(suc m) .(suc n) (s≤s {m} {n} m≤n) with ?+m≡n m n m≤n
-... | x , x+m≡n rewrite +s x m = x , x+sm≡sn
+... | x , x+m≡n rewrite +-suc x m = x , x+sm≡sn
   where x+sm≡sn : x + suc m ≡ suc n
         x+sm≡sn = begin
-                    x + suc m   ≡⟨ +s x m ⟩
+                    x + suc m   ≡⟨ +-suc x m ⟩
                     suc (x + m) ≡⟨ cong suc x+m≡n ⟩
                     suc n
                   ∎

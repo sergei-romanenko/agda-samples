@@ -245,9 +245,9 @@ n+0≡n (suc n′) = cong suc (n+0≡n n′)
 
 -- ⇓ Now, let us prove that n + suc m ≡ suc (n + m) :
 
-n+sm≡sn+m : (n m : ℕ) → n + suc m ≡ suc (n + m)
-n+sm≡sn+m zero m = refl
-n+sm≡sn+m (suc n′) m = cong suc (n+sm≡sn+m n′ m)
++-suc : (n m : ℕ) → n + suc m ≡ suc (n + m)
++-suc zero m = refl
++-suc (suc n′) m = cong suc (+-suc n′ m)
 
 --
 -- Commutativity: n + m ≡ m + n
@@ -258,7 +258,7 @@ n+sm≡sn+m (suc n′) m = cong suc (n+sm≡sn+m n′ m)
 +-comm : (n m : ℕ) → n + m ≡ m + n
 +-comm n zero = n+0≡n n
 +-comm n (suc m′) =
-  trans (n+sm≡sn+m n m′)         -- n + suc m′ ≡ suc (n + m′)
+  trans (+-suc n m′)             -- n + suc m′ ≡ suc (n + m′)
         (cong suc (+-comm n m′)) -- suc (n + m′) ≡ suc (m′ + n) ≡ suc m′ + n
 
 ----------------------------------------------------------------
@@ -268,7 +268,7 @@ n+sm≡sn+m (suc n′) m = cong suc (n+sm≡sn+m n′ m)
 module ≡-Reasoning where
 
   infixr 2 _≡⟨_⟩_
-  infix 2 _∎
+  infix 3 _∎
 
   _≡⟨_⟩_ : {A : Set} (x : A) {y z : A} → x ≡ y → y ≡ z → x ≡ z
   x ≡⟨ x≡y ⟩ y≡z = trans x≡y y≡z
@@ -282,7 +282,7 @@ module ≡-Reasoning where
 +-comm′ n zero = n+0≡n n
 +-comm′ n (suc m′) =
    n + suc m′
-     ≡⟨ n+sm≡sn+m n m′ ⟩
+     ≡⟨ +-suc n m′ ⟩
    suc (n + m′)
      ≡⟨ cong suc (+-comm′ n m′) ⟩
    suc (m′ + n)
