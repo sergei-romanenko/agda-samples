@@ -17,7 +17,7 @@ This (slightly modified) code is from
 module SmallStepDepRec where
 
 open import Data.Nat
-  using (ℕ; _+_)
+  using (ℕ; _+_; zero; suc)
 open import Data.Vec
   using (Vec; []; _∷_)
 open import Function using (_∘_)
@@ -104,3 +104,83 @@ correct′ (val n) s = refl
 correct′ {i} (t1 ⊕ t2) s
   rewrite correct t1 s | correct t2 (eval t1 ∷ s)
   = refl
+
+--
+-- Compiling to a list of instructions
+--
+
+-- Instructions
+
+data Inst : (i j : ℕ) → Set where
+  push : ∀ {i} (n : ℕ) → Inst i (1 + i)
+  add  : ∀ {i} → Inst (2 + i) (1 + i)
+
+-- Programs
+
+infixr 5 _∷_
+
+data Prog : (i j : ℕ) → Set where
+  [] : ∀ {i} → Prog i i
+  _∷_ : ∀ {i j k} (c : Inst i j) (p : Prog j k) → Prog i k
+
+-- Interpreter
+
+p-exec : ∀ {i j} (p : Prog i j) (s : Stack i) → Stack j
+p-exec [] s = s
+p-exec (push n ∷ p) s = p-exec p (n ∷ s)
+p-exec (add ∷ p) (n2 ∷ n1 ∷ s) = p-exec p ((n1 + n2) ∷ s)
+
+-- Compiler
+
+p-compile : ∀ {i j} (t : Tm) (p : Prog (1 + i) j) → Prog i j
+p-compile (val n) p = push n ∷ p
+p-compile (t1 ⊕ t2) p =
+  p-compile t1 (p-compile t2 (add ∷ p))
+
+-- Code → Prog
+
+flatten : ∀ {i j k} (c : Code i j) (p : Prog j k) → Prog i k
+flatten (seq c1 c2) p = flatten c1 (flatten c2 p)
+flatten (push n) p = push n ∷ p
+flatten add p = add ∷ p
+
+-- `flatten` is correct.
+
+flatten-correct′ : ∀ {i j k} (c : Code i j) (p : Prog j k) (s : Stack i) →
+  p-exec p (exec c s) ≡ p-exec (flatten c p) s
+flatten-correct′ (seq c1 c2) p s =
+  p-exec p (exec (seq c1 c2) s)
+    ≡⟨⟩
+  p-exec p (exec c2 (exec c1 s))
+    ≡⟨ flatten-correct′ c2 p (exec c1 s) ⟩
+  p-exec (flatten c2 p) (exec c1 s)
+    ≡⟨ flatten-correct′ c1 (flatten c2 p) s ⟩
+  p-exec (flatten c1 (flatten c2 p)) s
+    ≡⟨⟩
+  p-exec (flatten (seq c1 c2) p) s
+  ∎
+  where open ≡-Reasoning
+flatten-correct′ (push n) p s = refl
+flatten-correct′ add p (n2 ∷ n1 ∷ s) = refl
+
+flatten-correct : ∀ {i j} (c : Code i j) (s : Stack i) →
+  exec c s ≡ p-exec (flatten c []) s
+flatten-correct c s = flatten-correct′ c [] s
+
+-- compile ~ p compile
+
+compile~p-compile : ∀ {i j} (t : Tm) (p : Prog (1 + i) j) →
+  flatten (compile t) p ≡ p-compile t p
+compile~p-compile (val n) p = refl
+compile~p-compile (t1 ⊕ t2) p =
+  flatten (compile (t1 ⊕ t2)) p
+    ≡⟨⟩
+  flatten (compile t1) (flatten (compile t2) (add ∷ p))
+    ≡⟨ compile~p-compile t1 (flatten (compile t2) (add ∷ p)) ⟩
+  p-compile t1 (flatten (compile t2) (add ∷ p))
+    ≡⟨ cong (p-compile t1) (compile~p-compile t2 (add ∷ p)) ⟩
+  p-compile t1 (p-compile t2 (add ∷ p))
+    ≡⟨⟩
+  p-compile (t1 ⊕ t2) p
+  ∎
+  where open ≡-Reasoning
