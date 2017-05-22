@@ -14,65 +14,55 @@ open import Function
 import Function.Related as Related
 
 
-ℕ-ind : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
+indℕ : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
            ∀ n → P n
-ℕ-ind P base step zero = base
-ℕ-ind P base step (suc n) = step n (ℕ-ind P base step n)
+indℕ P base step zero = base
+indℕ P base step (suc n) = step n (indℕ P base step n)
 
-ℕ-ind₁ : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
+indℕ₁ : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
            ∀ n → P n
-ℕ-ind₁ P base step zero = base
-ℕ-ind₁ P base step (suc n) =
-  ℕ-ind₁ (λ m → P (suc m)) (step zero base) (λ m → step (suc m)) n
+indℕ₁ P base step zero = base
+indℕ₁ P base step (suc n) =
+  indℕ₁ (λ m → P (suc m)) (step zero base) (λ m → step (suc m)) n
 
 +-suc : ∀ n m → n + suc m ≡ suc (n + m)
 +-suc zero m = refl
 +-suc (suc n) m = cong suc (+-suc n m)
 
 +-suc₁ : ∀ m n → n + suc m ≡ suc (n + m)
-+-suc₁ m = ℕ-ind (λ n → n + suc m ≡ suc (n + m)) refl (λ n → cong suc)
++-suc₁ m = indℕ (λ n → n + suc m ≡ suc (n + m)) refl (λ n → cong suc)
 
 mutual
 
   data Even : ℕ → Set where
-    ev-base : Even zero
-    ev-step : ∀ {n} → (odd-n : Odd n) → Even (suc n)
+    even0 : Even zero
+    even1 : ∀ {n} → (odd-n : Odd n) → Even (suc n)
 
   data Odd : ℕ → Set where
-    odd-step : ∀ {n} → (even-n : Even n) → Odd (suc n)
-
-data Even₁ : ℕ → Set
-data Odd₁  : ℕ → Set
-
-data Even₁ where
-  ev-base : Even₁ zero
-  ev-step : ∀ {n} → (odd-n : Odd₁ n) → Even₁ (suc n)
-
-data Odd₁ where
-  odd-step : ∀ {n} → (even-n : Even₁ n) → Odd₁ (suc n)
+    odd1 : ∀ {n} → (even-n : Even n) → Odd (suc n)
 
 
 even3 : Even 2
-even3 = ev-step (odd-step ev-base)
+even3 = even1 (odd1 even0)
 
 odd4 : Odd 3
-odd4 = odd-step (ev-step (odd-step ev-base))
+odd4 = odd1 (even1 (odd1 even0))
 
 even2n : ∀ n → Even (n + n)
-even2n zero = ev-base
+even2n zero = even0
 even2n (suc n) =
-  subst (Even ∘ suc) (sym $ +-suc n n) (ev-step (odd-step (even2n n)))
+  subst (Even ∘ suc) (sym $ +-suc n n) (even1 (odd1 (even2n n)))
 
 even2n′ : ∀ n → Even (n + n)
-even2n′ zero = ev-base
+even2n′ zero = even0
 even2n′ (suc n) = step (even2n′ n)
   where
     open Related.EquationalReasoning renaming (sym to ∼sym)
     step : Even (n + n) → Even (suc n + suc n)
     step = Even (n + n)
-             ∼⟨ odd-step ⟩
+             ∼⟨ odd1 ⟩
            Odd (suc (n + n))
-             ∼⟨ ev-step ⟩
+             ∼⟨ even1 ⟩
            Even (suc (suc (n + n)))
              ≡⟨ cong (Even ∘ suc) (sym $ +-suc n n) ⟩
            Even (suc (n + suc n))
@@ -80,19 +70,19 @@ even2n′ (suc n) = step (even2n′ n)
            Even (suc n + suc n) ∎
 
 even⊎odd : ∀ n → Even n ⊎ Odd n
-even⊎odd zero = inj₁ ev-base
+even⊎odd zero = inj₁ even0
 even⊎odd (suc n) with even⊎odd n
-... | inj₁ ev-n  = inj₂ (odd-step ev-n)
-... | inj₂ odd-n = inj₁ (ev-step odd-n)
+... | inj₁ even-n  = inj₂ (odd1 even-n)
+... | inj₂ odd-n = inj₁ (even1 odd-n)
 
--- even⊎odd (suc n) = [ inj₂ ∘ odd-step , inj₁ ∘ ev-step ]′ (even-odd n)
+-- even⊎odd (suc n) = [ inj₂ ∘ odd1 , inj₁ ∘ even1 ]′ (even-odd n)
 
 odd→¬even : ∀ {n} → Odd n → ¬ Even n
-odd→¬even (odd-step even-n) (ev-step odd-n) = odd→¬even odd-n even-n
+odd→¬even (odd1 even-n) (even1 odd-n) = odd→¬even odd-n even-n
 
 even? : ∀ n → Dec (Even n)
 even? n with even⊎odd n
-even? n | inj₁ ev-n  = yes ev-n
+even? n | inj₁ even-n  = yes even-n
 even? n | inj₂ odd-n = no (odd→¬even odd-n)
 
 -- Trees

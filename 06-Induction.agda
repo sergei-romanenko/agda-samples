@@ -14,40 +14,30 @@ open import Function
 import Function.Related as Related
 
 
-ℕ-ind : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
+indℕ : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
            ∀ n → P n
-ℕ-ind P base step zero = {!!}
-ℕ-ind P base step (suc n) = {!-l!}
+indℕ P base step zero = {!!}
+indℕ P base step (suc n) = {!-l!}
 
-ℕ-ind₁ : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
+indℕ₁ : (P : ℕ → Set) → P zero → (∀ n → P n → P (suc n)) →
            ∀ n → P n
-ℕ-ind₁ P base step zero = {!!}
-ℕ-ind₁ P base step (suc n) = {!-l!}
+indℕ₁ P base step zero = {!!}
+indℕ₁ P base step (suc n) = {!-l!}
 
 +-suc : ∀ n m → n + suc m ≡ suc (n + m)
 +-suc n m = {!!}
 
 +-suc₁ : ∀ m n → n + suc m ≡ suc (n + m)
-+-suc₁ m = ℕ-ind (λ n → n + suc m ≡ suc (n + m)) {!!} {!!}
++-suc₁ m = indℕ (λ n → n + suc m ≡ suc (n + m)) {!!} {!!}
 
 mutual
 
   data Even : ℕ → Set where
-    ev-base : Even zero
-    ev-step : ∀ {n} → (odd-n : Odd n) → Even (suc n)
+    even0 : Even zero
+    even1 : ∀ {n} → (odd-n : Odd n) → Even (suc n)
 
   data Odd : ℕ → Set where
-    odd-step : ∀ {n} → (even-n : Even n) → Odd (suc n)
-
-data Even₁ : ℕ → Set
-data Odd₁  : ℕ → Set
-
-data Even₁ where
-  ev-base : Even₁ zero
-  ev-step : ∀ {n} → (odd-n : Odd₁ n) → Even₁ (suc n)
-
-data Odd₁ where
-  odd-step : ∀ {n} → (even-n : Even₁ n) → Odd₁ (suc n)
+    odd1 : ∀ {n} → (even-n : Even n) → Odd (suc n)
 
 
 even3 : Even 2
@@ -57,11 +47,11 @@ odd4 : Odd 3
 odd4 = {!!}
 
 even2n : ∀ n → Even (n + n)
-even2n zero = ev-base
+even2n zero = even0
 even2n (suc n) = {!!}
 
 even2n′ : ∀ n → Even (n + n)
-even2n′ zero = ev-base
+even2n′ zero = even0
 even2n′ (suc n) = step (even2n′ n)
   where
     open Related.EquationalReasoning renaming (sym to ∼sym)
@@ -77,11 +67,11 @@ even2n′ (suc n) = step (even2n′ n)
            Even (suc n + suc n) ∎
 
 even⊎odd : ∀ n → Even n ⊎ Odd n
-even⊎odd zero = inj₁ ev-base
+even⊎odd zero = inj₁ even0
 even⊎odd (suc n) with even⊎odd n
 ... | r = {!!}
 
--- even⊎odd (suc n) = [ inj₂ ∘ odd-step , inj₁ ∘ ev-step ]′ (even-odd n)
+-- even⊎odd (suc n) = [ inj₂ ∘ odd1 , inj₁ ∘ even1 ]′ (even-odd n)
 
 odd→¬even : ∀ {n} → Odd n → ¬ Even n
 odd→¬even odd-n even-n = {!!}

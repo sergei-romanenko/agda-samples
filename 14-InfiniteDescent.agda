@@ -20,6 +20,118 @@ import Function.Related as Related
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
 
+-- Mathematical induction.
+-- Augustus de Morgan (1838).
+
+indℕ : ∀ {P : ℕ → Set}
+  (base : P zero)
+  (step : ∀ m → P m → P (suc m)) →
+  ∀ n → P n 
+indℕ base step zero =
+  base
+indℕ base step (suc n) =
+  step n (indℕ base step n)
+
+-- Infinite descent.
+-- Pierre de Fermat (1659)
+
+descℕ : ∀ {P : ℕ → Set}
+  (base : ¬ P zero)
+  (step : ∀ m → P (suc m) → P m) →
+  ∀ n → ¬ P n 
+descℕ base step zero h =
+  base h
+descℕ base step (suc k) h =
+  descℕ base step k (step k h)
+
+-- suc is injective.
+
+suc-inj : ∀ {m n} → suc m ≡ suc n → m ≡ n
+suc-inj refl = refl
+
+-- n : ℕ is either `zero` or `suc k`
+
+caseℕ : ∀ n → n ≡ zero ⊎ (∃ λ k → n ≡ suc k)
+caseℕ zero = inj₁ refl
+caseℕ (suc k) = inj₂ (k , refl)
+
+module +-suc-1 where
+
+  P : ℕ → Set
+  P n = n + 0 ≡ n
+
+  base : P zero
+  base = refl
+
+  step : ∀ n → P n → P(suc n)
+  step n n+0≡n = cong suc n+0≡n
+
+  +-zero : ∀ n → P n
+  +-zero = indℕ base step
+
+module +-suc-2 where
+
+  +-zero : ∀ n → n + 0 ≡ n
+  +-zero zero = refl
+  +-zero (suc n) = cong suc (+-zero n)
+
+module +-suc-3 where
+
+  open ≡-Reasoning
+  
+  +-zero : ∀ n → n + zero ≡ n
+  +-zero zero =
+    zero + zero ≡⟨⟩ zero ∎
+  +-zero (suc n) =
+    suc n + zero
+      ≡⟨⟩
+    suc (n + zero)
+      ≡⟨ cong suc (+-zero n) ⟩
+    suc n ∎
+
+module n≢1+n-v1 where
+
+  P : ℕ → Set
+  P n = n ≡ suc n
+
+  base : ¬ P zero
+  base ()
+
+  step : ∀ n → P (suc n) → P n
+  step n =
+    suc n ≡ suc (suc n)
+      ∼⟨ suc-inj ⟩
+    n ≡ suc n ∎
+    where open Related.EquationalReasoning
+  
+  n≢1+n : ∀ n → ¬ P n
+  n≢1+n = descℕ base step
+
+module n≢1+n-v2 where
+
+  n≢1+n : ∀ n → n ≢ suc n
+  n≢1+n zero ()
+  n≢1+n (suc k) 1+k≡2+k =
+    n≢1+n k (suc-inj 1+k≡2+k)
+
+
+module Foldℕ where
+
+  -- `indℕ` has the same structure as `foldℕ`.
+
+  foldℕ : (base : ℕ) (step : ℕ → ℕ → ℕ) (n : ℕ) → ℕ
+  foldℕ base step zero =
+    base
+  foldℕ base step (suc n) =
+    step n (foldℕ base step n)
+
+  plus : (n m : ℕ) → ℕ
+  plus n m = foldℕ m (const suc) n
+
+  +~plus : ∀ n m → n + m ≡ plus n m
+  +~plus zero m = refl
+  +~plus (suc n) m = cong suc (+~plus n m)
+
 mutual
 
   data Even : ℕ → Set where
@@ -78,8 +190,10 @@ module Odd-2*-1 where
   ¬odd-2* (suc (suc n)) h = ¬odd-2n odd-2n
     where
     open Related.EquationalReasoning renaming (sym to ∼sym)
+
     ¬odd-2n : ¬ Odd (n + n)
     ¬odd-2n = ¬odd-2* n
+
     down : Odd (suc (suc (n + suc (suc n)))) → Odd (n + n)
     down =
       Odd (suc (suc (n + suc (suc n))))
@@ -92,6 +206,7 @@ module Odd-2*-1 where
         ∼⟨ even-suc ∘ odd-suc ⟩
       Odd (n + n)
       ∎
+
     odd-2n : Odd (n + n)
     odd-2n = down h
 
@@ -142,12 +257,6 @@ module Even⊎Odd-3 where
     ([ inj₂ , inj₁ ]′ ∘ Sum.map odd1 even1) (even⊎odd n)
 
 module Even⊎Odd-4 where
-
-  indℕ : ∀ {P : ℕ → Set} (base : P zero) (step : ∀ n → P n → P (suc n)) →
-    ∀ n → P n 
-  indℕ base step zero = base
-  indℕ base step (suc n) =
-    step n (indℕ base step n)
 
   even⊎odd : ∀ n → Even n ⊎ Odd n
   even⊎odd n =
@@ -306,3 +415,29 @@ module BE⊎BO-BN-2 where
 
   be⊎bo-bn : ∀ {n} (beo : BE n ⊎ BO n) → BN n
   be⊎bo-bn = [ be-bn , bo-bn ]′
+
+-- Complete induction
+
+data Acc<′ (n : ℕ) : Set where
+  acc : (rs : ∀ m → m <′ n → Acc<′ m) → Acc<′ n
+
+mutual
+
+  <′-acc : ∀ n m → m <′ n → Acc<′ m
+  <′-acc .(suc m) m ≤′-refl = all-acc<′ m
+  <′-acc .(suc n) m (≤′-step {n} m<′n) = <′-acc n m m<′n
+
+  all-acc<′ : ∀ n → Acc<′ n
+  all-acc<′ n = acc (<′-acc n)
+
+ind<′-acc : ∀ {P : ℕ → Set}
+  (step : ∀ n → (∀ m → m <′ n → P m) → P n) →
+  ∀ n → Acc<′ n → P n 
+ind<′-acc step n (acc rs) =
+  step n (λ m m<′n → ind<′-acc step m (rs m m<′n))
+
+ind<′ : ∀ {P : ℕ → Set}
+  (step : ∀ n → (∀ m → m <′ n → P m) → P n) →
+  ∀ n → P n 
+ind<′ step n =
+  ind<′-acc step n (all-acc<′ n)

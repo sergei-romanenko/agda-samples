@@ -23,6 +23,8 @@ open import Data.Vec
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality
 
+open ≡-Reasoning
+
 --
 -- A Toy Language
 --
@@ -92,7 +94,6 @@ correct (t1 ⊕ t2) s =
   eval (t1 ⊕ t2) ∷ s
   ∎
   where
-  open ≡-Reasoning
   n1 = eval t1; n2 = eval t2
   c1 = compile t1; c2 = compile t2
 
@@ -102,7 +103,7 @@ correct′ : ∀ {i} (t : Tm) (s : Stack i) →
   exec {i} (compile t) s ≡ eval t ∷ s
 correct′ (val n) s = refl
 correct′ {i} (t1 ⊕ t2) s
-  rewrite correct t1 s | correct t2 (eval t1 ∷ s)
+  rewrite correct′ t1 s | correct′ t2 (eval t1 ∷ s)
   = refl
 
 --
@@ -159,7 +160,6 @@ flatten-correct′ (seq c1 c2) p s =
     ≡⟨⟩
   p-exec (flatten (seq c1 c2) p) s
   ∎
-  where open ≡-Reasoning
 flatten-correct′ (push n) p s = refl
 flatten-correct′ add p (n2 ∷ n1 ∷ s) = refl
 
@@ -183,4 +183,3 @@ compile~p-compile (t1 ⊕ t2) p =
     ≡⟨⟩
   p-compile (t1 ⊕ t2) p
   ∎
-  where open ≡-Reasoning
