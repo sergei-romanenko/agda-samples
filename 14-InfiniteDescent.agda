@@ -23,37 +23,40 @@ open import Relation.Binary.PropositionalEquality
 -- Mathematical induction.
 -- Augustus de Morgan (1838).
 
-indℕ : ∀ {P : ℕ → Set}
-  (base : P zero)
-  (step : ∀ m → P m → P (suc m)) →
-  ∀ n → P n 
-indℕ base step zero =
-  base
-indℕ base step (suc n) =
-  step n (indℕ base step n)
+indℕ : {P : ℕ → Set}
+  (p0 : P zero) (step : ∀ m → P m → P (suc m))
+  (n : ℕ) → P n 
+indℕ p0 step zero =
+  p0
+indℕ p0 step (suc k) =
+  step k (indℕ p0 step k)
 
 -- Infinite descent.
 -- Pierre de Fermat (1659)
 
-descℕ : ∀ {P : ℕ → Set}
-  (base : ¬ P zero)
-  (step : ∀ m → P (suc m) → P m) →
-  ∀ n → ¬ P n 
-descℕ base step zero h =
-  base h
-descℕ base step (suc k) h =
-  descℕ base step k (step k h)
+descℕ : {P : ℕ → Set}
+  (¬p0 : P zero → ⊥) (down : ∀ m → P (suc m) → P m)
+  (n : ℕ) → P n → ⊥
+descℕ ¬p0 down zero p0 =
+  ¬p0 p0
+descℕ ¬p0 down (suc k) p$1+k =
+  descℕ ¬p0 down k (down k p$1+k)
 
 -- suc is injective.
 
 suc-inj : ∀ {m n} → suc m ≡ suc n → m ≡ n
-suc-inj refl = refl
+suc-inj {m} {.m} refl = refl {x = m}
 
 -- n : ℕ is either `zero` or `suc k`
 
 caseℕ : ∀ n → n ≡ zero ⊎ (∃ λ k → n ≡ suc k)
 caseℕ zero = inj₁ refl
 caseℕ (suc k) = inj₂ (k , refl)
+
+-- zero ≢ suc n
+
+0≢1+n : ∀ n → zero ≡ suc n → ⊥
+0≢1+n n ()
 
 module +-suc-1 where
 
@@ -73,7 +76,7 @@ module +-suc-2 where
 
   +-zero : ∀ n → n + 0 ≡ n
   +-zero zero = refl
-  +-zero (suc n) = cong suc (+-zero n)
+  +-zero (suc k) = cong suc (+-zero k)
 
 module +-suc-3 where
 
@@ -82,20 +85,20 @@ module +-suc-3 where
   +-zero : ∀ n → n + zero ≡ n
   +-zero zero =
     zero + zero ≡⟨⟩ zero ∎
-  +-zero (suc n) =
-    suc n + zero
+  +-zero (suc k) =
+    suc k + zero
       ≡⟨⟩
-    suc (n + zero)
-      ≡⟨ cong suc (+-zero n) ⟩
-    suc n ∎
+    suc (k + zero)
+      ≡⟨ cong suc (+-zero k) ⟩
+    suc k ∎
 
 module n≢1+n-v1 where
 
   P : ℕ → Set
   P n = n ≡ suc n
 
-  base : ¬ P zero
-  base ()
+  ¬p0 : P zero → ⊥
+  ¬p0 0≡1+0 = 0≢1+n zero 0≡1+0
 
   step : ∀ n → P (suc n) → P n
   step n =
@@ -104,33 +107,44 @@ module n≢1+n-v1 where
     n ≡ suc n ∎
     where open Related.EquationalReasoning
   
-  n≢1+n : ∀ n → ¬ P n
-  n≢1+n = descℕ base step
+  n≢1+n : ∀ n → P n → ⊥
+  n≢1+n = descℕ ¬p0 step
 
 module n≢1+n-v2 where
 
-  n≢1+n : ∀ n → n ≢ suc n
+  n≢1+n : ∀ n → n ≡ suc n → ⊥
   n≢1+n zero ()
   n≢1+n (suc k) 1+k≡2+k =
     n≢1+n k (suc-inj 1+k≡2+k)
 
 
-module Foldℕ where
+module Primℕ where
 
-  -- `indℕ` has the same structure as `foldℕ`.
+  -- `indℕ` has the same structure as `primℕ`.
 
-  foldℕ : (base : ℕ) (step : ℕ → ℕ → ℕ) (n : ℕ) → ℕ
-  foldℕ base step zero =
+  primℕ : (base : ℕ) (step : ℕ → ℕ → ℕ) (n : ℕ) → ℕ
+  primℕ base step zero =
     base
-  foldℕ base step (suc n) =
-    step n (foldℕ base step n)
+  primℕ base step (suc k) =
+    step k (primℕ base step k)
 
   plus : (n m : ℕ) → ℕ
-  plus n m = foldℕ m (const suc) n
+  plus n m = primℕ m (const suc) n
 
   +~plus : ∀ n m → n + m ≡ plus n m
   +~plus zero m = refl
-  +~plus (suc n) m = cong suc (+~plus n m)
+  +~plus (suc k) m = cong suc (+~plus k m)
+
+  -- `foldℕ` is a special case of `primℕ`.
+
+  foldℕ : (base : ℕ) (step : ℕ → ℕ) (n : ℕ) → ℕ
+  foldℕ base step zero =
+    base
+  foldℕ base step (suc k) =
+    step (foldℕ base step k)
+
+  double : (n : ℕ) → ℕ
+  double = foldℕ zero (suc ∘ suc)
 
 mutual
 
@@ -149,7 +163,7 @@ even-2 = even1 (odd1 even0)
 
 -- Inversion.
 
-¬odd-0 : ¬ Odd zero
+¬odd-0 : Odd zero → ⊥
 ¬odd-0 ()
 
 even-suc : ∀ {n} → Even (suc n) → Odd n
@@ -162,65 +176,53 @@ module Evn-2*-1 where
 
   -- "Ordinary" induction.
 
-  even-2* : ∀ m → Even (m + m)
+  even-2* : ∀ n → Even (n + n)
   even-2* zero = even0
-  even-2* (suc n) = step (even-2* n)
+  even-2* (suc k) = step (even-2* k)
     where
     open Related.EquationalReasoning renaming (sym to ∼sym)
-    step : Even (n + n) → Even (suc n + suc n) 
+    step : Even (k + k) → Even (suc k + suc k) 
     step =
-      Even (n + n)
+      Even (k + k)
         ∼⟨ even1 ∘ odd1 ⟩
-      Even (suc (suc (n + n)))
-        ≡⟨ cong (Even ∘ suc) (sym $ +-suc n n) ⟩
-      Even (suc (n + suc n))
+      Even (suc (suc (k + k)))
+        ≡⟨ cong (Even ∘ suc) (sym $ +-suc k k) ⟩
+      Even (suc (k + suc k))
         ≡⟨ refl ⟩
-      Even (suc n + suc n)
+      Even (suc k + suc k)
       ∎
 
 module Odd-2*-1 where
 
   -- "Infinite descent" in style of Fermat.
 
-  ¬odd-2* : ∀ m → ¬ Odd (m + m)
+  ¬odd-2* : ∀ n → Odd (n + n) → ⊥
   ¬odd-2* zero odd-0 =
     ¬odd-0 odd-0
-  ¬odd-2* (suc zero) odd-2 =
-    ¬odd-0 (even-suc (odd-suc odd-2))
-  ¬odd-2* (suc (suc n)) h = ¬odd-2n odd-2n
+  ¬odd-2* (suc k) h =
+    ¬odd-2* k (down h)
     where
     open Related.EquationalReasoning renaming (sym to ∼sym)
-
-    ¬odd-2n : ¬ Odd (n + n)
-    ¬odd-2n = ¬odd-2* n
-
-    down : Odd (suc (suc (n + suc (suc n)))) → Odd (n + n)
+    down : Odd (suc k + suc k) → Odd (k + k)
     down =
-      Odd (suc (suc (n + suc (suc n))))
+      Odd (suc k + suc k)
+        ≡⟨ refl ⟩
+      Odd (suc (k + suc k))
+        ≡⟨ cong (Odd ∘ suc) (+-suc k k) ⟩
+      Odd (suc (suc (k + k)))
         ∼⟨ even-suc ∘ odd-suc ⟩
-      Odd (n + suc (suc n))
-        ≡⟨ cong Odd (+-suc n (suc n)) ⟩
-      Odd (suc (n + suc n))
-        ≡⟨ cong (Odd ∘ suc) (+-suc n n) ⟩
-      Odd (suc (suc (n + n)))
-        ∼⟨ even-suc ∘ odd-suc ⟩
-      Odd (n + n)
+      Odd (k + k)
       ∎
-
-    odd-2n : Odd (n + n)
-    odd-2n = down h
 
 module Odd-2*-2 where
 
   -- A more Agda-idiomatic style...
 
-  ¬odd-2* : ∀ m → ¬ Odd (m + m)
+  ¬odd-2* : ∀ n → Odd (n + n) → ⊥
   ¬odd-2* zero ()
-  ¬odd-2* (suc zero) (odd1 (even1 ()))
-  ¬odd-2* (suc (suc n)) (odd1 (even1 h))
-    rewrite +-suc n (suc n)
-          | +-suc n n
-    = ¬odd-2* n $ even-suc (odd-suc h)
+  ¬odd-2* (suc k) (odd1 h)
+    rewrite +-suc k k
+    = ¬odd-2* k (even-suc h)
 
 module Even⊎Odd-1 where
 
@@ -229,8 +231,8 @@ module Even⊎Odd-1 where
     inj₁ even0
   even⊎odd (suc zero) =
     inj₂ (odd1 even0)
-  even⊎odd (suc (suc n)) =
-     Sum.map (even1 ∘ odd1) (odd1 ∘ even1) (even⊎odd n)
+  even⊎odd (suc (suc k)) =
+     Sum.map (even1 ∘ odd1) (odd1 ∘ even1) (even⊎odd k)
 
 module Even⊎Odd-2 where
 
@@ -239,22 +241,22 @@ module Even⊎Odd-2 where
     even⊎odd : ∀ n → Even n ⊎ Odd n
     even⊎odd zero =
       inj₁ even0
-    even⊎odd (suc n) =
-      Sum.map even1 odd1 (odd⊎even n)
+    even⊎odd (suc k) =
+      Sum.map even1 odd1 (odd⊎even k)
 
     odd⊎even : ∀ n → Odd n ⊎ Even n
     odd⊎even zero =
       inj₂ even0
-    odd⊎even (suc n) =
-      Sum.map odd1 even1 (even⊎odd n)
+    odd⊎even (suc k) =
+      Sum.map odd1 even1 (even⊎odd k)
 
 module Even⊎Odd-3 where
 
   even⊎odd : ∀ n → Even n ⊎ Odd n
   even⊎odd zero =
     inj₁ even0
-  even⊎odd (suc n) =
-    ([ inj₂ , inj₁ ]′ ∘ Sum.map odd1 even1) (even⊎odd n)
+  even⊎odd (suc k) =
+    ([ inj₂ , inj₁ ]′ ∘ Sum.map odd1 even1) (even⊎odd k)
 
 module Even⊎Odd-4 where
 
@@ -267,11 +269,11 @@ module Even×Odd-1 where
 
   -- "Infinite descent" in style of Fermat.
 
-  ¬even×odd : ∀ m → ¬ (Even m × Odd m)
+  ¬even×odd : ∀ m → Even m × Odd m → ⊥
   ¬even×odd zero (even-0 , odd-0) =
     ¬odd-0 odd-0
-  ¬even×odd (suc n) (even-suc-n , odd-suc-n) =
-    ¬even×odd n (odd-suc odd-suc-n , even-suc even-suc-n)
+  ¬even×odd (suc k) (even-suc-k , odd-suc-k) =
+    ¬even×odd k (odd-suc odd-suc-k , even-suc even-suc-k)
 
 module Even×Odd-2 where
 
@@ -279,8 +281,8 @@ module Even×Odd-2 where
 
   ¬even×odd : ∀ m → Even m → Odd m → ⊥
   ¬even×odd zero even-0 ()
-  ¬even×odd (suc n) (even1 odd-n) (odd1 even-n) =
-    ¬even×odd n even-n odd-n
+  ¬even×odd (suc k) (even1 odd-k) (odd1 even-k) =
+    ¬even×odd k even-k odd-k
 
 
 -- The R example
