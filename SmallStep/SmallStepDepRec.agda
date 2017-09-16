@@ -76,8 +76,9 @@ compile (t1 ⊕ t2) = seq (seq (compile t1) (compile t2)) add
 -- `compile` is correct with respect to `exec`
 
 correct : ∀ {i} (t : Tm) (s : Stack i) →
-  exec {i} (compile t) s ≡ eval t ∷ s
-correct (val n) s = refl
+  exec (compile t) s ≡ eval t ∷ s
+correct (val n) s =
+  n ∷ s ≡⟨⟩ n ∷ s ∎
 correct (t1 ⊕ t2) s =
   exec (compile (t1 ⊕ t2)) s
     ≡⟨⟩
@@ -100,7 +101,7 @@ correct (t1 ⊕ t2) s =
 -- Here is another proof, which is shorter, but is more mysterious.
 
 correct′ : ∀ {i} (t : Tm) (s : Stack i) →
-  exec {i} (compile t) s ≡ eval t ∷ s
+  exec (compile t) s ≡ eval t ∷ s
 correct′ (val n) s = refl
 correct′ {i} (t1 ⊕ t2) s
   rewrite correct′ t1 s | correct′ t2 (eval t1 ∷ s)
