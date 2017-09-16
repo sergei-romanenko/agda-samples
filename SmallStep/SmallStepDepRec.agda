@@ -78,7 +78,13 @@ compile (t1 ⊕ t2) = seq (seq (compile t1) (compile t2)) add
 correct : ∀ {i} (t : Tm) (s : Stack i) →
   exec (compile t) s ≡ eval t ∷ s
 correct (val n) s =
-  n ∷ s ≡⟨⟩ n ∷ s ∎
+  exec (compile (val n)) s
+    ≡⟨⟩
+  exec (push n) s
+    ≡⟨⟩
+  n ∷ s
+    ≡⟨⟩
+  eval (val n) ∷ s ∎
 correct (t1 ⊕ t2) s =
   exec (compile (t1 ⊕ t2)) s
     ≡⟨⟩
@@ -102,10 +108,11 @@ correct (t1 ⊕ t2) s =
 
 correct′ : ∀ {i} (t : Tm) (s : Stack i) →
   exec (compile t) s ≡ eval t ∷ s
-correct′ (val n) s = refl
+correct′ (val n) s =
+  n ∷ s ∎
 correct′ {i} (t1 ⊕ t2) s
   rewrite correct′ t1 s | correct′ t2 (eval t1 ∷ s)
-  = refl
+  = eval t1 + eval t2 ∷ s ∎
 
 --
 -- Compiling to a list of instructions
@@ -161,8 +168,10 @@ flatten-correct′ (seq c1 c2) p s =
     ≡⟨⟩
   p-exec (flatten (seq c1 c2) p) s
   ∎
-flatten-correct′ (push n) p s = refl
-flatten-correct′ add p (n2 ∷ n1 ∷ s) = refl
+flatten-correct′ (push n) p s =
+  p-exec p (n ∷ s) ∎
+flatten-correct′ add p (n2 ∷ n1 ∷ s) =
+  p-exec p (n1 + n2 ∷ s) ∎
 
 flatten-correct : ∀ {i j} (c : Code i j) (s : Stack i) →
   exec c s ≡ p-exec (flatten c []) s
@@ -172,7 +181,8 @@ flatten-correct c s = flatten-correct′ c [] s
 
 compile~p-compile : ∀ {i j} (t : Tm) (p : Prog (1 + i) j) →
   flatten (compile t) p ≡ p-compile t p
-compile~p-compile (val n) p = refl
+compile~p-compile (val n) p =
+  push n ∷ p ∎
 compile~p-compile (t1 ⊕ t2) p =
   flatten (compile (t1 ⊕ t2)) p
     ≡⟨⟩
