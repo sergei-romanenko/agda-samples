@@ -20,6 +20,8 @@ open import Data.Nat
   using (ℕ; _+_; zero; suc)
 open import Data.Vec
   using (Vec; []; _∷_)
+open import Data.Product
+  using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality
 
@@ -113,6 +115,44 @@ correct′ (val n) s =
 correct′ {i} (t1 ⊕ t2) s
   rewrite correct′ t1 s | correct′ t2 (eval t1 ∷ s)
   = eval t1 + eval t2 ∷ s ∎
+
+--
+-- A compiler that is correct "by construction".
+--
+
+ex-code : ∀ {i} (t : Tm) →
+  ∃ λ (c : Code i (1 + i)) → (∀ (s : Stack i) → exec c s ≡ eval t ∷ s)
+ex-code (val n) =
+  push n , λ s → n ∷ s ∎
+ex-code {i} (t1 ⊕ t2)
+  with eval t1 | eval t2 | ex-code {i} t1 | ex-code {1 + i} t2
+... | n1 | n2 | c1 , p1 | c2 , p2
+  = seq (seq c1 c2) add , λ s →
+        exec (seq (seq c1 c2) add) s
+          ≡⟨⟩
+        exec add (exec c2 (exec c1 s))
+          ≡⟨ cong (exec add ∘ exec c2) (p1 s) ⟩
+        exec add (exec c2 (n1 ∷ s))
+          ≡⟨ cong (exec add) (p2 (n1 ∷ s)) ⟩
+        exec add (n2 ∷ n1 ∷ s)
+          ≡⟨⟩
+        n1 + n2 ∷ s
+        ∎
+
+--
+-- `ex-code` produces the same code as `compile`.
+-- But Agda is not capable of automatically extracting
+-- `compile` from `ex-code` (unlike Coq).
+--
+
+correct′′ : ∀  {i} (t : Tm) →
+  compile {i} t ≡ proj₁ (ex-code {i} t)
+correct′′ (val n) = refl
+correct′′ {i} (t1 ⊕ t2)
+  with correct′′ {i} t1 | correct′′ {1 + i} t2
+... | q1 | q2
+  rewrite q1 | q2
+  = refl
 
 --
 -- Compiling to a list of instructions
