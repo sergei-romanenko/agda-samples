@@ -52,13 +52,13 @@ sound-zero′ {zero}  [] ρ = refl
 sound-zero′ {suc n} (e ∷ es) ρ =
   begin
     ⟦ eval-nr (replicate 0) (e ∷ es) ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ε ∙ ⟦ eval-nr (replicate 0) es ⟧ ρ
       ≈⟨ refl ⟨ ∙-cong ⟩ sound-zero′ es ρ ⟩
     ε ∙ ε
       ≈⟨ proj₁ identity ε ⟩
     ε
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ ◇ ⟧ ρ
   ∎
 
@@ -66,7 +66,7 @@ sound-zero : ∀ {n} → norm ◇ ≅  (Expr n ∋ ◇)
 sound-zero ρ =
   begin
     ⟦ norm ◇ ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ eval-nr (replicate 0) vars ⟧ ρ
       ≈⟨ sound-zero′ vars ρ ⟩
     ⟦ ◇ ⟧ ρ
@@ -82,13 +82,13 @@ distr zero    j e ρ = sym $ proj₁ identity (⟦ j ⊗ e ⟧ ρ)
 distr (suc k) j e ρ =
   begin
     ⟦ (suc k + j) ⊗ e ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ e ⊕ (k + j) ⊗ e ⟧ ρ
       ≈⟨ refl ⟨ ∙-cong ⟩ distr k j e ρ ⟩
     ⟦ e ⊕ (k ⊗ e ⊕ j ⊗ e) ⟧ ρ
       ≈⟨ sym $ assoc (⟦ e ⟧ ρ) (⟦ k ⊗ e ⟧ ρ) (⟦ j ⊗ e ⟧ ρ) ⟩
     ⟦ (e ⊕ k ⊗ e) ⊕ j ⊗ e ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ suc k ⊗ e ⊕ j ⊗ e ⟧ ρ
   ∎
 
@@ -122,13 +122,13 @@ sound-plus′ [] [] [] ρ = sym $ proj₁ identity _
 sound-plus′ (k ∷ ks) (j ∷ js) (x ∷ xs) ρ =
   begin
     ⟦ eval-nr (zipWith _+_ (k ∷ ks) (j ∷ js)) (x ∷ xs) ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ (k + j) ⊗ x ⊕ eval-nr (zipWith _+_ ks js) xs ⟧ ρ
       ≈⟨ (distr k j x ρ) ⟨ ∙-cong ⟩ sound-plus′ ks js xs ρ ⟩
     ⟦ (k ⊗ x ⊕ j ⊗ x) ⊕ (eval-nr ks xs ⊕ eval-nr js xs) ⟧ ρ
       ≈⟨ shuffle (k ⊗ x) (eval-nr ks xs) (j ⊗ x) (eval-nr js xs) ρ ⟩
     ⟦ (k ⊗ x ⊕ eval-nr ks xs) ⊕ (j ⊗ x ⊕ eval-nr js xs) ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ eval-nr (k ∷ ks) (x ∷ xs) ⊕ eval-nr (j ∷ js) (x ∷ xs) ⟧ ρ
   ∎
 
@@ -138,13 +138,13 @@ sound-plus : ∀ {n} → (a b : Expr n) →
 sound-plus a b ρ =
   begin
     ⟦ norm (a ⊕ b) ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ eval-nr (nr (a ⊕ b)) vars ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ eval-nr (zipWith _+_ (nr a)(nr b)) vars ⟧ ρ
       ≈⟨ sound-plus′ (nr a) (nr b) vars ρ ⟩
     ⟦ eval-nr (nr a) vars ⊕ eval-nr (nr b) vars ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ norm a ⊕ norm b ⟧ ρ
   ∎
 
@@ -155,34 +155,34 @@ sound-var′ : ∀ {n m} (i : Fin n) (es : Vec (Expr m) n) →
 sound-var′ zero (e ∷ es) ρ =
   begin
     ⟦ eval-nr (1-at zero) (e ∷ es) ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ (e ⊕ ◇) ⊕ eval-nr (replicate 0) es ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ (e ⊕ ◇) ⟧ ρ ∙ ⟦ eval-nr (replicate 0) es ⟧ ρ
       ≈⟨ refl ⟨ ∙-cong ⟩ sound-zero′ es ρ ⟩
     ⟦ e ⊕ ◇ ⟧ ρ ∙ ⟦ ◇ ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ (e ⊕ ◇) ⊕ ◇ ⟧ ρ
       ≈⟨ proj₂ identity (⟦ e ⊕ ◇ ⟧ ρ) ⟩
     ⟦ e ⊕ ◇ ⟧ ρ
       ≈⟨ proj₂ identity (⟦ e ⟧ ρ) ⟩
     ⟦ e ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ lookup zero (e ∷ es) ⟧ ρ
   ∎
 
 sound-var′ (suc i) (e ∷ es) ρ =
   begin
     ⟦ eval-nr (1-at (suc i)) (e ∷ es) ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ ◇ ⊕ eval-nr (1-at i) es ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ε ∙ ⟦ eval-nr (1-at i) es ⟧ ρ
       ≈⟨ proj₁ identity (⟦ eval-nr (1-at i) es ⟧ ρ) ⟩
     ⟦ eval-nr (1-at i) es ⟧ ρ
       ≈⟨ sound-var′ i es ρ ⟩
     ⟦ lookup i es ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ lookup (suc i) (e ∷ es) ⟧ ρ
   ∎
 
@@ -191,11 +191,11 @@ sound-var : ∀ {n} → (i : Fin n) →
 sound-var i ρ =
   begin
     ⟦ norm (var i) ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ eval-nr (1-at i) vars ⟧ ρ
       ≈⟨ sound-var′ i vars ρ ⟩
     ⟦ lookup i vars ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ lookup i (tabulate var) ⟧ ρ
       ≡⟨ P.cong (flip ⟦_⟧ ρ) (lookup∘tabulate var i) ⟩
     ⟦ var i ⟧ ρ
@@ -213,11 +213,11 @@ sound (a ⊕ b) ρ =
     ⟦ norm (a ⊕ b) ⟧ ρ
       ≈⟨ sound-plus a b ρ ⟩
     ⟦ norm a ⊕ norm b ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ norm a ⟧ ρ ∙ ⟦ norm b ⟧ ρ
       ≈⟨ sound a ρ ⟨ ∙-cong ⟩ sound b ρ ⟩
     ⟦ a ⟧ ρ ∙ ⟦ b ⟧ ρ
-      ≡⟨ P.refl ⟩
+      ≡⟨⟩
     ⟦ a ⊕ b ⟧ ρ
   ∎
 
@@ -241,5 +241,3 @@ prove (e₁ , e₂) ρ hyp =
       ≈⟨ sound e₂ ρ ⟩
     ⟦ e₂ ⟧ ρ
   ∎
-
---

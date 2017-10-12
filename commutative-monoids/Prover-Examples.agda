@@ -44,5 +44,3 @@ abcd-prove a b c d = prove eq ρ refl
   where
     eq = close 4 λ a b c d → (a ⊕ b) ⊕ (c ⊕ d) ⊜ (a ⊕ c) ⊕ (b ⊕ d)
     ρ = a ∷ b ∷ c ∷ d ∷ []
-
---

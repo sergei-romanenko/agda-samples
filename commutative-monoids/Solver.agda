@@ -70,5 +70,3 @@ solve n f hyp =
        (curryⁿ-cong⁻¹ _≈_ ⟦ norm e₁ ⟧ ⟦ norm e₂ ⟧ (Eqʰ-to-Eq n _≈_ hyp) ρ))
   where
     eq = close n f; e₁ = proj₁ eq; e₂ = proj₂ eq
-
---

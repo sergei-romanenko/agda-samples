@@ -21,5 +21,3 @@ nr₁ = refl
 norm₁ : norm expr₁ ≡
   (var zero ⊕ var zero ⊕ ◇) ⊕ (var (suc zero) ⊕ ◇) ⊕ ◇ ⊕ ◇
 norm₁ = refl
-
---

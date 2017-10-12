@@ -86,5 +86,3 @@ reify nr = eval-nr nr vars
 
 norm : ∀ {n} → Expr n → Expr n
 norm = reify ∘ nr
-
---

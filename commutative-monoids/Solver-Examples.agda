@@ -35,6 +35,5 @@ ab-solve : ∀ a b → (a + b) + a ≡ b + (a + a)
 ab-solve = solve 2 (λ a b → (a ⊕ b) ⊕ a ⊜ b ⊕ (a ⊕ a)) refl
 
 abcd-solve : ∀ a b c d → (a + b) + (c + d) ≡ (a + c) + (b + d)
-abcd-solve = solve 4 (λ a b c d → (a ⊕ b) ⊕ (c ⊕ d) ⊜ (a ⊕ c) ⊕ (b ⊕ d)) refl
-
---
+abcd-solve =
+  solve 4 (λ a b c d → (a ⊕ b) ⊕ (c ⊕ d) ⊜ (a ⊕ c) ⊕ (b ⊕ d)) refl
