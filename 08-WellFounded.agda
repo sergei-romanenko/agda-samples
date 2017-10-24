@@ -166,12 +166,12 @@ module log2-good-wf-ind where
 
   mutual
 
-    <-well-founded : Well-founded _<′_
-    <-well-founded n = acc (<-acc n)
+    <′-well-founded : Well-founded _<′_
+    <′-well-founded n = acc (<′-acc n)
 
-    <-acc : ∀ n y → y <′ n → Acc _<′_ y
-    <-acc .(suc y) y ≤′-refl = <-well-founded y
-    <-acc .(suc n) y (≤′-step {n} y<′n) = <-acc n y y<′n
+    <′-acc : ∀ n y → y <′ n → Acc _<′_ y
+    <′-acc .(suc y) y ≤′-refl = <′-well-founded y
+    <′-acc .(suc n) y (≤′-step {n} y<′n) = <′-acc n y y<′n
 
   log2′ : ∀ n → Acc _<′_ n → ℕ
   log2′ zero a = zero
@@ -181,7 +181,7 @@ module log2-good-wf-ind where
     where n′ = ⌊ n /2⌋
 
   log2 : ℕ → ℕ
-  log2 n = log2′ n (<-well-founded n)
+  log2 n = log2′ n (<′-well-founded n)
 
   log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
   log2-test = refl
@@ -199,7 +199,7 @@ module log2-good-lib where
     where n′ = ⌊ n /2⌋
 
   log2 : ℕ → ℕ
-  log2 n = log2′ n (<-well-founded n)
+  log2 n = log2′ n (<′-well-founded n)
 
   log2-test : map log2 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []) ≡ 0 ∷ 0 ∷ 1 ∷ 1 ∷ 2 ∷ []
   log2-test = refl
@@ -210,7 +210,7 @@ module log2-good-<-Rec where
   open Induction.Nat
 
   log2 : ℕ → ℕ
-  log2 = <-rec (λ _ → ℕ) log2′
+  log2 = <′-rec (λ _ → ℕ) log2′
     where
       log2′ : (n : ℕ) → ((m : ℕ) → m <′ n → ℕ) → ℕ
       log2′ zero rec = zero
@@ -248,7 +248,7 @@ module log2-good-special-acc where
   mutual
 
     ∀Log2 : (n : ℕ) → Log2 n
-    ∀Log2 n = ∀Log2′ n (<-well-founded n)
+    ∀Log2 n = ∀Log2′ n (<′-well-founded n)
 
     ∀Log2′ : (n : ℕ) → Acc _<′_ n → Log2 n
     ∀Log2′ zero a = stop0
@@ -317,7 +317,7 @@ module Quicksort-good where
       big′   = quicksort′ p big   (g (length big)   (s≤′s big≼xs))
 
   quicksort : {A : Set} (p : A → A → Bool) (xs : List A) → List A
-  quicksort p xs = quicksort′ p xs (<-well-founded (length xs))
+  quicksort p xs = quicksort′ p xs (<′-well-founded (length xs))
 
 module Quicksort-good-with-Inverse-image where
 
@@ -332,7 +332,7 @@ module Quicksort-good-with-Inverse-image where
   _≺_ = _<′_ on length
 
   wf-ll : ∀ {A : Set} → Well-founded {A = List A} _≺_
-  wf-ll = well-founded <-well-founded
+  wf-ll = well-founded <′-well-founded
 
   quicksort′ : {A : Set} (p : A → A → Bool) → (xs : List A) →
                   Acc _≺_ xs → List A
@@ -386,7 +386,7 @@ module Quicksort-good-special-acc where
 
   ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
     Quicksort p xs
-  ∀Quicksort p xs = ∀Quicksort′ p xs (<-well-founded (length xs))
+  ∀Quicksort p xs = ∀Quicksort′ p xs (<′-well-founded (length xs))
 
   quicksort : {A : Set} (p : A → A → Bool) → List A → List A
   quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
@@ -459,7 +459,7 @@ module Quicksort-good-special-acc-via-filter where
 
   ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
     Quicksort p xs
-  ∀Quicksort p xs = ∀Quicksort′ p xs (<-well-founded (length xs))
+  ∀Quicksort p xs = ∀Quicksort′ p xs (<′-well-founded (length xs))
 
   quicksort : {A : Set} (p : A → A → Bool) → List A → List A
   quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
@@ -510,9 +510,7 @@ module Quicksort-good-special-acc-via-filter₂ where
 
   ∀Quicksort : {A : Set} (p : A → A → Bool) (xs : List A) →
     Quicksort p xs
-  ∀Quicksort p xs = ∀Quicksort′ p xs (<-well-founded (length xs))
+  ∀Quicksort p xs = ∀Quicksort′ p xs (<′-well-founded (length xs))
 
   quicksort : {A : Set} (p : A → A → Bool) → List A → List A
   quicksort p xs = quicksort′ p xs (∀Quicksort p xs)
-
---
