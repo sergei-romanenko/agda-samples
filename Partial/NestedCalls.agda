@@ -1,4 +1,4 @@
-module Partial.FF where
+module Partial.NestedCalls where
 
 open import Data.Nat
 
@@ -6,6 +6,9 @@ open import Relation.Binary.PropositionalEquality
 open ≡-Reasoning
 
 module ff-bad where
+
+  -- Here the function `f` is total, but Agda is unable to prove it.
+  -- So we just postulate the totality by means of a pragma.
 
   {-# TERMINATING #-}
 
@@ -17,6 +20,9 @@ module ff-bad where
   f5≡0 : f 5 ≡ 0
   f5≡0 = refl
 
+  -- This proof is not completely formal, since it uses the totality of `f` that
+  -- has been just postulated.
+
   fn≡0 : ∀ n → f n ≡ 0
   fn≡0 zero = refl
   fn≡0 (suc zero) = refl
@@ -24,6 +30,10 @@ module ff-bad where
     f (f n) ≡⟨ cong f (fn≡0 n) ⟩ f 0 ≡⟨⟩ 0 ∎
 
 mutual
+
+  -- Now we specify the domain of `f` by using Bove & Capretta's technique.
+  -- Note that we have to define `F` and `f` simultaneously,
+  -- because the definition of `f` contains a nested function call: f(f n).
 
   data F : (n : ℕ) → Set where
     d0 : F zero
@@ -39,6 +49,10 @@ mutual
   f (suc (suc n)) (d2 hn hfn) =
     f (f n hn) hfn
 
+-- OK. Now we can prove some theorems about `f` without postulating its totality.
+-- The trick is that the theorems say "the statement is true on condition
+-- that the argument belongs to the function's domain.
+
 h5 : F 5
 h5 = d2 (d2 d1 d0) d0
 
@@ -53,6 +67,8 @@ fnh≡0 (suc (suc n)) (d2 hn hfn) =
     ≡⟨ fnh≡0 (f n hn) hfn ⟩
   0 ∎
 
+-- However, we can (formally) prove that the function is total!
+
 all-f : ∀ n → F n
 all-f zero = d0
 all-f (suc zero) = d1
@@ -65,9 +81,15 @@ all-f (suc (suc n)) =
   fn≡0 = fnh≡0 n hn
   hfn : F (f n hn)
   hfn = subst F (sym fn≡0) d0
-  
+
+-- And now we can wright down a "normal" definition of `f` that
+-- does not take an additional argument.
+
 total-f : ℕ → ℕ
 total-f n = f n (all-f n)
+
+-- And we can prove some theorems about `total-f`.
+-- (Without specifying the domain of `f`.)
 
 tf5≡0 : total-f 5 ≡ 0
 tf5≡0 = refl
