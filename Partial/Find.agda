@@ -62,32 +62,32 @@ module Find-good where
     mutual
 
       data Find : ℕ → Set where
-        f0 : ∀ {n} → Find′ n (p n) → Find n
+        a0 : ∀ {n} → Find′ n (p n) → Find n
 
       data Find′ : ℕ → Bool → Set where
-        g0 : ∀ {n} → Find′ n true
-        g1 : ∀ {n} → Find (suc n) → Find′ n false
+        b0 : ∀ {n} → Find′ n true
+        b1 : ∀ {n} → Find (suc n) → Find′ n false
 
     mutual
 
       find : (n : ℕ) (h : Find n) → ℕ
-      find n (f0 h) = find′ n (p n) h
+      find n (a0 h) = find′ n (p n) h
 
       find′ : (n : ℕ) (b : Bool) (h : Find′ n b) → ℕ
-      find′ n true g0 = n
-      find′ n false (g1 h) = find (suc n) h
+      find′ n true b0 = n
+      find′ n false (b1 h) = find (suc n) h
 
   ge3! : Find ge3 0
-  ge3! = f0 (g1 (f0 (g1 (f0 (g1 (f0 g0))))))
+  ge3! = a0 (b1 (a0 (b1 (a0 (b1 (a0 b0))))))
 
   find-ge3≡3 : ℕ
   find-ge3≡3 = find ge3 0 ge3!
 
   correct : ∀ p n → (h : Find p n) → p (find p n h) ≡ true
-  correct p n (f0 h) with p n | inspect p n
-  correct p n (f0 g0) | true | [ pn≡true ] =
+  correct p n (a0 h) with p n | inspect p n
+  correct p n (a0 b0) | true | [ pn≡true ] =
     pn≡true
-  correct p n (f0 (g1 h)) | false | [ pn≡false ] =
+  correct p n (a0 (b1 h)) | false | [ pn≡false ] =
     correct p (suc n) h
 
 module Find-dec-bad where
@@ -136,24 +136,22 @@ module Find-dec-good where
 
     mutual
 
-      data Find : (n : ℕ) → Set
-        where
-        f0 : ∀ {n} → Find′ n (p? n) → Find n
+      data Find : (n : ℕ) → Set where
+        a0 : ∀ {n} → Find′ n (p? n) → Find n
 
-      data Find′ : (n : ℕ) (pn : Dec (P n)) → Set
-        where
-        g0 : ∀ {n pn} → Find′ n (yes pn)
-        g1 : ∀ {n ¬pn} → Find (suc n) → Find′ n (no ¬pn)
+      data Find′ : (n : ℕ) (pn : Dec (P n)) → Set where
+        b0 : ∀ {n pn} → Find′ n (yes pn)
+        b1 : ∀ {n ¬pn} → Find (suc n) → Find′ n (no ¬pn)
 
       find : (n : ℕ) (h : Find n) → ∃ λ m → P m
-      find n (f0 h) = find′ n (p? n) h
+      find n (a0 h) = find′ n (p? n) h
 
       find′ : (n : ℕ) (pn : Dec (P n)) (h : Find′ n pn) → (∃ λ m → P m)
-      find′ n (yes pn) g0 = n , pn
-      find′ n (no ¬pn) (g1 h) = find (suc n) h
+      find′ n (yes pn) b0 = n , pn
+      find′ n (no ¬pn) (b1 h) = find (suc n) h
 
   ge3! : Find ge3? 0
-  ge3! = f0 (g1 (f0 (g1 (f0 (g1 (f0 g0))))))
+  ge3! = a0 (b1 (a0 (b1 (a0 (b1 (a0 b0))))))
 
   find-ge3?≡ : find ge3? 0 ge3! ≡ (3 , s≤s (s≤s (s≤s z≤n)))
   find-ge3?≡ = refl

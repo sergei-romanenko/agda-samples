@@ -2,6 +2,9 @@ module Partial.NestedCalls where
 
 open import Data.Nat
 
+open import Function
+  using (_∘_)
+
 open import Relation.Binary.PropositionalEquality
 open ≡-Reasoning
 
@@ -14,20 +17,24 @@ module ff-bad where
 
   f : ℕ → ℕ
   f zero = zero
-  f (suc zero) = zero
-  f (suc (suc n)) = f (f n)
+  f (suc zero) = suc zero
+  f (suc (suc n)) = suc (suc (f (f n)))
 
-  f5≡0 : f 5 ≡ 0
-  f5≡0 = refl
+  f5≡5 : f 5 ≡ 5
+  f5≡5 = refl
 
   -- This proof is not completely formal, since it uses the totality of `f` that
   -- has been just postulated.
 
-  fn≡0 : ∀ n → f n ≡ 0
-  fn≡0 zero = refl
-  fn≡0 (suc zero) = refl
-  fn≡0 (suc (suc n)) =
-    f (f n) ≡⟨ cong f (fn≡0 n) ⟩ f 0 ≡⟨⟩ 0 ∎
+  fn≡n : ∀ n → f n ≡ n
+  fn≡n zero = refl
+  fn≡n (suc zero) = refl
+  fn≡n (suc (suc n)) = cong (suc ∘ suc) (
+    f (f n)
+      ≡⟨ cong f (fn≡n n) ⟩
+    f n
+      ≡⟨ fn≡n n ⟩
+    n ∎)
 
 mutual
 
@@ -36,51 +43,47 @@ mutual
   -- because the definition of `f` contains a nested function call: f(f n).
 
   data F : (n : ℕ) → Set where
-    d0 : F zero
-    d1 : F (suc zero)
-    d2 : ∀ {n} →
-      (hn : F n) →
-      F (f n hn) →
+    a0 : F zero
+    a1 : F (suc zero)
+    a2 : ∀ {n} (fn⇓ : F n) (ffn⇓ : F (f n fn⇓)) →
       F (suc (suc n))
 
-  f : (n : ℕ) → F n → ℕ
-  f zero d0 = zero
-  f (suc zero) d1 = zero
-  f (suc (suc n)) (d2 hn hfn) =
-    f (f n hn) hfn
+  f : (n : ℕ) (fn⇓ : F n) → ℕ
+  f zero a0 = zero
+  f (suc zero) a1 = suc zero
+  f (suc (suc n)) (a2 fn⇓ ffn⇓) =
+    suc (suc (f (f n fn⇓) ffn⇓))
 
 -- OK. Now we can prove some theorems about `f` without postulating its totality.
 -- The trick is that the theorems say "the statement is true on condition
 -- that the argument belongs to the function's domain.
 
-h5 : F 5
-h5 = d2 (d2 d1 d0) d0
+f5⇓ : F 5
+f5⇓ = a2 (a2 a1 a1) (a2 a1 a1)
 
-f5h≡0 : f 5 h5 ≡ 0
-f5h≡0 = refl
+f5≡5 : f 5 f5⇓ ≡ 5
+f5≡5 = refl
 
-fnh≡0 : ∀ n → (hn : F n) → f n hn ≡ 0
-fnh≡0 zero d0 = refl
-fnh≡0 (suc zero) d1 = refl
-fnh≡0 (suc (suc n)) (d2 hn hfn) =
-  f (f n hn) hfn
-    ≡⟨ fnh≡0 (f n hn) hfn ⟩
-  0 ∎
+fn≡n : ∀ n → (fn⇓ : F n) → f n fn⇓ ≡ n
+fn≡n zero a0 = refl
+fn≡n (suc zero) a1 = refl
+fn≡n (suc (suc n)) (a2 fn⇓ ffn⇓) = cong (suc ∘ suc) (
+  f (f n fn⇓) ffn⇓
+    ≡⟨ fn≡n (f n fn⇓) ffn⇓ ⟩
+  f n fn⇓
+    ≡⟨ fn≡n n fn⇓ ⟩
+  n ∎)
 
 -- However, we can (formally) prove that the function is total!
 
 all-f : ∀ n → F n
-all-f zero = d0
-all-f (suc zero) = d1
-all-f (suc (suc n)) =
-  d2 hn hfn
-  where
-  hn : F n
-  hn = all-f n
-  fn≡0 : f n hn ≡ 0
-  fn≡0 = fnh≡0 n hn
-  hfn : F (f n hn)
-  hfn = subst F (sym fn≡0) d0
+all-f zero = a0
+all-f (suc zero) = a1
+all-f (suc (suc n)) = a2 fn⇓ ffn⇓ where
+  fn⇓ : F n
+  fn⇓ = all-f n
+  ffn⇓ : F (f n fn⇓)
+  ffn⇓ rewrite fn≡n n fn⇓ = fn⇓
 
 -- And now we can wright down a "normal" definition of `f` that
 -- does not take an additional argument.
@@ -91,8 +94,8 @@ total-f n = f n (all-f n)
 -- And we can prove some theorems about `total-f`.
 -- (Without specifying the domain of `f`.)
 
-tf5≡0 : total-f 5 ≡ 0
+tf5≡0 : total-f 5 ≡ 5
 tf5≡0 = refl
 
-tfn≡0 : ∀ n → total-f n ≡ 0
-tfn≡0 n = fnh≡0 n (all-f n)
+tfn≡0 : ∀ n → total-f n ≡ n
+tfn≡0 n = fn≡n n (all-f n)
