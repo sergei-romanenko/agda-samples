@@ -112,7 +112,7 @@ correct′ : ∀ {i} (t : Tm) (s : Stack i) →
   exec (compile t) s ≡ eval t ∷ s
 correct′ (val n) s =
   n ∷ s ∎
-correct′ {i} (t1 ⊕ t2) s
+correct′ (t1 ⊕ t2) s
   rewrite correct′ t1 s | correct′ t2 (eval t1 ∷ s)
   = eval t1 + eval t2 ∷ s ∎
 

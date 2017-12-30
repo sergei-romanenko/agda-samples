@@ -63,7 +63,7 @@ m+1+n≡1+m+n m n = begin
 2*-injective zero (suc n) ()
 2*-injective (suc n) zero ()
 2*-injective (suc n) (suc m) 2+2n≡2+2m =
-  -- This is shot, but looks like a mystery.
+  -- This is short, but looks like a mystery.
   cong suc (2*-injective n m (cong (pred ∘ pred) 2+2n≡2+2m))
 
 -- Let us try to rewrite the above proof in a more "human-friendly" form

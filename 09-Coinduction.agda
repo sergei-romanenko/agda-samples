@@ -113,13 +113,14 @@ map-comp f g (x ∷ xs) = refl ∷ ♯ map-comp f g (♭ xs)
 -- ≈ is reflexive, symmetric and transitive
 --
 
-≈-refl : ∀ {A} → (xs : Stream A) → xs ≈ xs
+≈-refl : ∀ {ℓ} {A : Set ℓ} → (xs : Stream A) → xs ≈ xs
 ≈-refl {A} (x ∷ xs) = refl ∷ ♯ ≈-refl (♭ xs)
 
-≈-sym : ∀ {A} → {xs ys : Stream A} → xs ≈ ys → ys ≈ xs
+≈-sym : ∀ {ℓ} {A : Set ℓ} → {xs ys : Stream A} → xs ≈ ys → ys ≈ xs
 ≈-sym (x≡y ∷ xs≈ys) = sym x≡y ∷ ♯ ≈-sym (♭ xs≈ys)
 
-≈-trans : ∀ {A} → {xs ys zs : Stream A} → xs ≈ ys → ys ≈ zs → xs ≈ zs
+≈-trans : ∀ {ℓ} {A : Set ℓ} → {xs ys zs : Stream A} →
+            xs ≈ ys → ys ≈ zs → xs ≈ zs
 ≈-trans (x≡y ∷ xs≈ys) (y≡z ∷ ys≈zs) =
   trans x≡y y≡z ∷ ♯ (≈-trans (♭ xs≈ys) (♭ ys≈zs))
 
